@@ -1,14 +1,20 @@
 import express from "express";
 import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
 import { connectDB } from "./config/db.js";
 import readingRoutes from "./routes/reading.route.js";
+import authRoutes from "./routes/auth.route.js";
 
 dotenv.config();
 
 const app = express();
 
+// Middleware
 app.use(express.json());
+app.use(cookieParser());
 
+// Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/readings", readingRoutes);
 
 app.get("/health", (req, res) => {
