@@ -1,5 +1,7 @@
 import User from "../model/user.model.js";
 import { generateToken } from "../utils/jwt.js";
+import { sendWelcomeEmail, sendPasswordResetEmail } from "../utils/email.js";
+import crypto from "crypto";
 
 // Register a new user
 export const register = async (req, res) => {
@@ -31,6 +33,14 @@ export const register = async (req, res) => {
       secure: process.env.NODE_ENV === "production",
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
+
+    // Send welcome email
+    try {
+      await sendWelcomeEmail(user.email, user.name);
+    } catch (emailError) {
+      console.error("Failed to send welcome email:", emailError);
+      // Continue with registration even if email fails
+    }
 
     // Return user data (without password)
     res.status(201).json({
@@ -133,6 +143,123 @@ export const getCurrentUser = async (req, res) => {
     res.status(200).json({
       success: true,
       data: user,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Forgot password
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User with this email does not exist",
+      });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    
+    // Hash token and save to user
+    user.resetPasswordToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+      
+    // Set token expiry (10 minutes)
+    user.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
+    
+    await user.save();
+
+    // Create reset URL
+    const resetUrl = `${req.protocol}://${req.get('host')}/api/auth/reset-password/${resetToken}`;
+
+    // Send password reset email
+    try {
+      await sendPasswordResetEmail(user.email, resetToken, resetUrl);
+      
+      res.status(200).json({
+        success: true,
+        message: "Password reset email sent",
+      });
+    } catch (emailError) {
+      // If email fails, clear reset token fields
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save();
+      
+      console.error("Failed to send password reset email:", emailError);
+      
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send password reset email",
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Reset password
+export const resetPassword = async (req, res) => {
+  try {
+    // Get token from params
+    const { token } = req.params;
+    const { password } = req.body;
+    
+    // Hash the token to compare with stored hash
+    const resetPasswordToken = crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
+    
+    // Find user with matching token and valid expiry
+    const user = await User.findOne({
+      resetPasswordToken,
+      resetPasswordExpire: { $gt: Date.now() },
+    });
+    
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired token",
+      });
+    }
+    
+    // Set new password
+    user.password = password;
+    
+    // Clear reset token fields
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    
+    await user.save();
+    
+    // Generate new token and login user
+    const newToken = generateToken(user._id);
+    
+    // Set token in cookie
+    res.cookie("token", newToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: "Password reset successful",
     });
   } catch (error) {
     res.status(500).json({

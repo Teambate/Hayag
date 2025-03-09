@@ -1,5 +1,12 @@
 import express from "express";
-import { register, login, logout, getCurrentUser } from "../controller/auth.controller.js";
+import { 
+  register, 
+  login, 
+  logout, 
+  getCurrentUser, 
+  forgotPassword, 
+  resetPassword 
+} from "../controller/auth.controller.js";
 import { protect } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
@@ -8,6 +15,8 @@ const router = express.Router();
 router.post("/register", register);
 router.post("/login", login);
 router.post("/logout", logout);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password/:token", resetPassword);
 
 // Protected routes
 router.get("/me", protect, getCurrentUser);
