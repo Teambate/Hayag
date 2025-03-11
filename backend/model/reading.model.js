@@ -2,14 +2,14 @@ import mongoose from "mongoose";
 
 const sensorReadingSchema = new mongoose.Schema(
   {
+    deviceId: {
+      type: String,
+      required: true,
+    },
     metadata: {
-      deviceId: {
-        type: String,
-        required: true,
-      },
       aggregationType: {
         type: String,
-        enum: ["5min", "hourly", "daily"],
+        enum: ["5min", "10min","15min", "30min", "hourly", "daily"],
         required: true,
       },
       sampleCount: {
@@ -109,21 +109,15 @@ const sensorReadingSchema = new mongoose.Schema(
     },
   },
   {
+    // Configure Time Series options
+    timeseries: {
+      timeField: 'createdAt',
+      metaField: 'deviceId',
+      granularity: 'minutes'
+    },
     timestamps: true,
   }
 );
-
-// Add indexes for better query performance
-sensorReadingSchema.index({ timestamp: -1 });
-sensorReadingSchema.index({ "metadata.deviceId": 1, timestamp: -1 });
-sensorReadingSchema.index({ "metadata.aggregationType": 1, timestamp: -1 });
-
-// Create a compound index for efficient time-based queries with aggregation type
-sensorReadingSchema.index({
-  "metadata.aggregationType": 1,
-  "metadata.deviceId": 1,
-  timestamp: -1,
-});
 
 // Add schema methods if needed
 sensorReadingSchema.methods.getFormattedTimestamp = function () {
