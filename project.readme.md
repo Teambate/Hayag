@@ -10,6 +10,8 @@ Core functionalities:
 
 Technologies:
 - React
+- Vite
+- Shadcn ui library
 - Node.js   
 - Express
 - MongoDB

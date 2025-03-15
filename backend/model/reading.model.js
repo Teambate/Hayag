@@ -9,7 +9,7 @@ const sensorReadingSchema = new mongoose.Schema(
     metadata: {
       aggregationType: {
         type: String,
-        enum: ["5min", "10min","15min", "30min", "hourly", "daily"],
+        enum: ["5min", "10min","15min"],
         required: true,
       },
       sampleCount: {
@@ -103,9 +103,15 @@ const sensorReadingSchema = new mongoose.Schema(
           average: { type: Number, required: true },
           min: { type: Number, required: true },
           max: { type: Number, required: true },
-          unit: { type: String, default: "V" },
+          unit: { type: String, default: "W" },
         },
       ],
+      battery_capacity: {
+        type: Number,
+        required: true,
+        default: 0,
+        unit: { type: String, default: "W" },
+      },
     },
   },
   {
