@@ -11,7 +11,7 @@ export const getReadings = async (req, res) => {
 
 export const getFilteredReadings = async (req, res) => {
   try {
-    const { startDateTime, endDateTime, panelIds, sensorTypes } = req.query;
+    const { startDateTime, endDateTime, panelIds, sensorTypes, deviceId } = req.query;
     
     // Convert parameters to arrays if they're strings
     const panelIdsArray = panelIds ? 
@@ -22,15 +22,24 @@ export const getFilteredReadings = async (req, res) => {
       (Array.isArray(sensorTypes) ? sensorTypes : sensorTypes.split(',')) : 
       null;
     
+    const deviceIdArray = deviceId ?
+      (Array.isArray(deviceId) ? deviceId : deviceId.split(',')) :
+      null;
+    
     // Start building the aggregation pipeline
     const pipeline = [];
     
-    // Stage 1: Match documents based on time range
+    // Stage 1: Match documents based on time range and deviceId
     const matchStage = {};
     if (startDateTime || endDateTime) {
       matchStage.createdAt = {};
       if (startDateTime) matchStage.createdAt.$gte = new Date(startDateTime);
       if (endDateTime) matchStage.createdAt.$lte = new Date(endDateTime);
+    }
+    
+    // Add deviceId to match stage if provided
+    if (deviceIdArray && deviceIdArray.length > 0) {
+      matchStage.deviceId = { $in: deviceIdArray };
     }
     
     // Add sensor types to match stage if provided
