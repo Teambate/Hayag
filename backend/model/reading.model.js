@@ -6,10 +6,18 @@ const sensorReadingSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    startTime: {
+      type: Date,
+      required: true,
+    },
+    endTime: {
+      type: Date,
+      required: true,
+    },
     metadata: {
       aggregationType: {
         type: String,
-        enum: ["5min", "10min","15min"],
+        enum: ["5min"],
         required: true,
       },
       sampleCount: {
@@ -23,7 +31,7 @@ const sensorReadingSchema = new mongoose.Schema(
           panelId: { type: String, required: true },
           average: { type: Number, required: true },
           min: { type: Number, required: true },
-          max: { type: Number, required: true }, 
+          max: { type: Number, required: true },
           unit: { type: String, default: "%" },
         },
       ],
@@ -117,9 +125,9 @@ const sensorReadingSchema = new mongoose.Schema(
   {
     // Configure Time Series options
     timeseries: {
-      timeField: 'createdAt',
-      metaField: 'deviceId',
-      granularity: 'minutes'
+      timeField: "endTime",
+      metaField: "deviceId",
+      granularity: "minutes",
     },
     timestamps: true,
   }

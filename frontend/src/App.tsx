@@ -13,11 +13,11 @@ import Login from "./pages/Login"
 function App() {
   const [activeTab, setActiveTab] = useState("Dashboard")
   // In a real app, you would check for authentication status here
-  //const [isAuthenticated, setIsAuthenticated] = useState(true) 
+  const [isAuthenticated, setIsAuthenticated] = useState(false) 
 
   return (
     <BrowserRouter>
-      {/* {isAuthenticated ? ( */}
+      {isAuthenticated ? (
         <div className="min-h-screen bg-background">
           <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
           <Banner activeTab={activeTab} />
@@ -33,11 +33,11 @@ function App() {
             </Routes>
           </main>
         </div>
-      {/* ) : (
+      ) : (
         <Routes>
           <Route path="*" element={<Login />} />
         </Routes>
-      )} */}
+      )}
     </BrowserRouter>
   )
 }
