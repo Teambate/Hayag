@@ -267,14 +267,15 @@ export default function Sensors() {
             Please select at least one sensor to view data
           </p>
         ) : selectedSensors.length === 1 ? (
-          <SensorTable data={getTableData()} />
+          <SensorTable data={getTableData() as any[]} />
         ) : (
           <MultiSensorTable 
-            data={getTableData()} 
-            selectedSensors={selectedSensors} 
+            data={getTableData() as any[]} 
+            selectedSensors={selectedSensors}
           />
         )}
       </div>
     </div>
   )
 }
+

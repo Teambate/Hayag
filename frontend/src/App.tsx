@@ -8,27 +8,36 @@ import Analytics from "./pages/Analytics"
 import Sensors from "./pages/Sensors"
 import Notes from "./pages/Notes"
 import Settings from "./pages/Settings"
+import Login from "./pages/Login"
 
 function App() {
   const [activeTab, setActiveTab] = useState("Dashboard")
+  // In a real app, you would check for authentication status here
+  //const [isAuthenticated, setIsAuthenticated] = useState(true) 
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-background">
-        <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
-        <Banner activeTab={activeTab} />
-        
-        <main>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/sensors" element={<Sensors />} />
-            <Route path="/notes" element={<Notes />} />
-            <Route path="/settings" element={<Settings />} />
-          </Routes>
-        </main>
-      </div>
+      {/* {isAuthenticated ? ( */}
+        <div className="min-h-screen bg-background">
+          <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+          <Banner activeTab={activeTab} />
+          
+          <main>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/sensors" element={<Sensors />} />
+              <Route path="/notes" element={<Notes />} />
+              <Route path="/settings" element={<Settings />} />
+            </Routes>
+          </main>
+        </div>
+      {/* ) : (
+        <Routes>
+          <Route path="*" element={<Login />} />
+        </Routes>
+      )} */}
     </BrowserRouter>
   )
 }
