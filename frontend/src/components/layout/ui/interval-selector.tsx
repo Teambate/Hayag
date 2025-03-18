@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Button } from "../../ui/button"
+import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover"
 import { ChevronDown, Filter } from "lucide-react"
 
 interface IntervalSelectorProps {
@@ -20,7 +20,7 @@ export function IntervalSelector({ value, onChange }: IntervalSelectorProps) {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="flex items-center justify-between gap-2 w-[120px] bg-white border-gray-200"
+          className="flex items-center justify-between gap-2 w-[120px] bg-[#FAFDFB] border-transparent hover:border-[#6CBC92] hover:bg-[#FAFDFB]"
         >
           <Filter className="h-4 w-4" />
           {value}
@@ -33,7 +33,7 @@ export function IntervalSelector({ value, onChange }: IntervalSelectorProps) {
             <Button
               key={option}
               variant="ghost"
-              className="justify-start rounded-none h-10"
+              className="justify-start rounded-none h-10 hover:bg-[#FAFDFB] hover:border-[#6CBC92]"
               onClick={() => {
                 onChange(option)
                 setIsOpen(false)

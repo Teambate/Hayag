@@ -23,7 +23,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="flex items-center justify-between gap-2 w-[220px] bg-white border-gray-200"
+          className="flex items-center justify-between gap-2 w-[220px] bg-[#FAFDFB] border-transparent hover:border-[#6CBC92] hover:bg-[#FAFDFB]"
         >
           <CalendarIcon className="h-4 w-4" />
           {formattedDateRange}
@@ -48,6 +48,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
               <Button
                 variant="ghost"
                 size="sm"
+                className="text-gray-500 hover:bg-transparent"
                 onClick={() => {
                   onChange({ from: undefined, to: undefined })
                 }}
@@ -55,10 +56,20 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
                 Clear
               </Button>
               <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setIsOpen(false)}>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-gray-500 hover:bg-transparent"
+                  onClick={() => setIsOpen(false)}
+                >
                   Cancel
                 </Button>
-                <Button size="sm" onClick={() => setIsOpen(false)}>
+                <Button 
+                  variant="ghost"
+                  size="sm" 
+                  className="text-[#65B08F] hover:bg-transparent"
+                  onClick={() => setIsOpen(false)}
+                >
                   OK
                 </Button>
               </div>
