@@ -183,6 +183,27 @@ export const createReading = async (req, res) => {
   try {
     const newSensorReading = new SensorReading(sensorReadings);
     await newSensorReading.save();
+    
+    // Get the Socket.io instance
+    const io = req.app.get('io');
+    
+    if (io) {
+      // Send the current sensor values to subscribed clients
+      const currentValues = await processReadingForCurrentValues(newSensorReading);
+      
+      // Emit to the specific device room
+      io.to(`device:${newSensorReading.deviceId}`).emit('sensorUpdate', currentValues);
+      
+      // Emit to all chart subscribers for this device with the new chart data point
+      const chartData = processReadingForCharts(newSensorReading);
+      Object.keys(chartData).forEach(chartType => {
+        io.to(`device:${newSensorReading.deviceId}:${chartType}`).emit('chartUpdate', {
+          chartType,
+          dataPoint: chartData[chartType]
+        });
+      });
+    }
+    
     res.status(201).json({ success: true, data: newSensorReading });
   } catch (error) {
     console.error("Error saving sensor readings:", error);
@@ -470,6 +491,174 @@ export const getChartData = async (req, res) => {
   }
 };
 
+export const getDashboardChartData = async (req, res) => {
+  try {
+    const { 
+      deviceId, 
+      panelIds, 
+      startDateTime, 
+      endDateTime, 
+      timeInterval = '15min',
+      chartTypes 
+    } = req.query;
+    
+    if (!deviceId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "deviceId is required" 
+      });
+    }
+    
+    if (!startDateTime || !endDateTime) {
+      return res.status(400).json({
+        success: false,
+        message: "startDateTime and endDateTime are required"
+      });
+    }
+    
+    // Validate time interval
+    if (!['5min', '10min', '15min', '30min', 'hourly', 'daily'].includes(timeInterval)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid timeInterval. Must be one of: 5min, 10min, 15min, 30min, hourly, daily"
+      });
+    }
+    
+    // Convert chart types to array if provided
+    const chartTypesArray = chartTypes ? 
+      (Array.isArray(chartTypes) ? chartTypes : chartTypes.split(',')) : 
+      ['energy', 'battery', 'panel_temp', 'irradiance'];
+      
+    // Validate chart types
+    const validChartTypes = ['energy', 'battery', 'panel_temp', 'irradiance'];
+    for (const chartType of chartTypesArray) {
+      if (!validChartTypes.includes(chartType)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid chartType: ${chartType}. Must be one of: energy, battery, panel_temp, irradiance`
+        });
+      }
+    }
+    
+    // Convert panelIds to array if provided
+    const panelIdsArray = panelIds ? 
+      (Array.isArray(panelIds) ? panelIds : panelIds.split(',')) : 
+      null;
+    
+    // Determine which sensor types to query based on chart types
+    const sensorTypesMap = {
+      'energy': ['ina226'],
+      'battery': ['battery'],
+      'panel_temp': ['panel_temp'],
+      'irradiance': ['solar']
+    };
+    
+    // Create a Set to store unique sensor types
+    const sensorTypesSet = new Set();
+    
+    // Add sensor types based on requested chart types
+    chartTypesArray.forEach(chartType => {
+      sensorTypesMap[chartType].forEach(sensorType => {
+        sensorTypesSet.add(sensorType);
+      });
+    });
+    
+    // Convert Set back to array
+    const sensorTypes = Array.from(sensorTypesSet);
+    
+    // Build the aggregation pipeline
+    const pipeline = [];
+    
+    // Match stage - filter by deviceId and time range
+    pipeline.push({
+      $match: {
+        deviceId: deviceId,
+        createdAt: {
+          $gte: new Date(startDateTime),
+          $lte: new Date(endDateTime)
+        }
+      }
+    });
+    
+    // Project stage - only include the fields we need
+    const projectStage = {
+      deviceId: 1,
+      createdAt: 1
+    };
+    
+    // Add the required sensor types to the projection
+    sensorTypes.forEach(type => {
+      projectStage[`readings.${type}`] = 1;
+    });
+    
+    pipeline.push({ $project: projectStage });
+    
+    // If panel IDs are specified, filter by panel ID
+    if (panelIdsArray && panelIdsArray.length > 0) {
+      const newReadingsObj = {};
+      
+      sensorTypes.forEach(type => {
+        newReadingsObj[type] = {
+          $filter: {
+            input: `$readings.${type}`,
+            as: "sensor",
+            cond: { $in: ["$$sensor.panelId", panelIdsArray] }
+          }
+        };
+      });
+      
+      pipeline.push({
+        $project: {
+          deviceId: 1,
+          createdAt: 1,
+          readings: newReadingsObj
+        }
+      });
+      
+      // Filter out documents where all sensor arrays are now empty
+      const orConditions = sensorTypes.map(type => ({
+        [`readings.${type}.0`]: { $exists: true }
+      }));
+      
+      pipeline.push({
+        $match: {
+          $or: orConditions
+        }
+      });
+    }
+    
+    // Sort by timestamp
+    pipeline.push({ $sort: { createdAt: 1 } });
+    
+    // Execute the aggregation pipeline
+    const readings = await SensorReading.aggregate(pipeline);
+    
+    // Process the data based on the time interval
+    const timeIntervalMs = getTimeIntervalInMs(timeInterval);
+    
+    // Create a result object for each chart type
+    const result = {};
+    
+    for (const chartType of chartTypesArray) {
+      result[chartType] = aggregateDataByTimeInterval(readings, timeIntervalMs, chartType, panelIdsArray);
+    }
+    
+    res.status(200).json({
+      success: true,
+      timeInterval: timeInterval,
+      data: result
+    });
+    
+  } catch (error) {
+    console.error("Error fetching dashboard chart data:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch dashboard chart data",
+      error: error.message
+    });
+  }
+};
+
 // Helper function to convert time interval string to milliseconds
 function getTimeIntervalInMs(intervalString) {
   switch (intervalString) {
@@ -665,4 +854,119 @@ function finalizeDataBucket(bucket, chartType) {
   bucket.panels = panelAverages;
   bucket.average = overallAverage;
   delete bucket.values;
+}
+
+// Helper function to process a reading for current sensor values
+function processReadingForCurrentValues(reading) {
+  const result = {
+    deviceId: reading.deviceId,
+    timestamp: reading.createdAt,
+    sensors: {}
+  };
+  
+  // Process each sensor type
+  const sensorTypes = [
+    { key: 'solar', path: 'solar' },
+    { key: 'rain', path: 'rain' },
+    { key: 'uv', path: 'uv' },
+    { key: 'light', path: 'light' },
+    { key: 'humidity', path: 'dht22', valueField: 'humidity' },
+    { key: 'temperature', path: 'dht22', valueField: 'temperature' },
+    { key: 'current', path: 'ina226', valueField: 'current' },
+    { key: 'voltage', path: 'ina226', valueField: 'voltage' },
+    { key: 'battery', path: 'battery' },
+    { key: 'panel_temp', path: 'panel_temp' }
+  ];
+  
+  for (const sensorType of sensorTypes) {
+    const { key, path, valueField } = sensorType;
+    result.sensors[key] = [];
+    
+    if (reading.readings[path] && reading.readings[path].length > 0) {
+      reading.readings[path].forEach(sensor => {
+        let value;
+        if (valueField) {
+          // For nested values like dht22.humidity
+          value = sensor[valueField].average;
+        } else {
+          // For direct values like solar, rain, etc.
+          value = sensor.average;
+        }
+        
+        result.sensors[key].push({
+          panelId: sensor.panelId,
+          value: value,
+          unit: valueField ? sensor[valueField].unit : sensor.unit
+        });
+      });
+    }
+  }
+  
+  return result;
+}
+
+// Helper function to process a reading for chart updates
+function processReadingForCharts(reading) {
+  const chartData = {
+    energy: [],
+    battery: [],
+    panel_temp: [],
+    irradiance: []
+  };
+  
+  const timestamp = reading.createdAt.getTime();
+  
+  // Energy production (using current and voltage)
+  if (reading.readings.ina226 && reading.readings.ina226.length > 0) {
+    reading.readings.ina226.forEach(sensor => {
+      const voltage = sensor.voltage.average;
+      const current = sensor.current.average;
+      const power = voltage * current / 1000; // Convert to watts
+      
+      chartData.energy.push({
+        panelId: sensor.panelId,
+        timestamp: timestamp,
+        value: power,
+        unit: 'W'
+      });
+    });
+  }
+  
+  // Battery charge
+  if (reading.readings.battery && reading.readings.battery.length > 0) {
+    reading.readings.battery.forEach(sensor => {
+      chartData.battery.push({
+        panelId: sensor.panelId,
+        timestamp: timestamp,
+        value: sensor.average,
+        unit: sensor.unit
+      });
+    });
+  }
+  
+  // Panel temperature
+  if (reading.readings.panel_temp && reading.readings.panel_temp.length > 0) {
+    reading.readings.panel_temp.forEach(sensor => {
+      chartData.panel_temp.push({
+        panelId: sensor.panelId,
+        timestamp: timestamp,
+        value: sensor.average,
+        unit: sensor.unit
+      });
+    });
+  }
+  
+  // Irradiance (using solar)
+  if (reading.readings.solar && reading.readings.solar.length > 0) {
+    reading.readings.solar.forEach(sensor => {
+      chartData.irradiance.push({
+        panelId: sensor.panelId,
+        timestamp: timestamp,
+        value: sensor.average,
+        unit: sensor.unit
+      });
+    });
+  }
+  
+  return chartData;
 }

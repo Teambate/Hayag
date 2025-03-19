@@ -66,3 +66,66 @@ To develop and implement an **IoT Solar PV Data Logger with Interactive Dashboar
 - **Ira Hans Dedicatoria** – Lead Software Developer & Backend Engineer
 - **Courtney Viola** – UI/UX Designer & Frontend Developer
 - **John Embate's Father** – Technical Consultant & Assembly Lead
+
+## Dashboard Implementation
+
+### Real-Time Dashboard Features
+
+The dashboard implementation provides a dual-approach strategy:
+- Current sensor values: Uses WebSockets for real-time updates
+- Chart data: Uses a combination of REST API for initial loading + WebSocket for incremental updates
+
+### Backend API Endpoints
+
+#### Current Sensor Values
+- `GET /api/readings/current`: Get the latest sensor readings for a device
+  - Query parameters: `deviceId` (required), `panelIds` (optional, comma-separated)
+
+#### Chart Data
+- `GET /api/readings/chart`: Get chart data for a specific chart type
+  - Query parameters: 
+    - `deviceId` (required)
+    - `panelIds` (optional, comma-separated)
+    - `startDateTime` (required, ISO format)
+    - `endDateTime` (required, ISO format)
+    - `timeInterval` (optional, default '15min')
+    - `chartType` (required, one of: 'energy', 'battery', 'panel_temp', 'irradiance')
+
+- `GET /api/readings/dashboard/chart`: Get data for multiple chart types with time-based aggregation
+  - Query parameters:
+    - `deviceId` (required)
+    - `panelIds` (optional, comma-separated)
+    - `startDateTime` (required, ISO format)
+    - `endDateTime` (required, ISO format)
+    - `timeInterval` (optional, one of: '5min', '10min', '15min', '30min', 'hourly', 'daily', default '15min')
+    - `chartTypes` (optional, comma-separated, default is all types: 'energy', 'battery', 'panel_temp', 'irradiance')
+
+### WebSocket Events
+
+The dashboard uses Socket.io for real-time updates. The following events are available:
+
+#### Client to Server
+- `subscribe`: Subscribe to current sensor updates for a device
+  - Parameter: `deviceId` (string)
+- `unsubscribe`: Unsubscribe from current sensor updates
+  - Parameter: `deviceId` (string)
+- `subscribeChart`: Subscribe to chart updates for a device and chart type
+  - Parameter: Object with `deviceId` (string) and `chartType` (string)
+- `unsubscribeChart`: Unsubscribe from chart updates
+  - Parameter: Object with `deviceId` (string) and `chartType` (string)
+
+#### Server to Client
+- `sensorUpdate`: Sent when new sensor data is available
+  - Data: Object containing current sensor values
+- `chartUpdate`: Sent when new chart data is available
+  - Data: Object with `chartType` and `dataPoint`
+
+### Time-Based Aggregation
+
+The dashboard supports multiple time intervals for chart data aggregation:
+- 5 minutes (5min)
+- 10 minutes (10min)
+- 15 minutes (15min)
+- 30 minutes (30min)
+- Hourly (hourly)
+- Daily (daily)
