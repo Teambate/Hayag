@@ -11,6 +11,7 @@ export default {
   			// Main colors
   			primary: '#0C4226',
   			secondary: '#EA9010',
+  			'dark-green': '#0C4226',
   			
   			// Background and text colors
   			background: '#FFFFFF',
@@ -40,13 +41,13 @@ export default {
   				DEFAULT: '#FF0000',
   				foreground: '#FFFFFF',
   			},
-  			// Chart colors (if you need them)
+  			// Chart colors for our dashboard
   			chart: {
-  				'1': '#FF6B6B',
-  				'2': '#4ECDC4',
-  				'3': '#45B7D1',
-  				'4': '#96CEB4',
-  				'5': '#FFEEAD',
+  				'1': '#FFB547', // Amber/Orange for battery/temperature
+  				'2': '#4CAF50', // Green for energy/panel
+  				'3': '#FF5252', // Red for warnings
+  				'4': '#81C784', // Light green for afternoon irradiance
+  				'5': '#FFE082', // Light amber for morning irradiance
   			}
   		},
   		borderRadius: {
