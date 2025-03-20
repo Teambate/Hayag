@@ -1,19 +1,17 @@
-"use client"
-
 import { useState } from "react"
-import { Button } from "../../ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover"
-import { ChevronDown, Filter } from "lucide-react"
+import { Button } from "../ui/button"     
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
+import { ChevronDown } from "lucide-react"
 
-interface IntervalSelectorProps {
+interface PanelSelectorProps {
   value: string
   onChange: (value: string) => void
 }
 
-export function IntervalSelector({ value, onChange }: IntervalSelectorProps) {
+export function PanelSelector({ value, onChange }: PanelSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
 
-  const options = ["Hourly", "Daily", "Monthly"]
+  const options = ["Panel 1", "Panel 2", "All Panels"]
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -22,7 +20,6 @@ export function IntervalSelector({ value, onChange }: IntervalSelectorProps) {
           variant="outline"
           className="flex items-center justify-between gap-2 w-[120px] bg-[#FAFDFB] border-transparent hover:border-[#6CBC92] hover:bg-[#FAFDFB]"
         >
-          <Filter className="h-4 w-4" />
           {value}
           <ChevronDown className="h-4 w-4 opacity-50" />
         </Button>
@@ -47,4 +44,3 @@ export function IntervalSelector({ value, onChange }: IntervalSelectorProps) {
     </Popover>
   )
 }
-

@@ -4,11 +4,7 @@ import { useState } from "react"
 import { PanelSelector } from "./panel-selector"
 import { IntervalSelector } from "./interval-selector"
 import { DateRangePicker } from "./date-range-picker"
-
-interface DateRange {
-  from: Date | undefined
-  to: Date | undefined
-}
+import { DateRange } from "react-day-picker"
 
 export function FilterDropdown() {
   // State for panel selection
@@ -18,7 +14,7 @@ export function FilterDropdown() {
   const [interval, setInterval] = useState("Hourly")
 
   // State for date range
-  const [dateRange, setDateRange] = useState({
+  const [dateRange, setDateRange] = useState<DateRange>({
     from: new Date(2025, 1, 23), // Feb 23, 2025
     to: new Date(2025, 2, 4), // March 4, 2025
   })
