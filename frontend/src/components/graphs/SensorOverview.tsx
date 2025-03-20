@@ -1,5 +1,5 @@
 import React from 'react';
-import { SunIcon, CloudRainIcon, SunDimIcon, SunMediumIcon, DropletIcon, ThermometerIcon } from 'lucide-react';
+import { SunIcon, CloudRainIcon, SunMediumIcon, DropletIcon, ThermometerIcon } from 'lucide-react';
 
 interface SensorDataItem {
   value: number;
