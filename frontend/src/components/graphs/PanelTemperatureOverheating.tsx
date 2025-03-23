@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend, ReferenceLine } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
 
 // Mock data for panel temperature
 const temperatureData = [
@@ -11,12 +11,13 @@ const temperatureData = [
 
 const PanelTemperatureOverheating: React.FC = () => {
   return (
-    <div>
-      <div className="h-72">
+    <div className="flex flex-col h-full">
+      {/* Chart container - take up remaining space */}
+      <div className="flex-grow w-full min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart 
             data={temperatureData} 
-            margin={{ top: 5, right: 20, left: 20, bottom: 5 }} 
+            margin={{ top: 5, right: 10, left: 10, bottom: 5 }} 
             barGap={2}
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
@@ -24,22 +25,31 @@ const PanelTemperatureOverheating: React.FC = () => {
               dataKey="panel" 
               axisLine={false} 
               tickLine={false}
+              tick={{ fontSize: 12, fill: '#6B7280' }}
             />
             <YAxis 
               axisLine={false} 
               tickLine={false}
               domain={[0, 100]}
+              tick={{ fontSize: 12, fill: '#6B7280' }}
+              tickCount={5}
             />
             <Tooltip />
-            <Legend />
-            <ReferenceLine y={80} stroke="red" strokeDasharray="3 3" label={{ value: 'Overheating Threshold', position: 'top', fill: 'red' }} />
+            <ReferenceLine y={80} stroke="red" strokeDasharray="3 3" 
+              label={{ 
+                value: 'Overheating Threshold', 
+                position: 'top', 
+                fill: 'red',
+                fontSize: 12
+              }} 
+            />
             <Bar dataKey="morning" fill="#81C784" name="Morning" radius={[4, 4, 0, 0]} />
             <Bar dataKey="afternoon" fill="#FFB74D" name="Afternoon" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
       
-      <div className="flex mt-4 space-x-4 text-sm text-gray-500 border-t border-gray-200 pt-3">
+      <div className="flex space-x-4 text-sm text-gray-500 justify-center pb-1">
         <div className="flex items-center">
           <div className="w-3 h-3 rounded-full bg-green-400 mr-1"></div>
           <span>Morning Temp</span>

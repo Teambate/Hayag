@@ -44,8 +44,8 @@ export default function Banner({ activeTab }: BannerProps) {
 
   return (
     <div className="w-full bg-white border-b">
-      <div className="flex items-center justify-between px-6 py-4 max-w-[1600px] mx-auto">
-        <h1 className="text-3xl font-semibold text-[#1e3a29]">{getBannerTitle()}</h1>
+      <div className="flex items-center justify-between px-6 py-4">
+        <h1 className="text-2xl font-semibold text-[#1e3a29]">{getBannerTitle()}</h1>
 
         <div className="flex items-center gap-2">
           {/* Panel Dropdown */}

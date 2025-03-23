@@ -1,7 +1,7 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom"
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom"
 import Navbar from "./components/layout/Navbar"
 import Banner from "./components/layout/Banner"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 // Import your pages
 import Dashboard from "./pages/Dashboard"
 import Analytics from "./pages/Analytics"
@@ -10,34 +10,50 @@ import Notes from "./pages/Notes"
 import Settings from "./pages/Settings"
 //import Login from "./pages/Login"
 
-function App() {
+// Helper component to handle location changes
+function AppContent() {
   const [activeTab, setActiveTab] = useState("Dashboard")
-  // In a real app, you would check for authentication status here
- // const [isAuthenticated, setIsAuthenticated] = useState(false) 
+  const location = useLocation()
+  
+  // Update activeTab based on current location
+  useEffect(() => {
+    const path = location.pathname
+    if (path === "/" || path === "/dashboard") {
+      setActiveTab("Dashboard")
+    } else if (path === "/analytics") {
+      setActiveTab("Analytics")
+    } else if (path === "/sensors") {
+      setActiveTab("Sensors")
+    } else if (path === "/notes") {
+      setActiveTab("Notes")
+    } else if (path === "/settings") {
+      setActiveTab("Settings")
+    }
+  }, [location])
 
   return (
-    <BrowserRouter>
-      {/* {isAuthenticated ? ( */}
-        <div className="min-h-screen bg-background">
-          <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
-          <Banner activeTab={activeTab} />
-          
-          <main>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/sensors" element={<Sensors />} />
-              <Route path="/notes" element={<Notes />} />
-              <Route path="/settings" element={<Settings />} />
-            </Routes>
-          </main>
-        </div>
-      {/* ) : (
+    <div className="min-h-screen bg-background">
+      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Banner activeTab={activeTab} />
+      
+      <main>
         <Routes>
-          <Route path="*" element={<Login />} />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/sensors" element={<Sensors />} />
+          <Route path="/notes" element={<Notes />} />
+          <Route path="/settings" element={<Settings />} />
         </Routes>
-      )} */}
+      </main>
+    </div>
+  )
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
     </BrowserRouter>
   )
 }

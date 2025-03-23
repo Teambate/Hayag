@@ -1,5 +1,5 @@
 import React from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 
 // Mock data for battery charge and discharge
 const batteryData = [
@@ -15,10 +15,11 @@ const batteryData = [
 
 const BatteryChargeDischarge: React.FC = () => {
   return (
-    <div>
-      <div className="h-72">
+    <div className="flex flex-col h-full">
+      {/* Chart container - take up remaining space */}
+      <div className="flex-grow w-full min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={batteryData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+          <AreaChart data={batteryData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
             <defs>
               <linearGradient id="colorCharge" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#FFB547" stopOpacity={0.6} />
@@ -34,14 +35,16 @@ const BatteryChargeDischarge: React.FC = () => {
               dataKey="time" 
               axisLine={false} 
               tickLine={false}
+              tick={{ fontSize: 12, fill: '#6B7280' }}
             />
             <YAxis 
               axisLine={false} 
               tickLine={false}
               domain={[0, 350]}
+              tick={{ fontSize: 12, fill: '#6B7280' }}
+              tickCount={5}
             />
             <Tooltip />
-            <Legend />
             <Area
               type="monotone"
               dataKey="charge"
@@ -62,7 +65,7 @@ const BatteryChargeDischarge: React.FC = () => {
         </ResponsiveContainer>
       </div>
       
-      <div className="flex mt-4 space-x-4 text-sm text-gray-500 border-t border-gray-200 pt-3">
+      <div className="flex mt-1 space-x-4 text-sm text-gray-500 justify-center pt-3 pb-3">
         <div className="flex items-center">
           <div className="w-3 h-3 rounded-full bg-amber-500 mr-1"></div>
           <span>Charge Rate</span>

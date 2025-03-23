@@ -14,13 +14,14 @@ const irradianceData = [
 
 const IrradianceGraph: React.FC = () => {
   return (
-    <div>
-      <div className="h-64">
+    <div className="flex flex-col h-full">
+      {/* Chart container - take up remaining space */}
+      <div className="flex-grow w-full min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={irradianceData}
             layout="vertical"
-            margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+            margin={{ top: 5, right: 20, left: 30, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} opacity={0.3} />
             <XAxis
@@ -57,7 +58,7 @@ const IrradianceGraph: React.FC = () => {
         </ResponsiveContainer>
       </div>
       
-      <div className="flex mt-4 space-x-6 text-sm text-gray-500 justify-center border-t border-gray-200 pt-3">
+      <div className="flex mt-1 space-x-6 text-sm text-gray-500 justify-center pt-3 pb-3">
         <div className="flex items-center">
           <div className="w-3 h-3 rounded-full bg-amber-200 mr-1"></div>
           <span>Morning</span>

@@ -15,8 +15,9 @@ const energyData = [
 
 const EnergyProduction: React.FC = () => {
   return (
-    <div>
-      <div className="h-64">
+    <div className="flex flex-col h-full">
+      {/* Chart container - take up remaining space */}
+      <div className="flex-grow w-full min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={energyData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
             <defs>
@@ -52,28 +53,12 @@ const EnergyProduction: React.FC = () => {
           </BarChart>
         </ResponsiveContainer>
       </div>
-
-      <div className="grid grid-cols-2 mt-6 border-t border-gray-200 pt-4">
-        {/* Capacity */}
-        <div className="flex items-center border-r border-gray-200 pr-4">
-          <div className="bg-amber-100 p-2 rounded-full mr-3">
-            <BatteryIcon className="text-amber-500" size={20} />
-          </div>
-          <div>
-            <div className="text-sm text-gray-500">Capacity</div>
-            <div className="text-xl font-semibold">220.0 kWH</div>
-          </div>
-        </div>
-
-        {/* Total Yield */}
-        <div className="flex items-center pl-4">
-          <div className="bg-green-100 p-2 rounded-full mr-3">
-            <ZapIcon className="text-green-500" size={20} />
-          </div>
-          <div>
-            <div className="text-sm text-gray-500">Total Yield</div>
-            <div className="text-xl font-semibold">175.0 kWH</div>
-          </div>
+      
+      {/* Legend - No border and centered */}
+      <div className="flex mt-1 space-x-4 text-sm text-gray-500 justify-center pt-1 pb-1">
+        <div className="flex items-center">
+          <div className="w-3 h-3 rounded-full bg-green-500 mr-1"></div>
+          <span>Energy Output (kWh)</span>
         </div>
       </div>
     </div>
