@@ -1,49 +1,74 @@
-import React from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import React from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 
-const data = [
-  { time: "6:00 AM", value: 200 },
-  { time: "8:00 AM", value: 450 },
-  { time: "10:00 AM", value: 800 },
-  { time: "12:00 PM", value: 950 },
-  { time: "2:00 PM", value: 890 },
-  { time: "4:00 PM", value: 620 },
-  { time: "6:00 PM", value: 290 },
+// Mock data for irradiance by month
+const irradianceData = [
+  { month: 'Jan', morning: 300, afternoon: 600 },
+  { month: 'Feb', morning: 400, afternoon: 700 },
+  { month: 'Mar', morning: 500, afternoon: 800 },
+  { month: 'Apr', morning: 600, afternoon: 700 },
+  { month: 'May', morning: 700, afternoon: 950 },
+  { month: 'Jun', morning: 800, afternoon: 900 },
+  { month: 'Jul', morning: 700, afternoon: 800 },
 ];
 
 const IrradianceGraph: React.FC = () => {
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={data} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-        <XAxis 
-          dataKey="time" 
-          tick={{ fontSize: 10 }}
-          axisLine={false}
-          tickLine={false}
-        />
-        <YAxis 
-          tick={{ fontSize: 10 }} 
-          axisLine={false}
-          tickLine={false}
-          domain={[0, 1000]}
-          tickFormatter={(value) => `${value} W/m²`}
-        />
-        <Tooltip 
-          formatter={(value) => [`${value} W/m²`, "Irradiance"]}
-          labelFormatter={(label) => `Time: ${label}`}
-        />
-        <Line 
-          type="monotone" 
-          dataKey="value" 
-          stroke="#F9A826" 
-          strokeWidth={2}
-          dot={false}
-          activeDot={{ r: 5 }}
-        />
-      </LineChart>
-    </ResponsiveContainer>
+    <div>
+      <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={irradianceData}
+            layout="vertical"
+            margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} opacity={0.3} />
+            <XAxis
+              type="number"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 12 }}
+              domain={[0, 1200]}
+            />
+            <YAxis
+              dataKey="month"
+              type="category"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 12 }}
+              width={30}
+            />
+            <Tooltip />
+            <Bar
+              dataKey="morning"
+              fill="#FFE082"
+              barSize={20}
+              radius={[0, 0, 0, 0]}
+              name="Morning"
+            />
+            <Bar
+              dataKey="afternoon"
+              fill="#81C784"
+              barSize={20}
+              radius={[0, 0, 0, 0]}
+              name="Afternoon"
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      
+      <div className="flex mt-4 space-x-6 text-sm text-gray-500 justify-center border-t border-gray-200 pt-3">
+        <div className="flex items-center">
+          <div className="w-3 h-3 rounded-full bg-amber-200 mr-1"></div>
+          <span>Morning</span>
+        </div>
+        <div className="flex items-center">
+          <div className="w-3 h-3 rounded-full bg-green-300 mr-1"></div>
+          <span>Afternoon</span>
+        </div>
+      </div>
+    </div>
   );
 };
 
-export default IrradianceGraph;
+export default IrradianceGraph; 

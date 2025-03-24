@@ -1,65 +1,75 @@
 import React from 'react';
-import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 
-// Mock data for irradiance vs power
+// Mock data for irradiance by month
 const irradianceData = [
-  { time: '6am', irradiance: 10, power: 8, size: 10 },
-  { time: '8am', irradiance: 30, power: 25, size: 10 },
-  { time: '10am', irradiance: 60, power: 50, size: 10 },
-  { time: '12pm', irradiance: 80, power: 70, size: 10 },
-  { time: '2pm', irradiance: 70, power: 65, size: 10 },
-  { time: '4pm', irradiance: 40, power: 35, size: 10 },
-  { time: '6pm', irradiance: 20, power: 15, size: 10 },
+  { month: 'Jan', morning: 300, afternoon: 600 },
+  { month: 'Feb', morning: 400, afternoon: 700 },
+  { month: 'Mar', morning: 500, afternoon: 800 },
+  { month: 'Apr', morning: 600, afternoon: 700 },
+  { month: 'May', morning: 700, afternoon: 950 },
+  { month: 'Jun', morning: 800, afternoon: 900 },
+  { month: 'Jul', morning: 700, afternoon: 800 },
 ];
 
-const IrradiancePowerOutput: React.FC = () => {
+const IrradianceGraph: React.FC = () => {
   return (
     <div className="flex flex-col h-full">
       {/* Chart container - take up remaining space */}
       <div className="flex-grow w-full min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <ScatterChart margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-            <XAxis 
-              dataKey="irradiance" 
-              name="Irradiance" 
-              axisLine={false} 
+          <BarChart
+            data={irradianceData}
+            layout="vertical"
+            margin={{ top: 5, right: 20, left: 30, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} opacity={0.3} />
+            <XAxis
+              type="number"
+              axisLine={false}
               tickLine={false}
-              domain={[0, 100]}
-              tick={{ fontSize: 12, fill: '#6B7280' }}
+              tick={{ fontSize: 12 }}
+              domain={[0, 1200]}
             />
-            <YAxis 
-              dataKey="power" 
-              name="Power Output" 
-              axisLine={false} 
+            <YAxis
+              dataKey="month"
+              type="category"
+              axisLine={false}
               tickLine={false}
-              domain={[0, 100]}
-              tick={{ fontSize: 12, fill: '#6B7280' }}
+              tick={{ fontSize: 12 }}
+              width={30}
             />
-            <ZAxis 
-              dataKey="size"
-              range={[40, 400]}
+            <Tooltip />
+            <Bar
+              dataKey="morning"
+              fill="#FFE082"
+              barSize={20}
+              radius={[0, 0, 0, 0]}
+              name="Morning"
             />
-            <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-            <Legend />
-            <Scatter name="Panel 1" data={irradianceData} fill="#F44336" />
-            <Scatter name="Panel 2" data={irradianceData.map(d => ({...d, power: d.power * 0.95}))} fill="#2196F3" />
-          </ScatterChart>
+            <Bar
+              dataKey="afternoon"
+              fill="#81C784"
+              barSize={20}
+              radius={[0, 0, 0, 0]}
+              name="Afternoon"
+            />
+          </BarChart>
         </ResponsiveContainer>
       </div>
       
-      <div className="flex space-x-4 text-sm text-gray-500 justify-center pt-1 pb-3">
+      <div className="flex mt-1 space-x-6 text-sm text-gray-500 justify-center pt-3 pb-3">
         <div className="flex items-center">
-          <div className="w-3 h-3 rounded-full bg-red-500 mr-1"></div>
-          <span>Panel 1</span>
+          <div className="w-3 h-3 rounded-full bg-amber-200 mr-1"></div>
+          <span>Morning</span>
         </div>
         <div className="flex items-center">
-          <div className="w-3 h-3 rounded-full bg-blue-500 mr-1"></div>
-          <span>Panel 2</span>
+          <div className="w-3 h-3 rounded-full bg-green-300 mr-1"></div>
+          <span>Afternoon</span>
         </div>
       </div>
     </div>
   );
 };
 
-export default IrradiancePowerOutput; 
+export default IrradianceGraph; 
