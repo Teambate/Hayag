@@ -2,18 +2,51 @@ import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 import { BatteryIcon, ZapIcon } from 'lucide-react';
 
-// Mock data for the bar chart
-const energyData = [
-  { name: '6AM', value: 80 },
-  { name: '8AM', value: 110 },
-  { name: '10AM', value: 190 },
-  { name: '12PM', value: 350 },
-  { name: '2PM', value: 340 },
-  { name: '4PM', value: 200 },
-  { name: '6PM', value: 140 },
-];
+// Define the type for time period
+export type TimePeriod = '24h' | '7d' | '30d' | '90d';
 
-const EnergyProduction: React.FC = () => {
+// Different mock data sets for different time periods
+const energyDataSets = {
+  '24h': [
+    { name: '6AM', value: 80 },
+    { name: '8AM', value: 110 },
+    { name: '10AM', value: 190 },
+    { name: '12PM', value: 350 },
+    { name: '2PM', value: 340 },
+    { name: '4PM', value: 200 },
+    { name: '6PM', value: 140 },
+  ],
+  '7d': [
+    { name: 'Mon', value: 1200 },
+    { name: 'Tue', value: 1300 },
+    { name: 'Wed', value: 1100 },
+    { name: 'Thu', value: 1500 },
+    { name: 'Fri', value: 1400 },
+    { name: 'Sat', value: 1000 },
+    { name: 'Sun', value: 900 },
+  ],
+  '30d': [
+    { name: 'W1', value: 7500 },
+    { name: 'W2', value: 8200 },
+    { name: 'W3', value: 7800 },
+    { name: 'W4', value: 8500 },
+  ],
+  '90d': [
+    { name: 'Jan', value: 25000 },
+    { name: 'Feb', value: 23000 },
+    { name: 'Mar', value: 30000 },
+  ],
+};
+
+// Component props interface
+interface EnergyProductionProps {
+  timePeriod?: TimePeriod;
+}
+
+const EnergyProduction: React.FC<EnergyProductionProps> = ({ timePeriod = '24h' }) => {
+  // Get the correct data set based on the time period
+  const energyData = energyDataSets[timePeriod];
+
   return (
     <div className="flex flex-col h-full">
       {/* Chart container - take up remaining space */}
@@ -37,7 +70,7 @@ const EnergyProduction: React.FC = () => {
               axisLine={false} 
               tickLine={false} 
               tick={{ fontSize: 12 }} 
-              domain={[0, 400]} 
+              domain={[0, 'auto']} 
               tickCount={5}
             />
             <Tooltip 

@@ -1,18 +1,21 @@
-import { useState } from "react"
-import { Button } from "../ui/button"     
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
-import { ChevronDown } from "lucide-react"
+import React, { useState } from "react";
+import { Button } from "./button";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+import { ChevronDown } from "lucide-react";
 
-interface PanelSelectorProps {
-  value: string
-  onChange: (value: string) => void
+export interface PanelSelectorProps {
+  value: string;
+  onChange: (value: string) => void;
+  options?: string[];
 }
 
-export function PanelSelector({ value, onChange }: PanelSelectorProps) {
-  const [isOpen, setIsOpen] = useState(false)
-
-  const options = ["Panel 1", "Panel 2", "All Panels"]
-
+export function PanelSelector({ 
+  value, 
+  onChange, 
+  options = ["Panel 1", "Panel 2", "Panel 3", "Panel 4"] 
+}: PanelSelectorProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
@@ -30,10 +33,10 @@ export function PanelSelector({ value, onChange }: PanelSelectorProps) {
             <Button
               key={option}
               variant="ghost"
-              className="justify-start rounded-none h-10 hover:bg-[#FAFDFB] hover:border-[#6CBC92]"
+              className={`justify-start rounded-none h-10 hover:bg-[#FAFDFB] hover:border-[#6CBC92] ${value === option ? 'bg-[#f0f9f4]' : ''}`}
               onClick={() => {
-                onChange(option)
-                setIsOpen(false)
+                onChange(option);
+                setIsOpen(false);
               }}
             >
               {option}
@@ -42,5 +45,5 @@ export function PanelSelector({ value, onChange }: PanelSelectorProps) {
         </div>
       </PopoverContent>
     </Popover>
-  )
+  );
 }

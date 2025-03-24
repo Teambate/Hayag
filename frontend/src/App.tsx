@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import Navbar from "./components/layout/Navbar"
-import Banner from "./components/layout/Banner"
 import { useState } from "react"
 // Import your pages
 import Dashboard from "./pages/Dashboard"
@@ -20,7 +19,6 @@ function App() {
       {/** {isAuthenticated ? ( */}
         <div className="min-h-screen bg-background">
           <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
-          <Banner activeTab={activeTab} />
           
           <main>
             <Routes>
