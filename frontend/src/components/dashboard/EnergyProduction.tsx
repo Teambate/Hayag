@@ -18,7 +18,7 @@ const EnergyProduction: React.FC = () => {
     <div>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={energyData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+          <BarChart data={energyData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
             <defs>
               <linearGradient id="colorEnergy" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#4CAF50" stopOpacity={0.8} />
@@ -52,6 +52,7 @@ const EnergyProduction: React.FC = () => {
           </BarChart>
         </ResponsiveContainer>
       </div>
+<<<<<<< Updated upstream:frontend/src/components/dashboard/EnergyProduction.tsx
 
       <div className="grid grid-cols-2 mt-6 border-t border-gray-200 pt-4">
         {/* Capacity */}
@@ -74,6 +75,14 @@ const EnergyProduction: React.FC = () => {
             <div className="text-sm text-gray-500">Total Yield</div>
             <div className="text-xl font-semibold">175.0 kWH</div>
           </div>
+=======
+      
+      {/* Legend - No border and centered */}
+      <div className="flex space-x-4 text-sm text-gray-500 justify-center">
+        <div className="flex items-center">
+          <div className="w-3 h-3 rounded-full bg-green-500 mr-1"></div>
+          <span>Energy Output (kWh)</span>
+>>>>>>> Stashed changes:frontend/src/components/graphs/EnergyProduction.tsx
         </div>
       </div>
     </div>

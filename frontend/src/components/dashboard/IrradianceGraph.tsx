@@ -20,7 +20,11 @@ const IrradianceGraph: React.FC = () => {
           <BarChart
             data={irradianceData}
             layout="vertical"
+<<<<<<< Updated upstream:frontend/src/components/dashboard/IrradianceGraph.tsx
             margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+=======
+            margin={{ top: 5, right: 20, left: 30, bottom: 0 }}
+>>>>>>> Stashed changes:frontend/src/components/graphs/IrradianceGraph.tsx
           >
             <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} opacity={0.3} />
             <XAxis
@@ -57,7 +61,11 @@ const IrradianceGraph: React.FC = () => {
         </ResponsiveContainer>
       </div>
       
+<<<<<<< Updated upstream:frontend/src/components/dashboard/IrradianceGraph.tsx
       <div className="flex mt-4 space-x-6 text-sm text-gray-500 justify-center border-t border-gray-200 pt-3">
+=======
+      <div className="flex space-x-6 text-sm text-gray-500 justify-center pt-1 pb-3">
+>>>>>>> Stashed changes:frontend/src/components/graphs/IrradianceGraph.tsx
         <div className="flex items-center">
           <div className="w-3 h-3 rounded-full bg-amber-200 mr-1"></div>
           <span>Morning</span>
