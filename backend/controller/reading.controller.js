@@ -191,17 +191,28 @@ export const createReading = async (req, res) => {
       // Send the current sensor values to subscribed clients
       const currentValues = await processReadingForCurrentValues(newSensorReading);
       
+      // Add these debug logs here
+      console.log(`Emitting to room: device:${newSensorReading.deviceId}`);
+      console.log(`Current values:`, JSON.stringify(currentValues));
+      
       // Emit to the specific device room
       io.to(`device:${newSensorReading.deviceId}`).emit('sensorUpdate', currentValues);
       
       // Emit to all chart subscribers for this device with the new chart data point
       const chartData = processReadingForCharts(newSensorReading);
+      
+      // You can also add additional logs here
+      console.log(`Chart data types:`, Object.keys(chartData));
+      
       Object.keys(chartData).forEach(chartType => {
         io.to(`device:${newSensorReading.deviceId}:${chartType}`).emit('chartUpdate', {
           chartType,
           dataPoint: chartData[chartType]
         });
       });
+    } else {
+      // Add a debug log to check if io is undefined
+      console.log("Socket.io instance not available");
     }
     
     res.status(201).json({ success: true, data: newSensorReading });

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Socket.io Test</title>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+  <h1>Socket.io Test Client</h1>
+  <div id="status">Disconnected</div>
+  <div id="logs" style="border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll;"></div>
+  
+  <button onclick="connect()">Connect</button>
+  <button onclick="subscribe()">Subscribe to device123</button>
+  
+  <script>
+    let socket;
+    const logs = document.getElementById('logs');
+    
+    function addLog(msg) {
+      const line = document.createElement('div');
+      line.textContent = new Date().toISOString() + ': ' + msg;
+      logs.appendChild(line);
+      logs.scrollTop = logs.scrollHeight;
+    }
+    
+    function connect() {
+      addLog('Connecting to socket.io server...');
+      socket = io('http://localhost:3000');
+      
+      socket.on('connect', () => {
+        document.getElementById('status').textContent = 'Connected: ' + socket.id;
+        addLog('Connected! Socket ID: ' + socket.id);
+      });
+      
+      socket.on('sensorUpdate', (data) => {
+        addLog('SENSOR UPDATE RECEIVED!');
+        addLog(JSON.stringify(data, null, 2));
+      });
+      
+      socket.on('chartUpdate', (data) => {
+        addLog('CHART UPDATE RECEIVED!');
+        addLog(JSON.stringify(data, null, 2));
+      });
+      
+      socket.on('disconnect', () => {
+        document.getElementById('status').textContent = 'Disconnected';
+        addLog('Disconnected from socket.io server');
+      });
+    }
+    
+    function subscribe() {
+      addLog('Subscribing to device123...');
+      socket.emit('subscribe', 'device123');
+      
+      // Also subscribe to each chart type
+      ['energy', 'battery', 'panel_temp', 'irradiance'].forEach(type => {
+        addLog(`Subscribing to ${type} chart...`);
+        socket.emit('subscribeChart', {deviceId: 'device123', chartType: type});
+      });
+    }
+  </script>
+</body>
+</html>
