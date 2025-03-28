@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Button } from "../components/ui/button"
-import SensorTable from "../components/layout/ui/SensorTable"
-import MultiSensorTable from "../components/layout/ui/MultiSensorTable"
+import SensorTable from "../components/data/SensorTable"
+import MultiSensorTable from "../components/data/MultiSensorTable"
 
 export default function Sensors() {
   const [selectedSensors, setSelectedSensors] = useState<string[]>([])
