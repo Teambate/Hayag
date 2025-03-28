@@ -69,6 +69,23 @@ io.on("connection", (socket) => {
   });
 });
 
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'API server is running',
+    time: new Date().toISOString()
+  });
+});
+
+// Add this as a catch-all route handler at the bottom, but before app.listen
+app.use((req, res) => {
+  console.log(`404 Not Found: ${req.method} ${req.url}`);
+  res.status(404).json({
+    success: false,
+    message: `Endpoint not found: ${req.method} ${req.url}`
+  });
+});
+
 const PORT = process.env.PORT || 3000;
 
 httpServer.listen(PORT, async () => {
