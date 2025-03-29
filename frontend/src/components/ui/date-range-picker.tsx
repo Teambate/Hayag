@@ -13,13 +13,31 @@ interface DateRangePickerProps {
 
 export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
+  // Track temporary selection state separately from the committed value
+  const [tempDateRange, setTempDateRange] = useState<DateRange>(value)
 
   // Format date range for display
   const formattedDateRange =
-    value.from && value.to ? `${format(value.from, "MM/dd/yy")} - ${format(value.to, "MM/dd/yy")}` : "Select date range"
+    value.from && value.to ? `${format(value.from, "MM/dd/yy")} - ${format(value.to, "MM/dd/yy")}` : 
+    value.from ? `${format(value.from, "MM/dd/yy")}` : "Select date range"
+
+  // Handle when the popover opens or closes
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    // Reset temporary selection to match current value when opening
+    if (open) {
+      setTempDateRange(value);
+    }
+  }
+
+  // Handle OK button click
+  const handleConfirm = () => {
+    onChange(tempDateRange);
+    setIsOpen(false);
+  }
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -34,11 +52,11 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
         <Calendar
           mode="range"
           defaultMonth={value.from}
-          selected={value}
+          selected={tempDateRange}
           onSelect={(range) => {
-            if (range?.from && range?.to) {
-              onChange(range)
-              setIsOpen(false)
+            // Just update the temporary selection, don't close
+            if (range) {
+              setTempDateRange(range);
             }
           }}
           numberOfMonths={1}
@@ -50,7 +68,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
                 size="sm"
                 className="text-gray-500 hover:bg-transparent"
                 onClick={() => {
-                  onChange({ from: undefined, to: undefined })
+                  setTempDateRange({ from: undefined, to: undefined });
                 }}
               >
                 Clear
@@ -68,7 +86,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
                   variant="ghost"
                   size="sm" 
                   className="text-[#65B08F] hover:bg-transparent"
-                  onClick={() => setIsOpen(false)}
+                  onClick={handleConfirm}
                 >
                   OK
                 </Button>
