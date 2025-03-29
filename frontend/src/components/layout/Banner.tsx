@@ -7,6 +7,7 @@ import { Download } from "lucide-react"
 import { Button } from "../ui/button"
 import { TimePeriod } from "../graphs/EnergyProduction"
 import { useAuth } from "../../context/AuthContext"
+import DownloadModal from "../modals/DownloadModal"
 
 // Map UI intervals to TimePeriod values
 const intervalToTimePeriod: Record<string, TimePeriod> = {
@@ -32,6 +33,7 @@ interface BannerProps {
   onDateRangeChange?: (range: DateRange) => void;
   selectedTimePeriod?: TimePeriod;
   deviceId?: string; // Optional deviceId prop
+  selectedSensors?: string[];
 }
 
 export default function Banner({ 
@@ -40,7 +42,8 @@ export default function Banner({
   onPanelChange, 
   onDateRangeChange,
   selectedTimePeriod = '24h',
-  deviceId
+  deviceId,
+  selectedSensors = []
 }: BannerProps) {
   // State for panel selection
   const [panel, setPanel] = useState<string>("All Panels")
@@ -107,6 +110,23 @@ export default function Banner({
     
     fetchPanelIds();
   }, [deviceId, user]);
+
+  // Set current day date range when on Dashboard tab
+  useEffect(() => {
+    if (activeTab === "Dashboard") {
+      const today = new Date();
+      const currentDayRange = {
+        from: today,
+        to: today
+      };
+      setDateRange(currentDayRange);
+      
+      // Notify parent component of the date change
+      if (onDateRangeChange) {
+        onDateRangeChange(currentDayRange);
+      }
+    }
+  }, [activeTab, onDateRangeChange]);
 
   // Update local state when props change (for controlled components)
   useEffect(() => {
@@ -191,7 +211,7 @@ export default function Banner({
 
   return (
     <div className="w-full bg-white border-b">
-      <div className="flex items-center justify-between px-6 py-3 max-w-[1600px] mx-auto">
+      <div className="flex items-center justify-between px-6 py-3 max-w-[1900px] mx-auto">
         <h1 className="text-2xl font-semibold text-[#1e3a29]">{getBannerTitle()}</h1>
 
         <div className="flex items-center gap-3">
@@ -202,14 +222,16 @@ export default function Banner({
             options={getPanelOptions()}
           />
 
-          {/* Interval Dropdown */}
-          <IntervalSelector 
-            value={interval} 
-            onChange={handleIntervalChange} 
-            options={getIntervalOptions()} 
-          />
+          {/* Interval Dropdown - hide on Sensors page */}
+          {activeTab !== "Sensors" && (
+            <IntervalSelector 
+              value={interval} 
+              onChange={handleIntervalChange} 
+              options={getIntervalOptions()} 
+            />
+          )}
 
-          {/* Date Range Picker - only show when not on Dashboard */}
+          {/* Date Range Picker - hide on Dashboard page */}
           {activeTab !== "Dashboard" && (
             <DateRangePicker 
               value={dateRange} 
@@ -217,19 +239,12 @@ export default function Banner({
             />
           )}
 
-          {/* Download button - only visible on Sensors page */}
+          {/* Download Modal - only visible on Sensors page */}
           {activeTab === "Sensors" && (
-            <Button 
-              variant="outline" 
-              size="icon"
-              className="bg-[#FAFDFB] border-transparent hover:border-[#6CBC92] hover:bg-[#FAFDFB]"
-              onClick={() => {
-                // Add download functionality here
-                console.log("Download data")
-              }}
-            >
-              <Download className="h-4 w-4" />
-            </Button>
+            <DownloadModal 
+              dateRange={dateRange}
+              sensors={selectedSensors}
+            />
           )}
         </div>
       </div>
