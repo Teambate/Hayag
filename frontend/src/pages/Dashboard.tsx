@@ -11,7 +11,7 @@ import { DateRange } from "react-day-picker";
 import Banner from "../components/layout/Banner";
 import { io, Socket } from "socket.io-client";
 import { useAuth } from "../context/AuthContext";
-import AddDeviceModal from "../components/device/AddDeviceModal";
+import AddDeviceModal from "../components/ui/AddDeviceModal";
 import { Dialog, DialogContent, DialogContentWithoutCloseButton, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -455,6 +455,7 @@ export default function Dashboard() {
         onPanelChange={handlePanelChange}
         onDateRangeChange={handleDateRangeChange}
         selectedTimePeriod={selectedTimePeriod}
+        deviceId={deviceId}
       />
       
       {/* Row 1: Sensor Overview - Minimalist, Line-based Layout */}

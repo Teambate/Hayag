@@ -791,6 +791,61 @@ export const getDashboardChartData = async (req, res) => {
   }
 };
 
+export const getPanelIdsForDevice = async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    
+    if (!deviceId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "deviceId is required" 
+      });
+    }
+    
+    // Define all sensor types that might have panel IDs
+    const sensorTypes = ["rain", "uv", "light", "dht22", "panel_temp", "ina226", "solar", "battery"];
+    
+    // Create a simpler pipeline to extract unique panel IDs
+    // First find all readings for this device
+    const readings = await SensorReading.find({ deviceId: deviceId });
+    
+    // Collect all panel IDs
+    const panelIdSet = new Set();
+    
+    // Process each reading
+    readings.forEach(reading => {
+      // Check each sensor type
+      sensorTypes.forEach(type => {
+        // If this sensor type exists in the reading
+        if (reading.readings[type] && Array.isArray(reading.readings[type])) {
+          // Add all panel IDs to the set
+          reading.readings[type].forEach(sensor => {
+            if (sensor.panelId) {
+              panelIdSet.add(sensor.panelId);
+            }
+          });
+        }
+      });
+    });
+    
+    // Convert Set to Array and sort
+    const uniquePanelIds = Array.from(panelIdSet).sort();
+    
+    res.status(200).json({ 
+      success: true, 
+      count: uniquePanelIds.length,
+      data: uniquePanelIds
+    });
+  } catch (error) {
+    console.error("Error fetching unique panel IDs:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to fetch unique panel IDs",
+      error: error.message 
+    });
+  }
+};
+
 // Helper function to convert time interval string to milliseconds
 function getTimeIntervalInMs(intervalString) {
   switch (intervalString) {

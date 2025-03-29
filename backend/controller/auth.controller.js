@@ -269,4 +269,62 @@ export const resetPassword = async (req, res) => {
       message: error.message,
     });
   }
+};
+
+// Add device to user
+export const addUserDevice = async (req, res) => {
+  try {
+    const { deviceId, name, location } = req.body;
+    
+    // Get user ID from authenticated request
+    const userId = req.user.id;
+    
+    // Find user
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+    
+    // Check if device with same ID already exists
+    const deviceExists = user.devices.find(device => device.deviceId === deviceId);
+    if (deviceExists) {
+      return res.status(400).json({
+        success: false,
+        message: "Device with this ID already exists",
+      });
+    }
+    
+    // Add new device to user's devices array
+    user.devices.push({
+      deviceId,
+      name,
+      location,
+      dateAdded: new Date()
+    });
+    
+    // Save updated user
+    await user.save();
+    
+    // Return updated user (without password)
+    res.status(200).json({
+      success: true,
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        devices: user.devices
+      },
+    });
+    
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 }; 

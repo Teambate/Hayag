@@ -6,6 +6,7 @@ import { DateRange } from "react-day-picker"
 import { Download } from "lucide-react"
 import { Button } from "../ui/button"
 import { TimePeriod } from "../graphs/EnergyProduction"
+import { useAuth } from "../../context/AuthContext"
 
 // Map UI intervals to TimePeriod values
 const intervalToTimePeriod: Record<string, TimePeriod> = {
@@ -30,6 +31,7 @@ interface BannerProps {
   onPanelChange?: (panel: string) => void;
   onDateRangeChange?: (range: DateRange) => void;
   selectedTimePeriod?: TimePeriod;
+  deviceId?: string; // Optional deviceId prop
 }
 
 export default function Banner({ 
@@ -37,10 +39,18 @@ export default function Banner({
   onTimePeriodChange, 
   onPanelChange, 
   onDateRangeChange,
-  selectedTimePeriod = '24h'
+  selectedTimePeriod = '24h',
+  deviceId
 }: BannerProps) {
   // State for panel selection
   const [panel, setPanel] = useState<string>("All Panels")
+  // State for available panel IDs
+  const [panelIds, setPanelIds] = useState<string[]>([])
+  // State for loading panel IDs
+  const [loadingPanels, setLoadingPanels] = useState<boolean>(false)
+
+  // Get user from auth context
+  const { user } = useAuth()
 
   // State for interval - UI representation (Hourly, Daily, Monthly)
   const [interval, setInterval] = useState<string>("Hourly")
@@ -50,6 +60,53 @@ export default function Banner({
     from: new Date(2025, 1, 23), // Feb 23, 2025
     to: new Date(2025, 2, 4), // March 4, 2025
   })
+
+  // Get device ID from props, user context, or localStorage
+  const getDeviceId = () => {
+    // First priority: deviceId from props
+    if (deviceId) return deviceId;
+    
+    // Second priority: from user context
+    if (user?.devices && user.devices.length > 0) {
+      return user.devices[0].deviceId;
+    }
+    
+    // Third priority: from localStorage
+    const storedDeviceId = localStorage.getItem('deviceId');
+    return storedDeviceId || "";
+  }
+
+  // Fetch panel IDs when deviceId changes
+  useEffect(() => {
+    const fetchPanelIds = async () => {
+      const currentDeviceId = getDeviceId();
+      if (!currentDeviceId) return;
+      
+      try {
+        setLoadingPanels(true);
+        const response = await fetch(`/api/readings/device/${currentDeviceId}/panels`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch panel IDs: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && Array.isArray(data.data)) {
+          console.log("Fetched panel IDs:", data.data);
+          setPanelIds(data.data);
+        } else {
+          console.error("Unexpected response format:", data);
+        }
+      } catch (error) {
+        console.error("Error fetching panel IDs:", error);
+      } finally {
+        setLoadingPanels(false);
+      }
+    };
+    
+    fetchPanelIds();
+  }, [deviceId, user]);
 
   // Update local state when props change (for controlled components)
   useEffect(() => {
@@ -105,9 +162,21 @@ export default function Banner({
     }
   }
 
-  // Get appropriate panel options based on active tab
+  // Get appropriate panel options based on fetched panel IDs
   const getPanelOptions = () => {
-    return ["Panel 1", "Panel 2", "All Panels"];
+    if (loadingPanels) {
+      return ["Loading..."];
+    }
+    
+    // Convert panel IDs to strings and format them as "Panel X"
+    const panelOptions = panelIds.map(id => `Panel ${id.toString()}`);
+    
+    // Always include "All Panels" option
+    if (!panelOptions.includes("All Panels")) {
+      panelOptions.unshift("All Panels");
+    }
+    
+    return panelOptions.length > 0 ? panelOptions : ["All Panels"];
   }
 
   // Get interval options - now always showing user-friendly labels
@@ -140,11 +209,13 @@ export default function Banner({
             options={getIntervalOptions()} 
           />
 
-          {/* Date Range Picker */}
-          <DateRangePicker 
-            value={dateRange} 
-            onChange={handleDateRangeChange} 
-          />
+          {/* Date Range Picker - only show when not on Dashboard */}
+          {activeTab !== "Dashboard" && (
+            <DateRangePicker 
+              value={dateRange} 
+              onChange={handleDateRangeChange} 
+            />
+          )}
 
           {/* Download button - only visible on Sensors page */}
           {activeTab === "Sensors" && (
