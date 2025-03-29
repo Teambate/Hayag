@@ -3,9 +3,8 @@ import { PanelSelector } from "../ui/panel-selector"
 import { IntervalSelector } from "../ui/interval-selector"
 import { DateRangePicker } from "../ui/date-range-picker"
 import { DateRange } from "react-day-picker"
-import { Download } from "lucide-react"
-import { Button } from "../ui/button"
 import { TimePeriod } from "../graphs/EnergyProduction"
+import { useAuth } from "../../context/AuthContext"
 import DownloadModal from "../ui/DownloadModal"
 
 // Map UI intervals to TimePeriod values
@@ -31,6 +30,8 @@ interface BannerProps {
   onPanelChange?: (panel: string) => void;
   onDateRangeChange?: (range: DateRange) => void;
   selectedTimePeriod?: TimePeriod;
+  selectedPanel?: string;
+  deviceId?: string;
   selectedSensors?: string[];
 }
 
@@ -40,36 +41,75 @@ export default function Banner({
   onPanelChange, 
   onDateRangeChange,
   selectedTimePeriod = '24h',
+  selectedPanel = 'All Panels',
+  deviceId,
   selectedSensors = []
 }: BannerProps) {
   // State for panel selection
-  const [panel, setPanel] = useState<string>("All Panels")
+  const [panel, setPanel] = useState(selectedPanel);
+  // State for available panel IDs
+  const [panelIds, setPanelIds] = useState<string[]>([])
+  // State for loading panel IDs
+  const [loadingPanels, setLoadingPanels] = useState<boolean>(false)
+
+  // Get user from auth context
+  const { user } = useAuth()
 
   // State for interval - UI representation (Hourly, Daily, Monthly)
   const [interval, setInterval] = useState<string>("Hourly")
 
-  // State for date range
+  // State for date range - only used for Analytics and Sensors tabs
   const [dateRange, setDateRange] = useState<DateRange>({
     from: new Date(2025, 1, 23), // Feb 23, 2025
     to: new Date(2025, 2, 4), // March 4, 2025
   })
 
-  // Set current day date range when on Dashboard tab
-  useEffect(() => {
-    if (activeTab === "Dashboard") {
-      const today = new Date();
-      const currentDayRange = {
-        from: today,
-        to: today
-      };
-      setDateRange(currentDayRange);
-      
-      // Notify parent component of the date change
-      if (onDateRangeChange) {
-        onDateRangeChange(currentDayRange);
-      }
+  // Get device ID from props, user context, or localStorage
+  const getDeviceId = () => {
+    // First priority: deviceId from props
+    if (deviceId) return deviceId;
+    
+    // Second priority: from user context
+    if (user?.devices && user.devices.length > 0) {
+      return user.devices[0].deviceId;
     }
-  }, [activeTab, onDateRangeChange]);
+    
+    // Third priority: from localStorage
+    const storedDeviceId = localStorage.getItem('deviceId');
+    return storedDeviceId || "";
+  }
+
+  // Fetch panel IDs when deviceId changes
+  useEffect(() => {
+    const fetchPanelIds = async () => {
+      const currentDeviceId = getDeviceId();
+      if (!currentDeviceId) return;
+      
+      try {
+        setLoadingPanels(true);
+        const response = await fetch(`/api/readings/device/${currentDeviceId}/panels`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch panel IDs: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && Array.isArray(data.data)) {
+          console.log("Fetched panel IDs:", data.data);
+          setPanelIds(data.data);
+        } else {
+          console.error("Unexpected response format:", data);
+        }
+      } catch (error) {
+        console.error("Error fetching panel IDs:", error);
+      } finally {
+        setLoadingPanels(false);
+      }
+    };
+    
+    fetchPanelIds();
+  }, [deviceId, user]);
 
   // Update local state when props change (for controlled components)
   useEffect(() => {
@@ -78,6 +118,13 @@ export default function Banner({
       setInterval(timePeriodToInterval[selectedTimePeriod]);
     }
   }, [selectedTimePeriod]);
+
+  // Update panel state when prop changes
+  useEffect(() => {
+    if (selectedPanel) {
+      setPanel(selectedPanel);
+    }
+  }, [selectedPanel]);
 
   // If the active tab is Notes or Settings, don't show the banner
   if (activeTab === "Notes" || activeTab === "Settings") {
@@ -103,7 +150,7 @@ export default function Banner({
     }
   }
 
-  // Handle date range change
+  // Handle date range change - only relevant for Analytics and Sensors tabs
   const handleDateRangeChange = (newRange: DateRange) => {
     setDateRange(newRange);
     if (onDateRangeChange) {
@@ -125,9 +172,21 @@ export default function Banner({
     }
   }
 
-  // Get appropriate panel options based on active tab
+  // Get appropriate panel options based on fetched panel IDs
   const getPanelOptions = () => {
-    return ["Panel 1", "Panel 2", "All Panels"];
+    if (loadingPanels) {
+      return ["Loading..."];
+    }
+    
+    // Convert panel IDs to strings and format them as "Panel X"
+    const panelOptions = panelIds.map(id => `Panel ${id.toString()}`);
+    
+    // Always include "All Panels" option
+    if (!panelOptions.includes("All Panels")) {
+      panelOptions.unshift("All Panels");
+    }
+    
+    return panelOptions.length > 0 ? panelOptions : ["All Panels"];
   }
 
   // Get interval options - now always showing user-friendly labels
@@ -162,8 +221,8 @@ export default function Banner({
             />
           )}
 
-          {/* Date Range Picker - hide on Dashboard page */}
-          {activeTab !== "Dashboard" && (
+          {/* Date Range Picker - show on Analytics and Sensors tabs, not on Dashboard */}
+          {(activeTab === "Analytics" || activeTab === "Sensors") && (
             <DateRangePicker 
               value={dateRange} 
               onChange={handleDateRangeChange} 

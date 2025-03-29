@@ -1,13 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import SensorOverview from "../components/data/SensorOverview";
 import EnergyProduction, { TimePeriod } from "../components/graphs/EnergyProduction";
 import SystemHealth from "../components/data/SystemHealth";
 import BatteryChargeDischarge from "../components/graphs/BatteryChargeDischarge";
 import PanelTemperatureOverheating from "../components/graphs/PanelTemperatureOverheating";
 import IrradianceGraph from "../components/graphs/IrradianceGraph";
-import { ThermometerIcon, BatteryMediumIcon, PlusIcon } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { DateRange } from "react-day-picker";
+import { ThermometerIcon, BatteryMediumIcon } from "lucide-react";
 import Banner from "../components/layout/Banner";
 import { io, Socket } from "socket.io-client";
 import { useAuth } from "../context/AuthContext";
@@ -15,6 +13,7 @@ import AddDeviceModal from "../components/ui/AddDeviceModal";
 import { Dialog, DialogContent, DialogContentWithoutCloseButton, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+
 
 // Types for structured data
 interface SensorDataType {
@@ -125,7 +124,6 @@ const apiService = {
 };
 
 export default function Dashboard() {
-  const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   
   // State with proper typing
@@ -136,14 +134,9 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTimePeriod, setSelectedTimePeriod] = useState<TimePeriod>('24h');
   const [selectedPanel, setSelectedPanel] = useState<string>("All Panels");
-  const [dateRange, setDateRange] = useState<DateRange>({
-    from: new Date(),
-    to: new Date(new Date().setDate(new Date().getDate() + 7))
-  });
   const [deviceId, setDeviceId] = useState<string>("");
   const [availableDevices, setAvailableDevices] = useState<Array<{deviceId: string; name: string; location?: string}>>([]);
   const socketRef = useRef<Socket | null>(null);
-  const [open, setOpen] = useState(false);
   
   // Set available devices and default device from user context
   useEffect(() => {
@@ -306,13 +299,6 @@ export default function Dashboard() {
     console.log(`Panel selection changed to: ${panel}`);
   };
 
-  // Function to handle date range changes
-  const handleDateRangeChange = (range: DateRange) => {
-    setDateRange(range);
-    console.log(`Date range changed to:`, range);
-    // In a real implementation, this would trigger a new data fetch with the date range
-  };
-  
   // Function to handle device selection change
   const handleDeviceChange = (selectedDeviceId: string) => {
     setDeviceId(selectedDeviceId);
@@ -453,8 +439,9 @@ export default function Dashboard() {
         activeTab="Dashboard" 
         onTimePeriodChange={handleTimePeriodChange}
         onPanelChange={handlePanelChange}
-        onDateRangeChange={handleDateRangeChange}
         selectedTimePeriod={selectedTimePeriod}
+        deviceId={deviceId}
+        selectedPanel={selectedPanel}
       />
       
       {/* Row 1: Sensor Overview - Minimalist, Line-based Layout */}

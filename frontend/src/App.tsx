@@ -30,7 +30,7 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
 function AppRoutes() {
   const { isAuthenticated, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState("Dashboard");
-  const [location, setLocation] = useState(window.location.pathname);
+  const [, setLocation] = useState(window.location.pathname);
 
   // Refresh user data on page navigation or window focus
   useEffect(() => {

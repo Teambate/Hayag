@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import { Calendar } from "../../components/ui/calendar"
 import { Button } from "../../components/ui/button" 
@@ -14,12 +14,20 @@ interface DateRangePickerProps {
 export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   // Track temporary selection state separately from the committed value
-  const [tempDateRange, setTempDateRange] = useState<DateRange>(value)
+  const [tempDateRange, setTempDateRange] = useState<DateRange | undefined>(value)
+  
+  // Update internal state when props change
+  useEffect(() => {
+    setTempDateRange(value);
+  }, [value.from?.toISOString(), value.to?.toISOString()]);
 
   // Format date range for display
-  const formattedDateRange =
-    value.from && value.to ? `${format(value.from, "MM/dd/yy")} - ${format(value.to, "MM/dd/yy")}` : 
-    value.from ? `${format(value.from, "MM/dd/yy")}` : "Select date range"
+  const formattedDateRange = 
+    value.from && value.to 
+      ? `${format(value.from, "MMM dd, yyyy")} - ${format(value.to, "MMM dd, yyyy")}`
+      : value.from 
+        ? `${format(value.from, "MMM dd, yyyy")}`
+        : "Select date range"
 
   // Handle when the popover opens or closes
   const handleOpenChange = (open: boolean) => {
@@ -30,9 +38,11 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
     }
   }
 
-  // Handle OK button click
+  // Handle selection confirmation
   const handleConfirm = () => {
-    onChange(tempDateRange);
+    if (tempDateRange) {
+      onChange(tempDateRange);
+    }
     setIsOpen(false);
   }
 
@@ -53,12 +63,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
           mode="range"
           defaultMonth={value.from}
           selected={tempDateRange}
-          onSelect={(range) => {
-            // Just update the temporary selection, don't close
-            if (range) {
-              setTempDateRange(range);
-            }
-          }}
+          onSelect={setTempDateRange}
           numberOfMonths={1}
           initialFocus
           footer={

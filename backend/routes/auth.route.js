@@ -5,7 +5,8 @@ import {
   logout, 
   getCurrentUser, 
   forgotPassword, 
-  resetPassword 
+  resetPassword,
+  addUserDevice 
 } from "../controller/auth.controller.js";
 import { protect } from "../middleware/auth.middleware.js";
 
@@ -20,5 +21,6 @@ router.post("/reset-password/:token", resetPassword);
 
 // Protected routes
 router.get("/me", protect, getCurrentUser);
+router.post("/devices", protect, addUserDevice);
 
 export default router; 
