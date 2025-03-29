@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogContentWithoutCloseButton, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../ui/dialog";
-import { Button } from "../ui/button";
+import { Dialog, DialogContent, DialogContentWithoutCloseButton, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "./dialog";
+import { Button } from "./button";
 import { Download, ArrowRight, CheckCircle } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { format, eachDayOfInterval } from "date-fns";

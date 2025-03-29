@@ -5,7 +5,7 @@ import { DateRangePicker } from "../ui/date-range-picker"
 import { DateRange } from "react-day-picker"
 import { TimePeriod } from "../graphs/EnergyProduction"
 import { useAuth } from "../../context/AuthContext"
-import DownloadModal from "../modals/DownloadModal"
+import DownloadModal from "../ui/DownloadModal"
 
 // Map UI intervals to TimePeriod values
 const intervalToTimePeriod: Record<string, TimePeriod> = {
