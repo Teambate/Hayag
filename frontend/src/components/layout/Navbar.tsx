@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import HayagLogo from "../../assets/HayagLogo.png"
 import GirlProfile from "../../assets/girl.png"
 import { useNavigate } from "react-router-dom"
+import { useAuth } from "../../context/AuthContext"
 
 interface NavbarProps {
   activeTab: string;
@@ -12,6 +13,7 @@ interface NavbarProps {
 
 export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
   const navigate = useNavigate()
+  const { refreshUser, user } = useAuth()
 
   // Get current date
   const currentDate = new Date()
@@ -66,7 +68,7 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
         </Button>
         <Avatar>
           <AvatarImage src={GirlProfile} alt="Profile" />
-          <AvatarFallback>PF</AvatarFallback>
+          <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
         </Avatar>
       </div>
     </nav>
