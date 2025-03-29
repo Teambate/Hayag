@@ -18,6 +18,8 @@ interface SensorDataType {
   light: { value: number; unit: string };
   humidity: { value: number; unit: string };
   temperature: { value: number; unit: string };
+  voltage: { value: number; unit: string };
+  current: { value: number; unit: string };
 }
 
 interface PanelDataType {
@@ -44,7 +46,9 @@ const apiService = {
       uvIndex: { value: 10, unit: "mW/cm²" },
       light: { value: 90, unit: "lx" },
       humidity: { value: 90, unit: "%" },
-      temperature: { value: 40, unit: "°C" }
+      temperature: { value: 40, unit: "°C" },
+      voltage: { value: 12.8, unit: "V" },
+      current: { value: 3.5, unit: "A" },
     };
   },
   fetchPanelData: async (): Promise<PanelDataType[]> => {

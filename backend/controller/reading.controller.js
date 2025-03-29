@@ -336,8 +336,115 @@ export const getCurrentSensorValues = async (req, res) => {
     if (latestReading.readings.battery_capacity) {
       result.sensors.battery_capacity = {
         value: latestReading.readings.battery_capacity,
-        unit: latestReading.readings.battery_capacity.unit || "W"
+        unit: "W"
       };
+    }
+    
+    // Calculate power for each panel and total power
+    if (latestReading.readings.ina226 && latestReading.readings.ina226.length > 0) {
+      const panelPowers = [];
+      let totalPower = 0;
+      
+      // Filter panels if needed
+      const relevantPanels = panelIdsArray && panelIdsArray.length > 0 
+        ? latestReading.readings.ina226.filter(sensor => panelIdsArray.includes(sensor.panelId))
+        : latestReading.readings.ina226;
+      
+      for (const sensor of relevantPanels) {
+        const voltage = sensor.voltage.average;
+        const current = sensor.current.average / 1000; // Convert mA to A
+        const power = voltage * current; // Power in Watts
+        
+        panelPowers.push({
+          panelId: sensor.panelId,
+          power: power,
+          unit: 'W'
+        });
+        
+        totalPower += power;
+      }
+      
+      result.sensors.panel_power = {
+        panels: panelPowers,
+        total: totalPower,
+        average: totalPower / relevantPanels.length,
+        unit: 'W'
+      };
+      
+      // Calculate power accumulation for today (from midnight to current time)
+      // Get start of today in device's timezone (or UTC if not available)
+      const today = new Date(latestReading.createdAt);
+      today.setHours(0, 0, 0, 0); // Set to beginning of the day
+      
+      const previousReadings = await SensorReading.find({
+        deviceId: deviceId,
+        createdAt: { $gte: today, $lt: latestReading.createdAt }
+      }).sort({ createdAt: 1 });
+      
+      // Include the latest reading
+      const allReadings = [...previousReadings, latestReading];
+      
+      // Only proceed if we have at least 2 readings
+      if (allReadings.length >= 2) {
+        // Calculate power accumulation for each panel
+        const panelAccumulations = {};
+        let totalAccumulation = 0;
+        
+        // Process each reading pair to calculate energy between them
+        for (let i = 1; i < allReadings.length; i++) {
+          const prevReading = allReadings[i-1];
+          const currReading = allReadings[i];
+          
+          // Time difference in hours
+          const hoursDiff = (currReading.createdAt - prevReading.createdAt) / (1000 * 60 * 60);
+          
+          // Process each panel in the current reading
+          for (const sensor of currReading.readings.ina226 || []) {
+            // Skip if panelIds filter is applied and this panel is not included
+            if (panelIdsArray && !panelIdsArray.includes(sensor.panelId)) continue;
+            
+            // Find the same panel in the previous reading
+            const prevSensor = prevReading.readings.ina226?.find(s => s.panelId === sensor.panelId);
+            
+            if (prevSensor) {
+              // Calculate average power between the two readings
+              const currPower = sensor.voltage.average * (sensor.current.average / 1000); // W
+              const prevPower = prevSensor.voltage.average * (prevSensor.current.average / 1000); // W
+              const avgPower = (currPower + prevPower) / 2; // W
+              
+              // Calculate energy (kWh) = power (W) * time (h) / 1000
+              const energyKWh = avgPower * hoursDiff / 1000;
+              
+              // Add to panel accumulation
+              if (!panelAccumulations[sensor.panelId]) {
+                panelAccumulations[sensor.panelId] = 0;
+              }
+              panelAccumulations[sensor.panelId] += energyKWh;
+              totalAccumulation += energyKWh;
+            }
+          }
+        }
+        
+        // Format the result
+        const panelAccumulationArray = Object.entries(panelAccumulations).map(([panelId, energy]) => ({
+          panelId,
+          energy,
+          unit: 'kWh'
+        }));
+        
+        result.power_accumulation = {
+          panels: panelAccumulationArray,
+          total: totalAccumulation,
+          average: totalAccumulation / Object.keys(panelAccumulations).length,
+          period: "today",
+          unit: 'kWh'
+        };
+      } else {
+        result.power_accumulation = {
+          message: "Insufficient data for power accumulation calculation",
+          period: "today"
+        };
+      }
     }
     
     res.status(200).json({
@@ -507,9 +614,7 @@ export const getDashboardChartData = async (req, res) => {
     const { 
       deviceId, 
       panelIds, 
-      startDateTime, 
-      endDateTime, 
-      timeInterval = '15min',
+      timeInterval = '10min',
       chartTypes 
     } = req.query;
     
@@ -517,13 +622,6 @@ export const getDashboardChartData = async (req, res) => {
       return res.status(400).json({ 
         success: false, 
         message: "deviceId is required" 
-      });
-    }
-    
-    if (!startDateTime || !endDateTime) {
-      return res.status(400).json({
-        success: false,
-        message: "startDateTime and endDateTime are required"
       });
     }
     
@@ -577,16 +675,38 @@ export const getDashboardChartData = async (req, res) => {
     // Convert Set back to array
     const sensorTypes = Array.from(sensorTypesSet);
     
+    // First, find the latest reading to determine which day to show
+    const latestReading = await SensorReading.findOne(
+      { deviceId: deviceId },
+      { createdAt: 1 },
+      { sort: { createdAt: -1 } }
+    );
+    
+    if (!latestReading) {
+      return res.status(404).json({
+        success: false,
+        message: `No readings found for device ${deviceId}`
+      });
+    }
+    
+    // Get the start of the day for the latest reading (in UTC)
+    const latestDate = new Date(latestReading.createdAt);
+    const startOfDay = new Date(latestDate);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(latestDate);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+    
     // Build the aggregation pipeline
     const pipeline = [];
     
-    // Match stage - filter by deviceId and time range
+    // Match stage - filter by deviceId and date of latest reading
     pipeline.push({
       $match: {
         deviceId: deviceId,
         createdAt: {
-          $gte: new Date(startDateTime),
-          $lte: new Date(endDateTime)
+          $gte: startOfDay,
+          $lte: endOfDay
         }
       }
     });
@@ -657,6 +777,7 @@ export const getDashboardChartData = async (req, res) => {
     res.status(200).json({
       success: true,
       timeInterval: timeInterval,
+      date: startOfDay.toISOString().split('T')[0],
       data: result
     });
     

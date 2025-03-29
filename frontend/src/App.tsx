@@ -97,60 +97,12 @@ function AppRoutes() {
   );
 }
 
-// Add this debug component
-const ApiDebugger = () => {
-  const [apiStatus, setApiStatus] = useState<'checking' | 'ok' | 'error'>('checking');
-  const [debugInfo, setDebugInfo] = useState<string>('');
-
-  useEffect(() => {
-    const checkApi = async () => {
-      try {
-        // Test the API connection
-        const response = await fetch('/api/health');
-        if (response.ok) {
-          const data = await response.json();
-          setApiStatus('ok');
-          setDebugInfo(JSON.stringify(data, null, 2));
-        } else {
-          setApiStatus('error');
-          setDebugInfo(`API returned ${response.status}: ${response.statusText}`);
-        }
-      } catch (error) {
-        setApiStatus('error');
-        setDebugInfo(`Error connecting to API: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    };
-
-    checkApi();
-  }, []);
-
-  if (process.env.NODE_ENV === 'production') return null;
-
-  return (
-    <div style={{
-      position: 'fixed',
-      bottom: '10px',
-      right: '10px',
-      padding: '10px',
-      backgroundColor: apiStatus === 'ok' ? 'rgba(0, 128, 0, 0.7)' : 'rgba(255, 0, 0, 0.7)',
-      color: 'white',
-      borderRadius: '5px',
-      fontSize: '12px',
-      zIndex: 9999,
-    }}>
-      <div>API Status: {apiStatus}</div>
-      <pre style={{ maxHeight: '100px', overflow: 'auto' }}>{debugInfo}</pre>
-    </div>
-  );
-};
-
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <AppRoutes />
       </AuthProvider>
-      <ApiDebugger />
     </BrowserRouter>
   )
 }
