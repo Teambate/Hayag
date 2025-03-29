@@ -14,8 +14,7 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    //origin: process.env.FRONTEND_URL || "http://localhost:5173",
-    origin: "*",
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
     credentials: true
   }
 });
@@ -23,7 +22,10 @@ const io = new Server(httpServer, {
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({credentials: true}));
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  credentials: true
+}));
 
 // Make io accessible to routes
 app.set('io', io);

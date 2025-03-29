@@ -28,8 +28,59 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
 
 // App routes with AuthProvider
 function AppRoutes() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState("Dashboard");
+  const [location, setLocation] = useState(window.location.pathname);
+
+  // Refresh user data on page navigation or window focus
+  useEffect(() => {
+    let isRefreshing = false;
+    
+    const handleRefresh = async () => {
+      if (!isAuthenticated || isRefreshing) return;
+      
+      // Check if we've refreshed recently (within 2 seconds)
+      const lastRefresh = localStorage.getItem('lastUserRefresh');
+      const now = Date.now();
+      if (lastRefresh && now - parseInt(lastRefresh) < 2000) {
+        return; // Skip refresh if it was done recently
+      }
+      
+      isRefreshing = true;
+      await refreshUser();
+      isRefreshing = false;
+    };
+
+    // Small delay to avoid race condition with AuthContext initialization
+    const timer = setTimeout(() => {
+      handleRefresh();
+    }, 500);
+    
+    // Refresh on window focus (for when user returns to tab)
+    const handleFocus = () => {
+      handleRefresh();
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [isAuthenticated, refreshUser]);
+
+  // Update location state when pathname changes
+  useEffect(() => {
+    const handleLocationChange = () => {
+      setLocation(window.location.pathname);
+    };
+
+    window.addEventListener('popstate', handleLocationChange);
+    
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+    };
+  }, []);
 
   return (
     <>

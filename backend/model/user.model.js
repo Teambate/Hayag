@@ -34,6 +34,26 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    devices: [{
+      deviceId: {
+        type: String,
+        required: true
+      },
+      name: {
+        type: String,
+        default: function() {
+          return `Device ${this.deviceId}`;
+        }
+      },
+      dateAdded: {
+        type: Date,
+        default: Date.now
+      },
+      location: {
+        type: String,
+        default: "Unknown"
+      }
+    }],
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },
