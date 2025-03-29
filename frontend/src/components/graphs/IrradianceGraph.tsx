@@ -51,7 +51,7 @@ const IrradianceGraph: React.FC<IrradianceGraphProps> = ({ timePeriod = '24h' })
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={irradianceData}
-            margin={{ top: 5, right: 10, left: 5, bottom: 5 }}
+            margin={{ top: 5, right: 10, left: 25, bottom: 5 }}
             barGap={2}
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
@@ -67,6 +67,7 @@ const IrradianceGraph: React.FC<IrradianceGraphProps> = ({ timePeriod = '24h' })
               domain={[0, 'auto']}
               tick={{ fontSize: 12, fill: '#6B7280' }}
               tickCount={5}
+              label={{ value: 'Irradiance (W/m²)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#6B7280', fontSize: 12 } }}
             />
             <Tooltip />
             <Bar
