@@ -2,11 +2,12 @@ import SensorReading from "../model/reading.model.js";
 import { getFilteredReadingsService } from "../services/reading/filterService.js";
 import { getChartDataService, getDashboardChartDataService } from "../services/reading/chartService.js";
 import { getCurrentSensorValuesService, getPanelIdsForDeviceService, createReadingService, bulkInsertReadingsService } from "../services/reading/sensorService.js";
+import { formatNumericValues } from "../utils/numberUtils.js";
 
 export const getReadings = async (req, res) => {
   try {
     const sensorReadings = await SensorReading.find();
-    res.status(200).json({ success: true, data: sensorReadings });
+    res.status(200).json({ success: true, data: formatNumericValues(sensorReadings) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -18,7 +19,7 @@ export const getFilteredReadings = async (req, res) => {
     res.status(200).json({ 
       success: true, 
       count: result.count,
-      data: result.data 
+      data: formatNumericValues(result.data)
     });
   } catch (error) {
     console.error("Error fetching filtered sensor readings:", error);
@@ -56,7 +57,7 @@ export const getCurrentSensorValues = async (req, res) => {
     
     res.status(200).json({
       success: true,
-      data: result
+      data: formatNumericValues(result)
     });
     
   } catch (error) {
@@ -77,7 +78,7 @@ export const getChartData = async (req, res) => {
       success: true,
       chartType: result.chartType,
       timeInterval: result.timeInterval,
-      data: result.data
+      data: formatNumericValues(result.data)
     });
     
   } catch (error) {
@@ -98,7 +99,7 @@ export const getDashboardChartData = async (req, res) => {
       success: true,
       timeInterval: result.timeInterval,
       date: result.date,
-      data: result.data
+      data: formatNumericValues(result.data)
     });
     
   } catch (error) {

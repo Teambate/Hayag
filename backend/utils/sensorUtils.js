@@ -1,3 +1,6 @@
+// Import the number formatting utility
+import { formatDecimal } from './numberUtils.js';
+
 // Helper function to process a reading for current sensor values
 export function processReadingForCurrentValues(reading) {
   const result = {
@@ -29,10 +32,10 @@ export function processReadingForCurrentValues(reading) {
         let value;
         if (valueField) {
           // For nested values like dht22.humidity
-          value = sensor[valueField].average;
+          value = formatDecimal(sensor[valueField].average);
         } else {
           // For direct values like solar, rain, etc.
-          value = sensor.average;
+          value = formatDecimal(sensor.average);
         }
         
         result.sensors[key].push({
