@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import SensorOverview from "../components/graphs/SensorOverview";
 import EnergyProduction, { TimePeriod } from "../components/graphs/EnergyProduction";
 import SystemHealth from "../components/graphs/SystemHealth";
@@ -9,6 +9,8 @@ import { ThermometerIcon, BatteryMediumIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { DateRange } from "react-day-picker";
 import Banner from "../components/layout/Banner";
+import { io, Socket } from "socket.io-client";
+import { useAuth } from "../context/AuthContext";
 
 // Types for structured data
 interface SensorDataType {
@@ -18,8 +20,6 @@ interface SensorDataType {
   light: { value: number; unit: string };
   humidity: { value: number; unit: string };
   temperature: { value: number; unit: string };
-  voltage: { value: number; unit: string };
-  current: { value: number; unit: string };
 }
 
 interface PanelDataType {
@@ -35,21 +35,63 @@ interface SystemStatusType {
   batteryLevel: number;
 }
 
-// Mock API service - would be replaced with actual API calls
+// Update the apiService to include real API calls
 const apiService = {
-  fetchSensorData: async (): Promise<SensorDataType> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return {
-      irradiance: { value: 900, unit: "W/m²" },
-      rain: { value: 90, unit: "%" },
-      uvIndex: { value: 10, unit: "mW/cm²" },
-      light: { value: 90, unit: "lx" },
-      humidity: { value: 90, unit: "%" },
-      temperature: { value: 40, unit: "°C" },
-      voltage: { value: 12.8, unit: "V" },
-      current: { value: 3.5, unit: "A" },
-    };
+  fetchSensorData: async (deviceId: string, panelIds?: string[]): Promise<SensorDataType> => {
+    try {
+      // Build the query parameters
+      const params = new URLSearchParams();
+      params.append('deviceId', deviceId);
+      if (panelIds && panelIds.length > 0) {
+        params.append('panelIds', panelIds.join(','));
+      }
+      
+      const response = await fetch(`/api/readings/current?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch sensor data');
+      }
+      
+      const result = await response.json();
+      
+      // Transform API response to match our SensorDataType
+      return {
+        irradiance: { 
+          value: result.data.sensors.solar?.value || 0, 
+          unit: result.data.sensors.solar?.unit || 'W/m²' 
+        },
+        rain: { 
+          value: result.data.sensors.rain?.value || 0, 
+          unit: result.data.sensors.rain?.unit || '%' 
+        },
+        uvIndex: { 
+          value: result.data.sensors.uv?.value || 0, 
+          unit: result.data.sensors.uv?.unit || 'mW/cm²' 
+        },
+        light: { 
+          value: result.data.sensors.light?.value || 0, 
+          unit: result.data.sensors.light?.unit || 'lx' 
+        },
+        humidity: { 
+          value: result.data.sensors.humidity?.value || 0, 
+          unit: result.data.sensors.humidity?.unit || '%' 
+        },
+        temperature: { 
+          value: result.data.sensors.temperature?.value || 0, 
+          unit: result.data.sensors.temperature?.unit || '°C' 
+        }
+      };
+    } catch (error) {
+      console.error("Error fetching sensor data:", error);
+      // Return fallback values on error
+      return {
+        irradiance: { value: 0, unit: "W/m²" },
+        rain: { value: 0, unit: "%" },
+        uvIndex: { value: 0, unit: "mW/cm²" },
+        light: { value: 0, unit: "lx" },
+        humidity: { value: 0, unit: "%" },
+        temperature: { value: 0, unit: "°C" },
+      };
+    }
   },
   fetchPanelData: async (): Promise<PanelDataType[]> => {
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -69,6 +111,7 @@ const apiService = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   // State with proper typing
   const [sensorData, setSensorData] = useState<SensorDataType | null>(null);
@@ -82,14 +125,41 @@ export default function Dashboard() {
     from: new Date(),
     to: new Date(new Date().setDate(new Date().getDate() + 7))
   });
+  const [deviceId, setDeviceId] = useState<string>("");
+  const [availableDevices, setAvailableDevices] = useState<Array<{deviceId: string; name: string}>>([]);
+  const socketRef = useRef<Socket | null>(null);
   
-  // Fetch data on component mount
+  // Set available devices and default device from user context
+  useEffect(() => {
+    if (user?.devices && user.devices.length > 0) {
+      setAvailableDevices(user.devices.map(device => ({
+        deviceId: device.deviceId,
+        name: device.name
+      })));
+      
+      // Set the first device as default if no device is selected
+      if (!deviceId && user.devices[0].deviceId) {
+        setDeviceId(user.devices[0].deviceId);
+      }
+    }
+  }, [user, deviceId]);
+
+  // Fetch initial data on component mount
   useEffect(() => {
     const fetchData = async () => {
+      // Only fetch data if a deviceId is available
+      if (!deviceId) return;
+      
       try {
         setIsLoading(true);
+        
+        // Get panel IDs for filtering if a specific panel is selected
+        const panelIdsFilter = selectedPanel !== "All Panels" 
+          ? [selectedPanel.split(" ")[1]] 
+          : undefined;
+        
         const [sensors, panels, status] = await Promise.all([
-          apiService.fetchSensorData(),
+          apiService.fetchSensorData(deviceId, panelIdsFilter),
           apiService.fetchPanelData(),
           apiService.fetchSystemStatus()
         ]);
@@ -107,7 +177,94 @@ export default function Dashboard() {
     };
     
     fetchData();
-  }, []);
+  }, [deviceId, selectedPanel]);
+  
+  // Setup Socket.io connection
+  useEffect(() => {
+    // Only connect if a deviceId is available
+    if (!deviceId) return;
+    
+    // Initialize Socket.io connection
+    socketRef.current = io();
+    
+    // Setup event handlers
+    socketRef.current.on('connect', () => {
+      console.log('Connected to Socket.io server');
+      
+      // Subscribe to updates for the current device
+      socketRef.current?.emit('subscribe', deviceId);
+      
+      // Subscribe to all chart types for this device
+      ['energy', 'battery', 'panel_temp', 'irradiance'].forEach(chartType => {
+        socketRef.current?.emit('subscribeChart', { 
+          deviceId: deviceId, 
+          chartType: chartType 
+        });
+      });
+    });
+    
+    // Handle sensor updates
+    socketRef.current.on('sensorUpdate', (data) => {
+      console.log('Received sensor update:', data);
+      
+      // Update sensor data state
+      if (data.sensors) {
+        const updatedSensorData: SensorDataType = {
+          irradiance: { 
+            value: data.sensors.solar?.[0]?.value || 0, 
+            unit: data.sensors.solar?.[0]?.unit || 'W/m²' 
+          },
+          rain: { 
+            value: data.sensors.rain?.[0]?.value || 0, 
+            unit: data.sensors.rain?.[0]?.unit || '%' 
+          },
+          uvIndex: { 
+            value: data.sensors.uv?.[0]?.value || 0, 
+            unit: data.sensors.uv?.[0]?.unit || 'mW/cm²' 
+          },
+          light: { 
+            value: data.sensors.light?.[0]?.value || 0, 
+            unit: data.sensors.light?.[0]?.unit || 'lx' 
+          },
+          humidity: { 
+            value: data.sensors.humidity?.[0]?.value || 0, 
+            unit: data.sensors.humidity?.[0]?.unit || '%' 
+          },
+          temperature: { 
+            value: data.sensors.temperature?.[0]?.value || 0, 
+            unit: data.sensors.temperature?.[0]?.unit || '°C' 
+          }
+        };
+        
+        setSensorData(updatedSensorData);
+      }
+    });
+    
+    // Handle chart updates - just logging for now, will implement visualization later
+    socketRef.current.on('chartUpdate', (data) => {
+      console.log('Received chart update:', data);
+      // Will implement chart data updates in the next iteration
+    });
+    
+    // Clean up on component unmount
+    return () => {
+      if (socketRef.current) {
+        // Unsubscribe from device updates
+        socketRef.current.emit('unsubscribe', deviceId);
+        
+        // Unsubscribe from all chart types
+        ['energy', 'battery', 'panel_temp', 'irradiance'].forEach(chartType => {
+          socketRef.current?.emit('unsubscribeChart', { 
+            deviceId: deviceId, 
+            chartType: chartType 
+          });
+        });
+        
+        // Disconnect socket
+        socketRef.current.disconnect();
+      }
+    };
+  }, [deviceId]); // Re-connect if deviceId changes
 
   // Filter panels based on selection
   useEffect(() => {
@@ -139,6 +296,17 @@ export default function Dashboard() {
     // In a real implementation, this would trigger a new data fetch with the date range
   };
   
+  // Function to handle device selection change
+  const handleDeviceChange = (selectedDeviceId: string) => {
+    setDeviceId(selectedDeviceId);
+    console.log(`Device changed to: ${selectedDeviceId}`);
+  };
+  
+  // Loading state when no devices are available
+  if (!user?.devices || user.devices.length === 0) {
+    return <div className="flex justify-center items-center h-full py-20">No devices found for this account.</div>;
+  }
+  
   // Loading state
   if (isLoading) {
     return <div className="flex justify-center items-center h-full py-20">Loading dashboard data...</div>;
@@ -153,6 +321,26 @@ export default function Dashboard() {
 
   return (
     <div>
+      {/* Device selector */}
+      {availableDevices.length > 1 && (
+        <div className="px-4 py-2 border-b border-gray-200">
+          <div className="flex items-center">
+            <span className="text-sm font-medium mr-2">Device:</span>
+            <select 
+              value={deviceId} 
+              onChange={(e) => handleDeviceChange(e.target.value)}
+              className="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            >
+              {availableDevices.map((device) => (
+                <option key={device.deviceId} value={device.deviceId}>
+                  {device.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+      
       {/* Banner integration */}
       <Banner 
         activeTab="Dashboard" 

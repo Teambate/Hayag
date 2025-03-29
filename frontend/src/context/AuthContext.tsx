@@ -9,6 +9,12 @@ interface User {
   name: string;
   email: string;
   role: string;
+  devices?: Array<{
+    deviceId: string;
+    name: string;
+    dateAdded: string;
+    location: string;
+  }>;
 }
 
 // Define AuthContext type
