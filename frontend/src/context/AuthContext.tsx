@@ -25,6 +25,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   refreshUser: () => Promise<boolean>;
+  updateUser: (updatedUser: User) => void;
 }
 
 // Create context with default values
@@ -35,6 +36,7 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => ({ success: false }),
   logout: () => {},
   refreshUser: async () => false,
+  updateUser: () => {},
 });
 
 // Create AuthProvider component
@@ -138,6 +140,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Update user function - updates the user locally
+  const updateUser = (updatedUser: User) => {
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    localStorage.setItem('lastUserRefresh', Date.now().toString());
+  };
+
   // Refresh user function - fetches latest user data from API
   const refreshUser = async (): Promise<boolean> => {
     if (!user) return false;
@@ -176,7 +185,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isLoading, 
         login, 
         logout,
-        refreshUser 
+        refreshUser,
+        updateUser
       }}
     >
       {children}
