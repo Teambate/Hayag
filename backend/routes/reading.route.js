@@ -1,5 +1,5 @@
 import express from "express";
-import { createReading, getReadings, getFilteredReadings, getCurrentSensorValues, getChartData, getDashboardChartData, getPanelIdsForDevice } from "../controller/reading.controller.js";
+import { createReading, getReadings, getFilteredReadings, getCurrentSensorValues, getChartData, getDashboardChartData, getPanelIdsForDevice, bulkInsertReadings } from "../controller/reading.controller.js";
 import { protect, admin } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
@@ -14,5 +14,6 @@ router.get("/device/:deviceId/panels", protect, getPanelIdsForDevice);
 
 // Protected routes - accessible only by admins
 router.post("/", protect, admin, createReading);
+router.post("/bulk", protect, admin, bulkInsertReadings);
 
 export default router;

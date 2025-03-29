@@ -221,6 +221,117 @@ export const createReadingService = async (sensorReadings, io) => {
   return newSensorReading;
 };
 
+/**
+ * Bulk insert readings from JSON data
+ * @param {Array} readingsData - Array of sensor readings objects
+ * @param {Object} options - Options for the bulk insert
+ * @param {number} options.batchSize - Number of documents to insert in each batch (default: 100)
+ * @param {boolean} options.emitEvents - Whether to emit socket events for each reading (default: false)
+ * @param {Object} io - Socket.io instance (required only if emitEvents is true)
+ * @returns {Object} - Result of the bulk insertion
+ */
+export const bulkInsertReadingsService = async (readingsData, options = {}, io = null) => {
+  // Set default options
+  const batchSize = options.batchSize || 100;
+  const emitEvents = options.emitEvents || false;
+  
+  if (emitEvents && !io) {
+    throw new Error("Socket.io instance (io) is required when emitEvents is true");
+  }
+  
+  if (!Array.isArray(readingsData)) {
+    throw new Error("readingsData must be an array");
+  }
+  
+  const result = {
+    totalDocuments: readingsData.length,
+    insertedCount: 0,
+    failedCount: 0,
+    errors: [],
+    batches: []
+  };
+  
+  // Process in batches
+  for (let i = 0; i < readingsData.length; i += batchSize) {
+    const batch = readingsData.slice(i, i + batchSize);
+    const batchResult = {
+      batchNumber: Math.floor(i / batchSize) + 1,
+      startIndex: i,
+      endIndex: Math.min(i + batchSize - 1, readingsData.length - 1),
+      insertedCount: 0,
+      failedIndices: []
+    };
+    
+    try {
+      // Create batch operations
+      const operations = batch.map(reading => ({
+        insertOne: {
+          document: reading
+        }
+      }));
+      
+      // Perform bulk write operation
+      const bulkWriteResult = await SensorReading.bulkWrite(operations, { ordered: false });
+      batchResult.insertedCount = bulkWriteResult.insertedCount;
+      result.insertedCount += bulkWriteResult.insertedCount;
+      
+      // Emit events if needed
+      if (emitEvents && io) {
+        for (const reading of batch) {
+          try {
+            const newReading = new SensorReading(reading);
+            const currentValues = await processReadingForCurrentValues(newReading);
+            io.to(`device:${reading.deviceId}`).emit('sensorUpdate', currentValues);
+            
+            const chartData = processReadingForCharts(newReading);
+            Object.keys(chartData).forEach(chartType => {
+              io.to(`device:${reading.deviceId}:${chartType}`).emit('chartUpdate', {
+                chartType,
+                dataPoint: chartData[chartType]
+              });
+            });
+          } catch (emitError) {
+            console.error(`Error emitting events for reading at index ${i}:`, emitError);
+          }
+        }
+      }
+    } catch (batchError) {
+      // Handle bulk write errors - some documents might have been inserted
+      console.error(`Error in batch ${batchResult.batchNumber}:`, batchError);
+      
+      if (batchError.writeErrors) {
+        // Collect indices of failed documents
+        batchError.writeErrors.forEach(writeError => {
+          const failedIndex = i + writeError.index;
+          batchResult.failedIndices.push(failedIndex);
+          result.errors.push({
+            index: failedIndex,
+            error: writeError.errmsg || writeError.message
+          });
+        });
+        
+        // Update counts based on the error information
+        batchResult.insertedCount = batch.length - batchResult.failedIndices.length;
+        result.insertedCount += batchResult.insertedCount;
+        result.failedCount += batchResult.failedIndices.length;
+      } else {
+        // If the entire batch failed
+        batchResult.insertedCount = 0;
+        batchResult.failedIndices = Array.from({ length: batch.length }, (_, idx) => i + idx);
+        result.failedCount += batch.length;
+        result.errors.push({
+          batchNumber: batchResult.batchNumber,
+          error: batchError.message
+        });
+      }
+    }
+    
+    result.batches.push(batchResult);
+  }
+  
+  return result;
+};
+
 async function calculatePowerAccumulation(result, deviceId, latestReading, panelIdsArray) {
   // Get start of today in device's timezone (or UTC if not available)
   const today = new Date(latestReading.createdAt);
