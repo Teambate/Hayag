@@ -13,6 +13,8 @@ import PanelTemperatureOverheating from "../components/graphs/PanelTemperatureOv
 import IrradianceGraph from "../components/graphs/IrradianceGraph";
 import Banner from "../components/layout/Banner";
 import { TimePeriod } from "../components/graphs/EnergyProduction";
+import { AddNoteButton } from "../components/ui/AddNoteModal";
+import AddNoteModal from "../components/ui/AddNoteModal";
 
 // Expand icon component
 const ExpandIcon = ({ className = "w-4 h-4" }) => (
@@ -40,6 +42,7 @@ interface AnalyticsProps {
 
 export default function Analytics({ setActiveTab }: AnalyticsProps) {
   const navigate = useNavigate();
+  const [isAddNoteModalOpen, setIsAddNoteModalOpen] = useState(false);
 
   // State for selections from Banner
   const [selectedPanel, setSelectedPanel] = useState<string>("All Panels");
@@ -177,6 +180,13 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
     }
   };
 
+  // Handle adding a new note
+  const handleAddNote = (newNote: any) => {
+    console.log("New note added:", newNote);
+    // In a real app, you would save the note to a database or state
+    alert("Note added successfully!");
+  };
+
   return (
     <>
       <Banner 
@@ -273,10 +283,7 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-medium">Insights & Notes</h3>
                   <div className="flex items-center gap-2">
-                    <button className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md flex items-center">
-                      <Plus size={16} className="mr-1.5" />
-                      Add Notes
-                    </button>
+                    <AddNoteButton onClick={() => setIsAddNoteModalOpen(true)} />
                     <Link 
                       to="/notes" 
                       className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md flex items-center"
@@ -393,6 +400,13 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
           </div>
         </section>
       </div>
+
+      {/* Add Note Modal */}
+      <AddNoteModal 
+        isOpen={isAddNoteModalOpen}
+        onOpenChange={setIsAddNoteModalOpen}
+        onSave={handleAddNote}
+      />
     </>
   );
 } 

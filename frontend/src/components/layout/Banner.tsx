@@ -6,7 +6,7 @@ import { DateRange } from "react-day-picker"
 import { Download } from "lucide-react"
 import { Button } from "../ui/button"
 import { TimePeriod } from "../graphs/EnergyProduction"
-import DownloadModal from "../modals/DownloadModal"
+import DownloadModal from "../ui/DownloadModal"
 
 // Map UI intervals to TimePeriod values
 const intervalToTimePeriod: Record<string, TimePeriod> = {
