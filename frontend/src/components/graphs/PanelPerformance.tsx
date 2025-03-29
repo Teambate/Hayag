@@ -1,5 +1,6 @@
 import React from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
+import { TimePeriod } from './EnergyProduction';
 
 // Mock data for panel performance comparison
 const performanceData = [
@@ -12,13 +13,29 @@ const performanceData = [
   { time: '6pm', panel1: 10, panel2: 9, anomaly: null },
 ];
 
-const PanelPerformance: React.FC = () => {
+// Different data sets for different time periods
+const performanceDataSets = {
+  '24h': performanceData,
+  '7d': performanceData, // Use the same data for now, would be different in production
+  '30d': performanceData, // Use the same data for now, would be different in production
+  '90d': performanceData, // Use the same data for now, would be different in production
+};
+
+// Component props interface
+interface PanelPerformanceProps {
+  timePeriod?: TimePeriod;
+}
+
+const PanelPerformance: React.FC<PanelPerformanceProps> = ({ timePeriod = '24h' }) => {
+  // Get the correct data set based on the time period
+  const currentData = performanceDataSets[timePeriod];
+
   return (
     <div className="flex flex-col h-full">
       {/* Chart container - take up remaining space */}
       <div className="flex-grow w-full min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={performanceData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+          <LineChart data={currentData} margin={{ top: 5, right: 10, left: 25, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
             <XAxis 
               dataKey="time" 
@@ -31,9 +48,9 @@ const PanelPerformance: React.FC = () => {
               tickLine={false}
               domain={[0, 40]}
               tick={{ fontSize: 12, fill: '#6B7280' }}
+              label={{ value: 'Power Output (kW)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#6B7280', fontSize: 12 } }}
             />
             <Tooltip />
-            <Legend />
             <Line
               type="monotone"
               dataKey="panel1"
@@ -64,7 +81,8 @@ const PanelPerformance: React.FC = () => {
         </ResponsiveContainer>
       </div>
       
-      <div className="flex space-x-4 text-sm text-gray-500 justify-center pt-1 pb-3">
+      {/* Legend */}
+      <div className="flex space-x-4 text-sm text-gray-500 justify-center pt-6">
         <div className="flex items-center">
           <div className="w-3 h-3 rounded-full bg-green-500 mr-1"></div>
           <span>Panel 1</span>

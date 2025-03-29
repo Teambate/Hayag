@@ -1,38 +1,38 @@
 import React from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 import { TimePeriod } from './EnergyProduction';
 
 // Different mock data sets for different time periods
 const batteryDataSets = {
   '24h': [
-    { time: '6AM', charge: 140, discharge: 100 },
-    { time: '8AM', charge: 240, discharge: 150 },
-    { time: '10AM', charge: 300, discharge: 200 },
-    { time: '12PM', charge: 320, discharge: 250 },
-    { time: '2PM', charge: 280, discharge: 260 },
-    { time: '4PM', charge: 250, discharge: 210 },
-    { time: '6PM', charge: 180, discharge: 170 },
-    { time: '8PM', charge: 150, discharge: 160 },
+    { time: '6AM', battery1: 12.6, battery2: 12.7 },
+    { time: '8AM', battery1: 12.8, battery2: 12.9 },
+    { time: '10AM', battery1: 13.2, battery2: 13.1 },
+    { time: '12PM', battery1: 13.4, battery2: 13.3 },
+    { time: '2PM', battery1: 13.5, battery2: 13.4 },
+    { time: '4PM', battery1: 13.3, battery2: 13.2 },
+    { time: '6PM', battery1: 13.1, battery2: 13.0 },
+    { time: '8PM', battery1: 12.9, battery2: 12.8 },
   ],
   '7d': [
-    { time: 'Mon', charge: 1200, discharge: 1000 },
-    { time: 'Tue', charge: 1500, discharge: 1200 },
-    { time: 'Wed', charge: 1300, discharge: 1100 },
-    { time: 'Thu', charge: 1800, discharge: 1500 },
-    { time: 'Fri', charge: 1600, discharge: 1400 },
-    { time: 'Sat', charge: 1200, discharge: 1000 },
-    { time: 'Sun', charge: 1100, discharge: 900 },
+    { time: 'Mon', battery1: 12.7, battery2: 12.8 },
+    { time: 'Tue', battery1: 12.9, battery2: 13.0 },
+    { time: 'Wed', battery1: 13.1, battery2: 13.2 },
+    { time: 'Thu', battery1: 13.3, battery2: 13.4 },
+    { time: 'Fri', battery1: 13.1, battery2: 13.2 },
+    { time: 'Sat', battery1: 12.9, battery2: 13.0 },
+    { time: 'Sun', battery1: 12.7, battery2: 12.8 },
   ],
   '30d': [
-    { time: 'W1', charge: 7800, discharge: 6500 },
-    { time: 'W2', charge: 8500, discharge: 7200 },
-    { time: 'W3', charge: 7500, discharge: 6800 },
-    { time: 'W4', charge: 8200, discharge: 7500 },
+    { time: 'W1', battery1: 12.8, battery2: 12.9 },
+    { time: 'W2', battery1: 13.0, battery2: 13.1 },
+    { time: 'W3', battery1: 12.9, battery2: 13.0 },
+    { time: 'W4', battery1: 12.7, battery2: 12.8 },
   ],
   '90d': [
-    { time: 'Jan', charge: 28000, discharge: 25000 },
-    { time: 'Feb', charge: 30000, discharge: 27000 },
-    { time: 'Mar', charge: 32000, discharge: 29000 },
+    { time: 'Jan', battery1: 12.9, battery2: 13.0 },
+    { time: 'Feb', battery1: 13.1, battery2: 13.2 },
+    { time: 'Mar', battery1: 12.8, battery2: 12.9 },
   ],
 };
 
@@ -50,20 +50,10 @@ const BatteryChargeDischarge: React.FC<BatteryChargeDischargeProps> = ({ timePer
       {/* Chart container - take up remaining space */}
       <div className="flex-grow w-full min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart 
+          <LineChart 
             data={batteryData} 
-            margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+            margin={{ top: 5, right: 5, left: 25, bottom: 5 }}
           >
-            <defs>
-              <linearGradient id="colorCharge" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#4CAF50" stopOpacity={0.8}/>
-                <stop offset="95%" stopColor="#4CAF50" stopOpacity={0}/>
-              </linearGradient>
-              <linearGradient id="colorDischarge" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#F44336" stopOpacity={0.8}/>
-                <stop offset="95%" stopColor="#F44336" stopOpacity={0}/>
-              </linearGradient>
-            </defs>
             <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
             <XAxis 
               dataKey="time" 
@@ -75,27 +65,30 @@ const BatteryChargeDischarge: React.FC<BatteryChargeDischargeProps> = ({ timePer
               axisLine={false} 
               tickLine={false} 
               tick={{ fontSize: 12 }} 
-              domain={[0, 'auto']}
+              domain={[10, 14]}
               tickCount={5}
+              label={{ value: 'Voltage (V)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#6B7280', fontSize: 12 } }}
             />
             <Tooltip />
-            <Area 
+            <Line 
               type="monotone" 
-              dataKey="charge" 
+              dataKey="battery1" 
               stroke="#4CAF50" 
-              fillOpacity={1} 
-              fill="url(#colorCharge)" 
-              name="Charge"
+              strokeWidth={2}
+              dot={{ r: 3 }}
+              activeDot={{ r: 5 }}
+              name="Battery 1 (Panel 1)"
             />
-            <Area 
+            <Line 
               type="monotone" 
-              dataKey="discharge" 
-              stroke="#F44336" 
-              fillOpacity={1} 
-              fill="url(#colorDischarge)" 
-              name="Discharge"
+              dataKey="battery2" 
+              stroke="#2196F3" 
+              strokeWidth={2}
+              dot={{ r: 3 }}
+              activeDot={{ r: 5 }}
+              name="Battery 2 (Panel 2)"
             />
-          </AreaChart>
+          </LineChart>
         </ResponsiveContainer>
       </div>
       
@@ -103,11 +96,11 @@ const BatteryChargeDischarge: React.FC<BatteryChargeDischargeProps> = ({ timePer
       <div className="flex justify-center space-x-4 text-sm text-gray-500 pt-1">
         <div className="flex items-center">
           <div className="w-3 h-3 rounded-full bg-green-500 mr-1"></div>
-          <span>Charge</span>
+          <span>Battery 1 (Panel 1)</span>
         </div>
         <div className="flex items-center">
-          <div className="w-3 h-3 rounded-full bg-red-500 mr-1"></div>
-          <span>Discharge</span>
+          <div className="w-3 h-3 rounded-full bg-blue-500 mr-1"></div>
+          <span>Battery 2 (Panel 2)</span>
         </div>
       </div>
     </div>

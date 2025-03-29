@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
-import SensorOverview from "../components/graphs/SensorOverview";
+import React, { useState, useEffect } from "react";
+import SensorOverview from "../components/data/SensorOverview";
 import EnergyProduction, { TimePeriod } from "../components/graphs/EnergyProduction";
-import SystemHealth from "../components/graphs/SystemHealth";
+import SystemHealth from "../components/data/SystemHealth";
 import BatteryChargeDischarge from "../components/graphs/BatteryChargeDischarge";
 import PanelTemperatureOverheating from "../components/graphs/PanelTemperatureOverheating";
 import IrradianceGraph from "../components/graphs/IrradianceGraph";

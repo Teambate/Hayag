@@ -90,6 +90,12 @@ function AppRoutes() {
           
           <main>
             <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/analytics" element={<Analytics setActiveTab={setActiveTab} />} />
+              <Route path="/sensors" element={<Sensors />} />
+              <Route path="/notes" element={<Notes setActiveTab={setActiveTab} />} />
+              <Route path="/settings" element={<Settings />} />
               <Route 
                 path="/" 
                 element={<Navigate to="/dashboard" replace />} 

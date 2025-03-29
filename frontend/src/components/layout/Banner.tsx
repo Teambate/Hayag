@@ -107,10 +107,7 @@ export default function Banner({
 
   // Get appropriate panel options based on active tab
   const getPanelOptions = () => {
-    if (activeTab === "Dashboard") {
-      return ["All Panels", "Panel 1", "Panel 2"];
-    }
-    return ["Panel 1", "Panel 2", "Panel 3", "Panel 4"];
+    return ["Panel 1", "Panel 2", "All Panels"];
   }
 
   // Get interval options - now always showing user-friendly labels
@@ -125,10 +122,10 @@ export default function Banner({
 
   return (
     <div className="w-full bg-white border-b">
-      <div className="flex items-center justify-between px-6 py-2 max-w-[1600px] mx-auto">
+      <div className="flex items-center justify-between px-6 py-3 max-w-[1600px] mx-auto">
         <h1 className="text-2xl font-semibold text-[#1e3a29]">{getBannerTitle()}</h1>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {/* Panel Dropdown */}
           <PanelSelector 
             value={panel} 

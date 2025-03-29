@@ -5,29 +5,30 @@ import { TimePeriod } from './EnergyProduction';
 // Different mock data sets for different time periods
 const temperatureDataSets = {
   '24h': [
-    { panel: 'P1', morning: 60, afternoon: 80 },
-    { panel: 'P2', morning: 65, afternoon: 85 },
-    { panel: 'P3', morning: 55, afternoon: 75 },
-    { panel: 'P4', morning: 62, afternoon: 82 },
+    { time: '12AM', panel1: 60, panel2: 80 },
+    { time: '6AM', panel1: 65, panel2: 85 },
+    { time: '12PM', panel1: 55, panel2: 75 },
+    { time: '6PM', panel1: 62, panel2: 82 },
   ],
   '7d': [
-    { panel: 'Mon-P1', morning: 62, afternoon: 81 },
-    { panel: 'Mon-P2', morning: 65, afternoon: 84 },
-    { panel: 'Tue-P1', morning: 60, afternoon: 79 },
-    { panel: 'Tue-P2', morning: 63, afternoon: 86 },
-    { panel: 'Wed-P1', morning: 64, afternoon: 83 },
-    { panel: 'Wed-P2', morning: 66, afternoon: 87 },
+    { time: 'Mon', panel1: 62, panel2: 81 },
+    { time: 'Tue', panel1: 65, panel2: 84 },
+    { time: 'Wed', panel1: 60, panel2: 79 },
+    { time: 'Thu', panel1: 63, panel2: 86 },
+    { time: 'Fri', panel1: 64, panel2: 83 },
+    { time: 'Sat', panel1: 66, panel2: 87 },
+    { time: 'Sun', panel1: 64, panel2: 85 },
   ],
   '30d': [
-    { panel: 'W1-Avg', morning: 63, afternoon: 82 },
-    { panel: 'W2-Avg', morning: 65, afternoon: 85 },
-    { panel: 'W3-Avg', morning: 61, afternoon: 80 },
-    { panel: 'W4-Avg', morning: 64, afternoon: 83 },
+    { time: 'Week 1', panel1: 63, panel2: 82 },
+    { time: 'Week 2', panel1: 65, panel2: 85 },
+    { time: 'Week 3', panel1: 61, panel2: 80 },
+    { time: 'Week 4', panel1: 64, panel2: 83 },
   ],
   '90d': [
-    { panel: 'Jan-Avg', morning: 58, afternoon: 78 },
-    { panel: 'Feb-Avg', morning: 62, afternoon: 81 },
-    { panel: 'Mar-Avg', morning: 66, afternoon: 85 },
+    { time: 'Jan', panel1: 58, panel2: 78 },
+    { time: 'Feb', panel1: 62, panel2: 81 },
+    { time: 'Mar', panel1: 66, panel2: 85 },
   ],
 };
 
@@ -47,12 +48,12 @@ const PanelTemperatureOverheating: React.FC<PanelTemperatureOverheatingProps> = 
         <ResponsiveContainer width="100%" height="100%">
           <BarChart 
             data={temperatureData} 
-            margin={{ top: 5, right: 10, left: 5, bottom: 5 }} 
+            margin={{ top: 5, right: 10, left: 25, bottom: 5 }} 
             barGap={2}
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
             <XAxis 
-              dataKey="panel" 
+              dataKey="time" 
               axisLine={false} 
               tickLine={false}
               tick={{ fontSize: 12, fill: '#6B7280' }}
@@ -63,6 +64,7 @@ const PanelTemperatureOverheating: React.FC<PanelTemperatureOverheatingProps> = 
               domain={[0, 100]}
               tick={{ fontSize: 12, fill: '#6B7280' }}
               tickCount={5}
+              label={{ value: 'Temperature (°C)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#6B7280', fontSize: 12 } }}
             />
             <Tooltip />
             <ReferenceLine y={80} stroke="red" strokeDasharray="3 3" 
@@ -72,8 +74,8 @@ const PanelTemperatureOverheating: React.FC<PanelTemperatureOverheatingProps> = 
                 fontSize: 10
               }} 
             />
-            <Bar dataKey="morning" fill="#81C784" name="Morning" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="afternoon" fill="#FFB74D" name="Afternoon" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="panel1" fill="#81C784" name="Panel 1" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="panel2" fill="#FFB74D" name="Panel 2" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -81,11 +83,11 @@ const PanelTemperatureOverheating: React.FC<PanelTemperatureOverheatingProps> = 
       <div className="flex space-x-4 text-sm text-gray-500 justify-center pt-1 pb-1">
         <div className="flex items-center">
           <div className="w-3 h-3 rounded-full bg-green-400 mr-1"></div>
-          <span>Morning Temp</span>
+          <span>Panel 1</span>
         </div>
         <div className="flex items-center">
           <div className="w-3 h-3 rounded-full bg-amber-400 mr-1"></div>
-          <span>Afternoon Temp</span>
+          <span>Panel 2</span>
         </div>
         <div className="flex items-center ml-4">
           <div className="w-3 h-3 border border-red-500 mr-1"></div>

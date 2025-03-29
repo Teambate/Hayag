@@ -52,7 +52,7 @@ const EnergyProduction: React.FC<EnergyProductionProps> = ({ timePeriod = '24h' 
       {/* Chart container - take up remaining space */}
       <div className="flex-grow w-full min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={energyData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+          <BarChart data={energyData} margin={{ top: 5, right: 5, left: 25, bottom: 5 }}>
             <defs>
               <linearGradient id="colorEnergy" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#4CAF50" stopOpacity={0.8} />
@@ -72,6 +72,7 @@ const EnergyProduction: React.FC<EnergyProductionProps> = ({ timePeriod = '24h' 
               tick={{ fontSize: 12 }} 
               domain={[0, 'auto']} 
               tickCount={5}
+              label={{ value: 'Energy (kWh)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#6B7280', fontSize: 12 } }}
             />
             <Tooltip 
               cursor={{fill: 'rgba(0, 0, 0, 0.05)'}}
