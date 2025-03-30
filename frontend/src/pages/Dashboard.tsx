@@ -212,7 +212,7 @@ export default function Dashboard() {
       {/* Row 1: Sensor Overview - Minimalist, Line-based Layout */}
       <section className="border-b border-gray-200">
         <div className="px-4">
-          {sensorData && <SensorOverview sensorData={sensorData} />}
+          {sensorData && <SensorOverview sensorData={sensorData} selectedPanel={selectedPanel} />}
         </div>
       </section>
       

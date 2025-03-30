@@ -6,23 +6,82 @@ import LightIcon from '../../assets/Light.svg';
 import HumidityIcon from '../../assets/Humidity.svg';
 import AmbientTempIcon from '../../assets/Ambient Temp.svg';
 
-interface SensorDataItem {
+interface SensorPanel {
+  panelId: string;
   value: number;
   unit: string;
 }
 
-interface SensorDataProps {
-  sensorData: {
-    irradiance: SensorDataItem;
-    rain: SensorDataItem;
-    uvIndex: SensorDataItem;
-    light: SensorDataItem;
-    humidity: SensorDataItem;
-    temperature: SensorDataItem;
+interface SensorType {
+  value: number;
+  unit: string;
+  panelCount?: number;
+  panels?: SensorPanel[];
+}
+
+interface SensorResponseData {
+  deviceId: string;
+  timestamp: string;
+  sensors: {
+    solar: SensorType;
+    rain: SensorType;
+    uv: SensorType;
+    light: SensorType;
+    humidity: SensorType;
+    temperature: SensorType;
+    [key: string]: SensorType;
   };
 }
 
-const SensorOverview: React.FC<SensorDataProps> = ({ sensorData }) => {
+interface SensorDataProps {
+  sensorData: SensorResponseData;
+  selectedPanel?: string;
+}
+
+const SensorOverview: React.FC<SensorDataProps> = ({ sensorData, selectedPanel = "All Panels" }) => {
+  // Function to get the correct sensor value based on selected panel
+  const getSensorValue = (sensorKey: string) => {
+    // Safety check to ensure sensors and the specific sensor exist
+    if (!sensorData?.sensors || !sensorData.sensors[sensorKey]) {
+      return { value: 0, unit: "" };
+    }
+    
+    // If "All Panels" is selected, use the average value
+    if (selectedPanel === "All Panels") {
+      return {
+        value: sensorData.sensors[sensorKey].value,
+        unit: sensorData.sensors[sensorKey].unit
+      };
+    }
+    
+    // For specific panel, find its data in panels array
+    const panelId = selectedPanel.split(" ")[1];
+    const panelData = sensorData.sensors[sensorKey].panels?.find(
+      p => p.panelId === `Panel_${panelId}` || p.panelId === panelId
+    );
+    
+    if (panelData) {
+      return {
+        value: panelData.value,
+        unit: panelData.unit
+      };
+    }
+    
+    // Fallback to average if panel data not found
+    return {
+      value: sensorData.sensors[sensorKey].value,
+      unit: sensorData.sensors[sensorKey].unit
+    };
+  };
+
+  // Get sensor values based on selected panel
+  const irradiance = getSensorValue('solar');
+  const rain = getSensorValue('rain');
+  const uvIndex = getSensorValue('uv');
+  const light = getSensorValue('light');
+  const humidity = getSensorValue('humidity');
+  const temperature = getSensorValue('temperature');
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 -mx-4">
       {/* Irradiance */}
@@ -32,9 +91,9 @@ const SensorOverview: React.FC<SensorDataProps> = ({ sensorData }) => {
           <span className="text-xs">Irradiance</span>
         </div>
         <div className="text-3xl font-bold leading-none">
-          {sensorData.irradiance.value}
+          {typeof irradiance.value === 'number' ? irradiance.value.toFixed(2) : '0.00'}
           <span className="text-xs font-normal text-gray-500 ml-0.5">
-            {sensorData.irradiance.unit}
+            {irradiance.unit}
           </span>
         </div>
       </div>
@@ -46,9 +105,9 @@ const SensorOverview: React.FC<SensorDataProps> = ({ sensorData }) => {
           <span className="text-xs">Rain</span>
         </div>
         <div className="text-3xl font-bold leading-none">
-          {sensorData.rain.value}
+          {typeof rain.value === 'number' ? rain.value.toFixed(2) : '0.00'}
           <span className="text-xs font-normal text-gray-500 ml-0.5">
-            {sensorData.rain.unit}
+            {rain.unit}
           </span>
         </div>
       </div>
@@ -60,9 +119,9 @@ const SensorOverview: React.FC<SensorDataProps> = ({ sensorData }) => {
           <span className="text-xs">UV Index</span>
         </div>
         <div className="text-3xl font-bold leading-none">
-          {sensorData.uvIndex.value}
+          {typeof uvIndex.value === 'number' ? uvIndex.value.toFixed(2) : '0.00'}
           <span className="text-xs font-normal text-gray-500 ml-0.5">
-            {sensorData.uvIndex.unit}
+            {uvIndex.unit}
           </span>
         </div>
       </div>
@@ -74,9 +133,9 @@ const SensorOverview: React.FC<SensorDataProps> = ({ sensorData }) => {
           <span className="text-xs">Light</span>
         </div>
         <div className="text-3xl font-bold leading-none">
-          {sensorData.light.value}
+          {typeof light.value === 'number' ? light.value.toFixed(2) : '0.00'}
           <span className="text-xs font-normal text-gray-500 ml-0.5">
-            {sensorData.light.unit}
+            {light.unit}
           </span>
         </div>
       </div>
@@ -88,9 +147,9 @@ const SensorOverview: React.FC<SensorDataProps> = ({ sensorData }) => {
           <span className="text-xs">Humidity</span>
         </div>
         <div className="text-3xl font-bold leading-none">
-          {sensorData.humidity.value}
+          {typeof humidity.value === 'number' ? humidity.value.toFixed(2) : '0.00'}
           <span className="text-xs font-normal text-gray-500 ml-0.5">
-            {sensorData.humidity.unit}
+            {humidity.unit}
           </span>
         </div>
       </div>
@@ -102,9 +161,9 @@ const SensorOverview: React.FC<SensorDataProps> = ({ sensorData }) => {
           <span className="text-xs">Ambient Temp</span>
         </div>
         <div className="text-3xl font-bold leading-none">
-          {sensorData.temperature.value}
+          {typeof temperature.value === 'number' ? temperature.value.toFixed(2) : '0.00'}
           <span className="text-xs font-normal text-gray-500 ml-0.5">
-            {sensorData.temperature.unit}
+            {temperature.unit}
           </span>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { SensorDataType, PanelDataType, SystemStatusType } from "../types/dashboardTypes";
 
 // API service for dashboard data
-export const fetchSensorData = async (deviceId: string): Promise<SensorDataType> => {
+export const fetchSensorData = async (deviceId: string) => {
   try {
     // Build the query parameters
     const params = new URLSearchParams();
@@ -14,43 +14,22 @@ export const fetchSensorData = async (deviceId: string): Promise<SensorDataType>
     
     const result = await response.json();
     
-    // Transform API response to match our SensorDataType
-    return {
-      irradiance: { 
-        value: result.data.sensors.solar?.value || 0, 
-        unit: result.data.sensors.solar?.unit || 'W/m²' 
-      },
-      rain: { 
-        value: result.data.sensors.rain?.value || 0, 
-        unit: result.data.sensors.rain?.unit || '%' 
-      },
-      uvIndex: { 
-        value: result.data.sensors.uv?.value || 0, 
-        unit: result.data.sensors.uv?.unit || 'mW/cm²' 
-      },
-      light: { 
-        value: result.data.sensors.light?.value || 0, 
-        unit: result.data.sensors.light?.unit || 'lx' 
-      },
-      humidity: { 
-        value: result.data.sensors.humidity?.value || 0, 
-        unit: result.data.sensors.humidity?.unit || '%' 
-      },
-      temperature: { 
-        value: result.data.sensors.temperature?.value || 0, 
-        unit: result.data.sensors.temperature?.unit || '°C' 
-      }
-    };
+    // Return the API response data directly
+    return result.data;
   } catch (error) {
     console.error("Error fetching sensor data:", error);
     // Return fallback values on error
     return {
-      irradiance: { value: 0, unit: "W/m²" },
-      rain: { value: 0, unit: "%" },
-      uvIndex: { value: 0, unit: "mW/cm²" },
-      light: { value: 0, unit: "lx" },
-      humidity: { value: 0, unit: "%" },
-      temperature: { value: 0, unit: "°C" },
+      deviceId: "",
+      timestamp: new Date().toISOString(),
+      sensors: {
+        solar: { value: 0, unit: "W/m²" },
+        rain: { value: 0, unit: "%" },
+        uv: { value: 0, unit: "mW/cm²" },
+        light: { value: 0, unit: "lux" },
+        humidity: { value: 0, unit: "%" },
+        temperature: { value: 0, unit: "°C" }
+      }
     };
   }
 };

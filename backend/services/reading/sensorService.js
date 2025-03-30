@@ -377,7 +377,16 @@ async function calculatePowerAccumulation(result, deviceId, latestReading) {
   // Include latest reading in the right position if not already included
   let allReadings = [...readings];
   
-  // Only proceed if we have at least 2 readings
+  // Initialize with consistent structure
+  result.power_accumulation = {
+    panels: [],
+    total: 0,
+    average: 0,
+    period: "today",
+    unit: 'kWh'
+  };
+  
+  // Only proceed with calculation if we have at least 2 readings
   if (allReadings.length >= 2) {
     // Calculate power accumulation for each panel
     const panelAccumulations = {};
@@ -422,20 +431,24 @@ async function calculatePowerAccumulation(result, deviceId, latestReading) {
       unit: 'kWh'
     }));
     
-    result.power_accumulation = {
-      panels: panelAccumulationArray,
-      total: totalAccumulation,
-      average: Object.keys(panelAccumulations).length > 0 
-        ? totalAccumulation / Object.keys(panelAccumulations).length 
-        : 0,
-      period: "today",
-      unit: 'kWh'
-    };
+    // Update the pre-initialized structure
+    result.power_accumulation.panels = panelAccumulationArray;
+    result.power_accumulation.total = totalAccumulation;
+    result.power_accumulation.average = Object.keys(panelAccumulations).length > 0 
+      ? totalAccumulation / Object.keys(panelAccumulations).length 
+      : 0;
   } else {
-    result.power_accumulation = {
-      message: "Insufficient data for power accumulation calculation",
-      period: "today"
-    };
+    // Add message field for debugging but keep the structure consistent
+    result.power_accumulation.message = "Insufficient data for power accumulation calculation";
+    
+    // Add empty panel entries for panels found in the latest reading
+    if (latestReading.readings.ina226) {
+      result.power_accumulation.panels = latestReading.readings.ina226.map(sensor => ({
+        panelId: sensor.panelId,
+        energy: 0,
+        unit: 'kWh'
+      }));
+    }
   }
 }
 

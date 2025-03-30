@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { SensorDataType } from '../types/dashboardTypes';
+import { SensorDataType, SensorType } from '../types/dashboardTypes';
 
 export const useSocketConnection = (
   deviceId: string, 
@@ -44,37 +44,78 @@ export const useSocketConnection = (
     socketRef.current.on('sensorUpdate', (data) => {
       console.log('Received sensor update:', data);
       
-      // Update sensor data state
-      if (data.sensors) {
-        // Extract the first item from each sensor array or use default value if not available
-        const updatedSensorData: SensorDataType = {
-          irradiance: { 
-            value: data.sensors.solar?.length ? data.sensors.solar[0].value : 0, 
-            unit: data.sensors.solar?.length ? data.sensors.solar[0].unit : 'W/m²' 
-          },
-          rain: { 
-            value: data.sensors.rain?.length ? data.sensors.rain[0].value : 0, 
-            unit: data.sensors.rain?.length ? data.sensors.rain[0].unit : '%' 
-          },
-          uvIndex: { 
-            value: data.sensors.uv?.length ? data.sensors.uv[0].value : 0, 
-            unit: data.sensors.uv?.length ? data.sensors.uv[0].unit : 'mW/cm²' 
-          },
-          light: { 
-            value: data.sensors.light?.length ? data.sensors.light[0].value : 0, 
-            unit: data.sensors.light?.length ? data.sensors.light[0].unit : 'lx' 
-          },
-          humidity: { 
-            value: data.sensors.humidity?.length ? data.sensors.humidity[0].value : 0, 
-            unit: data.sensors.humidity?.length ? data.sensors.humidity[0].unit : '%' 
-          },
-          temperature: { 
-            value: data.sensors.temperature?.length ? data.sensors.temperature[0].value : 0, 
-            unit: data.sensors.temperature?.length ? data.sensors.temperature[0].unit : '°C' 
-          }
-        };
+      // Update sensor data state with the new API structure
+      if (data) {
+        // The socket might send just the data part or the full response
+        const sensorData = data.data || data;
         
-        setSensorData(updatedSensorData);
+        // Make sure we have a valid data structure before updating
+        if (sensorData.deviceId && sensorData.timestamp) {
+          // Transform the data structure to match the expected SensorDataType format
+          const transformedData: SensorDataType = {
+            deviceId: sensorData.deviceId,
+            timestamp: sensorData.timestamp,
+            sensors: {
+              solar: { value: 0, unit: '' },
+              rain: { value: 0, unit: '' },
+              uv: { value: 0, unit: '' },
+              light: { value: 0, unit: '' },
+              humidity: { value: 0, unit: '' },
+              temperature: { value: 0, unit: '' }
+            }
+          };
+          
+          // Process each sensor type
+          const sensorKeys = ['solar', 'rain', 'uv', 'light', 'humidity', 'temperature'];
+          
+          sensorKeys.forEach(key => {
+            if (Array.isArray(sensorData.sensors[key])) {
+              // Calculate average value for the sensor type
+              const values = sensorData.sensors[key].map((panel: any) => panel.value);
+              const avgValue = values.length > 0 
+                ? values.reduce((sum: number, val: number) => sum + val, 0) / values.length 
+                : 0;
+              
+              // Get unit from the first panel (assuming all panels have the same unit)
+              const unit = sensorData.sensors[key]?.[0]?.unit || '';
+              
+              // Create SensorType structure
+              transformedData.sensors[key] = {
+                value: avgValue,
+                unit: unit,
+                panelCount: sensorData.sensors[key].length,
+                panels: sensorData.sensors[key]
+              };
+            } else {
+              // If already in the correct format, use as is
+              transformedData.sensors[key] = sensorData.sensors[key] || { value: 0, unit: '' };
+            }
+          });
+          
+          // Handle any other sensor types not explicitly listed
+          Object.keys(sensorData.sensors).forEach(key => {
+            if (!sensorKeys.includes(key) && Array.isArray(sensorData.sensors[key])) {
+              const values = sensorData.sensors[key].map((panel: any) => panel.value);
+              const avgValue = values.length > 0 
+                ? values.reduce((sum: number, val: number) => sum + val, 0) / values.length 
+                : 0;
+              
+              const unit = sensorData.sensors[key]?.[0]?.unit || '';
+              
+              transformedData.sensors[key] = {
+                value: avgValue,
+                unit: unit,
+                panelCount: sensorData.sensors[key].length,
+                panels: sensorData.sensors[key]
+              };
+            }
+          });
+          
+          console.log('Transformed sensor data:', transformedData);
+          setSensorData(transformedData);
+        } else {
+          console.error('Invalid sensor data structure received from socket:', sensorData);
+        }
       }
     });
     
