@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import SensorOverview from "../components/data/SensorOverview";
-import EnergyProduction, { TimePeriod } from "../components/graphs/EnergyProduction";
+import EnergyProduction from "../components/graphs/EnergyProduction";
 import SystemHealth from "../components/data/SystemHealth";
 import BatteryChargeDischarge from "../components/graphs/BatteryChargeDischarge";
 import PanelTemperatureOverheating from "../components/graphs/PanelTemperatureOverheating";
@@ -18,7 +18,6 @@ export default function Dashboard() {
   const { user, updateUser } = useAuth();
   
   // State
-  const [selectedTimePeriod, setSelectedTimePeriod] = useState<TimePeriod>('24h');
   const [selectedPanel, setSelectedPanel] = useState<string>("All Panels");
   const [deviceId, setDeviceId] = useState<string>("");
   const [availableDevices, setAvailableDevices] = useState<Array<{deviceId: string; name: string; location?: string}>>([]);
@@ -61,12 +60,6 @@ export default function Dashboard() {
       setFilteredPanelData(panelData.filter(panel => panel.id === panelId));
     }
   }, [selectedPanel, panelData]);
-  
-  // Function to handle time period changes
-  const handleTimePeriodChange = (period: TimePeriod) => {
-    setSelectedTimePeriod(period);
-    console.log(`Time period changed to: ${period}`);
-  };
 
   // Function to handle panel selection
   const handlePanelChange = (panel: string) => {
@@ -211,9 +204,7 @@ export default function Dashboard() {
       {/* Banner integration */}
       <Banner 
         activeTab="Dashboard" 
-        onTimePeriodChange={handleTimePeriodChange}
         onPanelChange={handlePanelChange}
-        selectedTimePeriod={selectedTimePeriod}
         deviceId={deviceId}
         selectedPanel={selectedPanel}
       />
@@ -273,7 +264,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="w-full h-[280px] md:h-[40vw] max-h-[280px]">
-                <EnergyProduction timePeriod={selectedTimePeriod} />
+                <EnergyProduction />
               </div>
             </div>
           </div>
@@ -302,7 +293,7 @@ export default function Dashboard() {
                 Battery Charge
               </h3>
               <div className="w-full h-[220px] md:h-[35vw] max-h-[220px]">
-                <BatteryChargeDischarge timePeriod={selectedTimePeriod} />
+                <BatteryChargeDischarge />
               </div>
             </div>
           </div>
@@ -314,7 +305,7 @@ export default function Dashboard() {
                 Panel Temperature
               </h3>
               <div className="w-full h-[220px] md:h-[35vw] max-h-[220px]">
-                <PanelTemperatureOverheating timePeriod={selectedTimePeriod} />
+                <PanelTemperatureOverheating />
               </div>
             </div>
           </div>
@@ -326,7 +317,7 @@ export default function Dashboard() {
                 Irradiance
               </h3>
               <div className="w-full h-[220px] md:h-[35vw] max-h-[220px]">
-                <IrradianceGraph timePeriod={selectedTimePeriod} />
+                <IrradianceGraph />
               </div>
             </div>
           </div>

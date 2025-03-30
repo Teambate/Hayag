@@ -1,14 +1,11 @@
 import { SensorDataType, PanelDataType, SystemStatusType } from "../types/dashboardTypes";
 
 // API service for dashboard data
-export const fetchSensorData = async (deviceId: string, panelIds?: string[]): Promise<SensorDataType> => {
+export const fetchSensorData = async (deviceId: string): Promise<SensorDataType> => {
   try {
     // Build the query parameters
     const params = new URLSearchParams();
     params.append('deviceId', deviceId);
-    if (panelIds && panelIds.length > 0) {
-      params.append('panelIds', panelIds.join(','));
-    }
     
     const response = await fetch(`/api/readings/current?${params.toString()}`);
     if (!response.ok) {

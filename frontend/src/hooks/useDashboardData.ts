@@ -16,13 +16,8 @@ export const useDashboardData = (deviceId: string, selectedPanel: string) => {
     try {
       setIsLoading(true);
       
-      // Get panel IDs for filtering if a specific panel is selected
-      const panelIdsFilter = selectedPanel !== "All Panels" 
-        ? [selectedPanel.split(" ")[1]] 
-        : undefined;
-      
       const [sensors, panels, status] = await Promise.all([
-        fetchSensorData(deviceId, panelIdsFilter),
+        fetchSensorData(deviceId),
         fetchPanelData(),
         fetchSystemStatus()
       ]);
@@ -37,10 +32,10 @@ export const useDashboardData = (deviceId: string, selectedPanel: string) => {
     }
   };
 
-  // Fetch data when deviceId or selectedPanel changes
+  // Fetch data only when deviceId changes
   useEffect(() => {
     fetchDashboardData();
-  }, [deviceId, selectedPanel]);
+  }, [deviceId]);
 
   return {
     sensorData,

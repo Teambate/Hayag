@@ -2,16 +2,11 @@ import SensorReading from "../../model/reading.model.js";
 import { processReadingForCurrentValues } from "../../utils/sensorUtils.js";
 
 export const getCurrentSensorValuesService = async (params) => {
-  const { deviceId, panelIds } = params;
+  const { deviceId } = params;
   
   if (!deviceId) {
     throw new Error("deviceId is required");
   }
-  
-  // Convert panelIds to array if provided
-  const panelIdsArray = panelIds ? 
-    (Array.isArray(panelIds) ? panelIds : panelIds.split(',')) : 
-    null;
   
   // Find the most recent reading for the specified device
   const latestReading = await SensorReading.findOne(
@@ -54,23 +49,8 @@ export const getCurrentSensorValuesService = async (params) => {
       continue;
     }
     
-    let relevantSensors;
-    
-    // Filter by panelIds if provided
-    if (panelIdsArray && panelIdsArray.length > 0) {
-      relevantSensors = latestReading.readings[path].filter(sensor => 
-        panelIdsArray.includes(sensor.panelId)
-      );
-      
-      // Skip if no matching panels for this sensor type
-      if (relevantSensors.length === 0) {
-        result.sensors[key] = null;
-        continue;
-      }
-    } else {
-      // Use all sensors of this type if no panel filter
-      relevantSensors = latestReading.readings[path];
-    }
+    // Use all sensors of this type
+    const relevantSensors = latestReading.readings[path];
     
     // For nested values (humidity, temperature, current, voltage)
     if (valueField) {
@@ -79,10 +59,18 @@ export const getCurrentSensorValuesService = async (params) => {
       const average = sum / values.length;
       const unit = relevantSensors[0][valueField].unit;
       
+      // Include individual panel values
+      const panels = relevantSensors.map(sensor => ({
+        panelId: sensor.panelId,
+        value: sensor[valueField].average,
+        unit: sensor[valueField].unit
+      }));
+      
       result.sensors[key] = {
         value: average,
         unit: unit,
-        panelCount: relevantSensors.length
+        panelCount: relevantSensors.length,
+        panels: panels
       };
     } 
     // For direct values (solar, rain, uv, light, battery, panel_temp)
@@ -92,10 +80,18 @@ export const getCurrentSensorValuesService = async (params) => {
       const average = sum / values.length;
       const unit = relevantSensors[0].unit;
       
+      // Include individual panel values
+      const panels = relevantSensors.map(sensor => ({
+        panelId: sensor.panelId,
+        value: sensor.average,
+        unit: sensor.unit
+      }));
+      
       result.sensors[key] = {
         value: average,
         unit: unit,
-        panelCount: relevantSensors.length
+        panelCount: relevantSensors.length,
+        panels: panels
       };
     }
   }
@@ -113,10 +109,7 @@ export const getCurrentSensorValuesService = async (params) => {
     const panelPowers = [];
     let totalPower = 0;
     
-    // Filter panels if needed
-    const relevantPanels = panelIdsArray && panelIdsArray.length > 0 
-      ? latestReading.readings.ina226.filter(sensor => panelIdsArray.includes(sensor.panelId))
-      : latestReading.readings.ina226;
+    const relevantPanels = latestReading.readings.ina226;
     
     for (const sensor of relevantPanels) {
       const voltage = sensor.voltage.average;
@@ -140,7 +133,7 @@ export const getCurrentSensorValuesService = async (params) => {
     };
     
     // Calculate power accumulation for today (from midnight to current time)
-    await calculatePowerAccumulation(result, deviceId, latestReading, panelIdsArray);
+    await calculatePowerAccumulation(result, deviceId, latestReading);
   }
   
   return result;
@@ -352,7 +345,7 @@ export const bulkInsertReadingsService = async (readingsData, options = {}, io =
   return result;
 };
 
-async function calculatePowerAccumulation(result, deviceId, latestReading, panelIdsArray) {
+async function calculatePowerAccumulation(result, deviceId, latestReading) {
   // Get start of today in device's timezone (or UTC if not available)
   const today = new Date(latestReading.endTime);
   today.setHours(0, 0, 0, 0); // Set to beginning of the day
@@ -378,21 +371,6 @@ async function calculatePowerAccumulation(result, deviceId, latestReading, panel
     }
   ];
   
-  // If panel IDs are specified, filter by panel ID
-  if (panelIdsArray && panelIdsArray.length > 0) {
-    pipeline.push({
-      $addFields: {
-        "readings.ina226": {
-          $filter: {
-            input: "$readings.ina226",
-            as: "sensor",
-            cond: { $in: ["$$sensor.panelId", panelIdsArray] }
-          }
-        }
-      }
-    });
-  }
-  
   // Get readings
   const readings = await SensorReading.aggregate(pipeline);
   
@@ -415,9 +393,6 @@ async function calculatePowerAccumulation(result, deviceId, latestReading, panel
       
       // Process each panel in the current reading
       for (const sensor of currReading.readings.ina226 || []) {
-        // Skip if panelIds filter is applied and this panel is not included
-        if (panelIdsArray && !panelIdsArray.includes(sensor.panelId)) continue;
-        
         // Find the same panel in the previous reading
         const prevSensor = prevReading.readings.ina226?.find(s => s.panelId === sensor.panelId);
         
