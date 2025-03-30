@@ -154,30 +154,34 @@ export const getPanelIdsForDeviceService = async (deviceId) => {
   // Define all sensor types that might have panel IDs
   const sensorTypes = ["rain", "uv", "light", "dht22", "panel_temp", "ina226", "solar", "battery"];
   
-  // Find all readings for this device
-  const readings = await SensorReading.find({ deviceId: deviceId });
+  // Use MongoDB aggregation to get unique panel IDs directly from the database
+  // This is much more efficient than fetching all readings
+  const uniquePanelIds = [];
   
-  // Collect all panel IDs
-  const panelIdSet = new Set();
-  
-  // Process each reading
-  readings.forEach(reading => {
-    // Check each sensor type
-    sensorTypes.forEach(type => {
-      // If this sensor type exists in the reading
-      if (reading.readings[type] && Array.isArray(reading.readings[type])) {
-        // Add all panel IDs to the set
-        reading.readings[type].forEach(sensor => {
-          if (sensor.panelId) {
-            panelIdSet.add(sensor.panelId);
-          }
-        });
+  // Process each sensor type separately
+  for (const sensorType of sensorTypes) {
+    // Build the path to check in aggregation
+    const path = `readings.${sensorType}.panelId`;
+    
+    // Aggregation pipeline to get unique panel IDs for this sensor type
+    const result = await SensorReading.aggregate([
+      { $match: { deviceId } },
+      { $unwind: `$readings.${sensorType}` },
+      { $match: { [`readings.${sensorType}.panelId`]: { $exists: true } } },
+      { $group: { _id: `$readings.${sensorType}.panelId` } },
+      { $project: { _id: 0, panelId: '$_id' } }
+    ]);
+    
+    // Add unique panel IDs from this sensor type to the result
+    result.forEach(item => {
+      if (item.panelId && !uniquePanelIds.includes(item.panelId)) {
+        uniquePanelIds.push(item.panelId);
       }
     });
-  });
+  }
   
-  // Convert Set to Array and sort
-  const uniquePanelIds = Array.from(panelIdSet).sort();
+  // Sort the panel IDs
+  uniquePanelIds.sort();
   
   return {
     count: uniquePanelIds.length,
