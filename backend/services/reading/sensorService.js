@@ -337,13 +337,47 @@ async function calculatePowerAccumulation(result, deviceId, latestReading, panel
   const today = new Date(latestReading.createdAt);
   today.setHours(0, 0, 0, 0); // Set to beginning of the day
   
-  const previousReadings = await SensorReading.find({
-    deviceId: deviceId,
-    createdAt: { $gte: today, $lt: latestReading.createdAt }
-  }).sort({ createdAt: 1 });
+  // Use aggregation pipeline instead of fetching all readings
+  const pipeline = [
+    // Match readings from today until latest reading
+    {
+      $match: {
+        deviceId: deviceId,
+        createdAt: { $gte: today, $lt: latestReading.createdAt }
+      }
+    },
+    // Sort by creation time
+    { $sort: { createdAt: 1 } },
+    // Only include fields we need
+    {
+      $project: {
+        createdAt: 1,
+        deviceId: 1,
+        "readings.ina226": 1
+      }
+    }
+  ];
   
-  // Include the latest reading
-  const allReadings = [...previousReadings, latestReading];
+  // If panel IDs are specified, filter by panel ID
+  if (panelIdsArray && panelIdsArray.length > 0) {
+    pipeline.push({
+      $addFields: {
+        "readings.ina226": {
+          $filter: {
+            input: "$readings.ina226",
+            as: "sensor",
+            cond: { $in: ["$$sensor.panelId", panelIdsArray] }
+          }
+        }
+      }
+    });
+  }
+  
+  // Get readings
+  const readings = await SensorReading.aggregate(pipeline);
+  
+  // Include latest reading in the right position
+  let allReadings = [...readings];
   
   // Only proceed if we have at least 2 readings
   if (allReadings.length >= 2) {
@@ -396,7 +430,9 @@ async function calculatePowerAccumulation(result, deviceId, latestReading, panel
     result.power_accumulation = {
       panels: panelAccumulationArray,
       total: totalAccumulation,
-      average: totalAccumulation / Object.keys(panelAccumulations).length,
+      average: Object.keys(panelAccumulations).length > 0 
+        ? totalAccumulation / Object.keys(panelAccumulations).length 
+        : 0,
       period: "today",
       unit: 'kWh'
     };
