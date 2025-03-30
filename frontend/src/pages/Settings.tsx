@@ -1,19 +1,24 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   Save, 
-  Bell, 
-  RefreshCw, 
   Clock, 
-  LayoutGrid,
-  Thermometer, 
-  ChevronRight, 
-  ShieldCheck,
-  Check,
+  RefreshCw, 
+  User,
+  MapPin,
+  Smartphone,
+  Plus,
+  ChevronRight,
+  Settings as SettingsIcon,
+  Bell,
   ChevronDown
 } from "lucide-react";
 import Banner from "../components/layout/Banner";
 import { TimePeriod } from "../components/graphs/EnergyProduction";
 import { Button } from "../components/ui/button";
+import { useAuth } from "../context/AuthContext";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
+import { Input } from "../components/ui/input";
+import AddDeviceModal from "../components/ui/AddDeviceModal";
 
 // Define types for our components
 interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
@@ -22,39 +27,40 @@ interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
   children: React.ReactNode;
 }
 
-interface SwitchProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
-  className?: string;
-}
-
-interface SelectOption {
-  value: string;
-  label?: string;
-}
-
 interface SelectProps {
   value: string;
   onChange: (value: string) => void;
-  options: SelectOption[];
-  placeholder?: string;
+  options: { value: string; label: string }[];
   className?: string;
 }
 
-interface RadioGroupProps {
-  value: string;
-  onValueChange: (value: string) => void;
-  children: React.ReactNode;
-  className?: string;
+interface SelectOptionProps {
+  option: { value: string; label: string };
+  isSelected: boolean;
+  onClick: () => void;
 }
 
-interface RadioItemProps {
-  value: string;
-  checked: boolean;
-  onChange: (value: string) => void;
-  id: string;
-  children: React.ReactNode;
-}
+// Simple toggle switch component
+const Switch = ({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) => (
+  <button
+    role="switch"
+    aria-checked={checked}
+    className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer items-center rounded-full border-2 transition-colors focus:outline-none ${
+      checked 
+        ? 'bg-white border-[#65B08F]' 
+        : 'bg-white border-gray-200'
+    }`}
+    onClick={() => onChange(!checked)}
+  >
+    <span
+      className={`pointer-events-none block h-4 w-4 rounded-full shadow-lg transition-transform ${
+        checked 
+          ? 'translate-x-5 bg-[#65B08F]' 
+          : 'translate-x-0 bg-gray-200'
+      }`}
+    />
+  </button>
+);
 
 // Simple Label component
 const Label = ({ htmlFor, className = "", children, ...props }: LabelProps) => (
@@ -67,68 +73,110 @@ const Label = ({ htmlFor, className = "", children, ...props }: LabelProps) => (
   </label>
 );
 
-// Simple Switch component
-const Switch = ({ checked, onCheckedChange, className = "", ...props }: SwitchProps) => (
-  <button
-    role="switch"
-    aria-checked={checked}
-    onClick={() => onCheckedChange(!checked)}
-    className={`
-      relative inline-flex h-5 w-10 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent 
-      transition-colors focus:outline-none focus:ring-1
-      ${checked ? 'bg-[#65B08F]' : 'bg-gray-200'}
-      ${className}
-    `}
-    {...props}
+// Select Option component for custom dropdown
+const SelectOption = ({ option, isSelected, onClick }: SelectOptionProps) => (
+  <div
+    className={`px-3 py-2 cursor-pointer hover:bg-[#f0f9f4] ${
+      isSelected ? 'bg-[#f0f9f4] text-[#1e3a29]' : 'text-gray-700'
+    }`}
+    onClick={onClick}
   >
-    <span
-      className={`
-        pointer-events-none block h-4 w-4 rounded-full bg-white shadow-lg transition-transform 
-        ${checked ? 'translate-x-5' : 'translate-x-0'}
-      `}
-    />
-  </button>
+    <div className="flex items-center justify-between">
+      <span>{option.label}</span>
+      {isSelected && (
+        <div className="text-[#65B08F]">✓</div>
+      )}
+    </div>
+  </div>
 );
 
-// Simple Select component
-const Select = ({ value, onChange, options, placeholder, className = "" }: SelectProps) => {
-  const [open, setOpen] = useState(false);
+// Enhanced Select component with custom styling
+const Select = ({ value, onChange, options, className = "" }: SelectProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedOption = options.find(option => option.value === value);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [buttonWidth, setButtonWidth] = useState(0);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   
+  // Update the button width when the component mounts or window resizes
+  useEffect(() => {
+    if (buttonRef.current) {
+      setButtonWidth(buttonRef.current.offsetWidth);
+    }
+    
+    const updateWidth = () => {
+      if (buttonRef.current) {
+        setButtonWidth(buttonRef.current.offsetWidth);
+      }
+    };
+    
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, [buttonRef]);
+
+  // Determine if dropdown should appear above or below button
+  const getDropdownPosition = () => {
+    if (!buttonRef.current) return { top: 0, bottom: 'auto' };
+    
+    const buttonRect = buttonRef.current.getBoundingClientRect();
+    const dropdownHeight = 240; // Max height of dropdown
+    const windowHeight = window.innerHeight;
+    const spaceBelow = windowHeight - buttonRect.bottom;
+    
+    if (spaceBelow < dropdownHeight && buttonRect.top > spaceBelow) {
+      // Position above if more space above than below
+      return { 
+        bottom: `${windowHeight - buttonRect.top}px`, 
+        top: 'auto',
+        maxHeight: `${Math.min(buttonRect.top - 20, 300)}px` 
+      };
+    } else {
+      // Position below
+      return { 
+        top: `${buttonRect.bottom + 4}px`, 
+        bottom: 'auto',
+        maxHeight: `${Math.min(spaceBelow - 20, 300)}px`
+      };
+    }
+  };
+
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => setOpen(!open)}
-        className={`
-          flex h-9 w-full items-center justify-between rounded-md border px-3 py-2 text-sm
-          bg-[#FAFDFB] border-transparent hover:border-[#6CBC92] ${className}
-        `}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex h-9 w-full items-center justify-between rounded-md border border-gray-200 px-3 py-2 text-sm bg-white hover:border-[#65B08F] transition-colors ${className}`}
       >
-        <span>{value || placeholder}</span>
-        <ChevronDown className="h-4 w-4 opacity-50" />
+        <span className="text-[#1e3a29]">{selectedOption?.label || value}</span>
+        <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       
-      {open && (
-        <div className="absolute mt-1 w-full z-10 bg-white border rounded-md shadow-lg">
-          <div className="py-1">
-            {options.map((option) => (
-              <button
-                key={option.value}
-                className={`
-                  flex items-center w-full px-3 py-1.5 text-sm hover:bg-gray-100 text-left
-                  ${value === option.value ? 'bg-gray-50' : ''}
-                `}
-                onClick={() => {
-                  onChange(option.value);
-                  setOpen(false);
-                }}
-              >
-                {option.label || option.value}
-                {value === option.value && (
-                  <Check className="ml-auto h-4 w-4" />
-                )}
-              </button>
-            ))}
+      {isOpen && (
+        <div className="fixed inset-0 z-50" onClick={() => setIsOpen(false)}>
+          <div 
+            ref={dropdownRef}
+            className="fixed z-50 rounded-md border border-gray-200 bg-white shadow-lg overflow-hidden"
+            style={{ 
+              width: Math.max(buttonWidth, 240),
+              left: buttonRef.current?.getBoundingClientRect().left || 0,
+              ...getDropdownPosition()
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-full h-full overflow-auto">
+              {options.map((option) => (
+                <SelectOption
+                  key={option.value}
+                  option={option}
+                  isSelected={value === option.value}
+                  onClick={() => {
+                    onChange(option.value);
+                    setIsOpen(false);
+                  }}
+                />
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -136,353 +184,569 @@ const Select = ({ value, onChange, options, placeholder, className = "" }: Selec
   );
 };
 
-// Simple Radio component
-const RadioGroup = ({ value, onValueChange, children, className = "", ...props }: RadioGroupProps) => (
-  <div className={`flex items-center space-x-4 ${className}`} {...props}>
-    {children}
-  </div>
+// Add Device Button component (similar to AddNoteButton in Notes page)
+const AddDeviceButton = ({ onClick }: { onClick: () => void }) => (
+  <button
+    onClick={onClick}
+    className="flex items-center bg-white border border-[#65B08F] hover:bg-[#f0f9f4] text-[#1e3a29] px-3 py-2 rounded-md shadow-sm transition-colors"
+  >
+    <Plus className="h-4 w-4 mr-1 text-[#65B08F]" />
+    <span className="text-sm font-medium">Add Device</span>
+  </button>
 );
 
-const RadioItem = ({ value, checked, onChange, id, children }: RadioItemProps) => (
-  <div className="flex items-center space-x-1">
-    <input
-      type="radio"
-      id={id}
-      checked={checked}
-      onChange={() => onChange(value)}
-      className="h-4 w-4 text-[#65B08F] border-gray-300 focus:ring-[#65B08F]"
-    />
-    <Label htmlFor={id}>{children}</Label>
-  </div>
-);
+// Custom device selector dropdown
+const DeviceSelector = ({ 
+  value, 
+  devices, 
+  onChange 
+}: { 
+  value: string; 
+  devices: Array<{deviceId: string; name: string; location: string}>; 
+  onChange: (deviceId: string) => void; 
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedDevice = devices.find(device => device.deviceId === value);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [buttonWidth, setButtonWidth] = useState(0);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Update the button width when the component mounts or window resizes
+  useEffect(() => {
+    if (buttonRef.current) {
+      setButtonWidth(buttonRef.current.offsetWidth);
+    }
+    
+    const updateWidth = () => {
+      if (buttonRef.current) {
+        setButtonWidth(buttonRef.current.offsetWidth);
+      }
+    };
+    
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, [buttonRef]);
 
-export default function Settings() {
-  // General preferences state
+  // Determine if dropdown should appear above or below button
+  const getDropdownPosition = () => {
+    if (!buttonRef.current) return { top: 0, bottom: 'auto' };
+    
+    const buttonRect = buttonRef.current.getBoundingClientRect();
+    const dropdownHeight = 240; // Max height of dropdown
+    const windowHeight = window.innerHeight;
+    const spaceBelow = windowHeight - buttonRect.bottom;
+    
+    if (spaceBelow < dropdownHeight && buttonRect.top > spaceBelow) {
+      // Position above if more space above than below
+      return { 
+        bottom: `${windowHeight - buttonRect.top}px`, 
+        top: 'auto',
+        maxHeight: `${Math.min(buttonRect.top - 20, 300)}px` 
+      };
+    } else {
+      // Position below
+      return { 
+        top: `${buttonRect.bottom + 4}px`, 
+        bottom: 'auto',
+        maxHeight: `${Math.min(spaceBelow - 20, 300)}px`
+      };
+    }
+  };
+
+  return (
+    <div className="relative">
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex h-9 w-full items-center justify-between rounded-md border border-gray-200 px-3 py-2 text-sm bg-white hover:border-[#65B08F] transition-colors"
+      >
+        <span className="text-[#1e3a29]">{selectedDevice?.name || "Select device"}</span>
+        <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      
+      {isOpen && (
+        <div className="fixed inset-0 z-50" onClick={() => setIsOpen(false)}>
+          <div 
+            ref={dropdownRef}
+            className="fixed z-50 rounded-md border border-gray-200 bg-white shadow-lg overflow-hidden"
+            style={{ 
+              width: Math.max(buttonWidth, 240),
+              left: buttonRef.current?.getBoundingClientRect().left || 0,
+              ...getDropdownPosition()
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-full h-full overflow-auto">
+              {devices.map((device) => (
+                <div
+                  key={device.deviceId}
+                  className={`px-3 py-2 cursor-pointer hover:bg-[#f0f9f4] ${
+                    value === device.deviceId ? 'bg-[#f0f9f4] text-[#1e3a29]' : 'text-gray-700'
+                  }`}
+                  onClick={() => {
+                    onChange(device.deviceId);
+                    setIsOpen(false);
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">{device.name}</div>
+                      {device.location && (
+                        <div className="text-xs text-gray-500">{device.location}</div>
+                      )}
+                    </div>
+                    {value === device.deviceId && (
+                      <div className="text-[#65B08F]">✓</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Props for accessing the setActiveTab function
+interface SettingsProps {
+  setActiveTab?: (tab: string) => void;
+}
+
+export default function Settings({ setActiveTab }: SettingsProps) {
+  const { user, updateUser } = useAuth();
+  
+  // Profile settings state
+  const [name, setName] = useState(user?.name || "");
+  const [location, setLocation] = useState(user?.devices?.[0]?.location || "");
+  const [currentDevice, setCurrentDevice] = useState(user?.devices?.[0]?.name || "");
+  const [deviceId, setDeviceId] = useState(user?.devices?.[0]?.deviceId || "");
+  const [availableDevices, setAvailableDevices] = useState(
+    user?.devices?.map(device => ({
+      deviceId: device.deviceId,
+      name: device.name,
+      location: device.location
+    })) || []
+  );
+  
+  // Preferences state
   const [defaultTimePeriod, setDefaultTimePeriod] = useState<TimePeriod>("24h");
-  const [defaultPanel, setDefaultPanel] = useState("All Panels");
   const [refreshRate, setRefreshRate] = useState("5");
-  const [temperatureUnit, setTemperatureUnit] = useState("celsius");
   
-  // Notification settings state
-  const [systemAlerts, setSystemAlerts] = useState(true);
-  const [performanceReports, setPerformanceReports] = useState(false);
+  // Notification preferences
+  const [systemNotifications, setSystemNotifications] = useState(true);
+  const [reportFrequency, setReportFrequency] = useState("weekly");
   
-  // State for showing password modal
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  // State for device selector dialog
+  const [isDeviceSelectorOpen, setIsDeviceSelectorOpen] = useState(false);
+  const [isAddDeviceModalOpen, setIsAddDeviceModalOpen] = useState(false);
   
-  // State for password change form
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  // Status message state
+  const [statusMessage, setStatusMessage] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   
-  // Save settings handler
-  const handleSaveSettings = () => {
-    // In a real app, this would save the settings to the backend
-    console.log("Settings saved:", {
-      defaultTimePeriod,
-      defaultPanel,
-      refreshRate,
-      temperatureUnit,
-      systemAlerts,
-      performanceReports
-    });
+  // Update navbar active tab when component mounts
+  useEffect(() => {
+    if (setActiveTab) {
+      setActiveTab("Settings");
+    }
+  }, [setActiveTab]);
+  
+  // Update profile settings from user context when it changes
+  useEffect(() => {
+    if (user) {
+      setName(user.name || "");
+      
+      if (user.devices && user.devices.length > 0) {
+        setLocation(user.devices[0].location || "");
+        setCurrentDevice(user.devices[0].name || "");
+        setDeviceId(user.devices[0].deviceId || "");
+        setAvailableDevices(
+          user.devices.map(device => ({
+            deviceId: device.deviceId,
+            name: device.name,
+            location: device.location
+          }))
+        );
+      }
+    }
+  }, [user]);
+  
+  // Handle device change
+  const handleDeviceChange = (newDeviceId: string) => {
+    setDeviceId(newDeviceId);
+    
+    const selectedDevice = availableDevices.find(
+      device => device.deviceId === newDeviceId
+    );
+    
+    if (selectedDevice) {
+      setCurrentDevice(selectedDevice.name);
+      setLocation(selectedDevice.location);
+    }
+  };
+  
+  // Handle adding a new device
+  const handleAddDevice = (device: { deviceId: string; name: string; location: string }) => {
+    // Update available devices
+    setAvailableDevices(prev => [...prev, device]);
+    
+    // If this is the first device, set it as selected
+    if (availableDevices.length === 0) {
+      setDeviceId(device.deviceId);
+      setCurrentDevice(device.name);
+      setLocation(device.location);
+    }
     
     // Show success message
-    alert("Settings saved successfully!");
-  };
-  
-  // Toggle password modal
-  const togglePasswordModal = () => {
-    setShowPasswordModal(!showPasswordModal);
-    // Reset form fields when closing
-    if (showPasswordModal) {
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    }
-  };
-  
-  // Change password handler
-  const handleChangePassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    // In a real app, this would update the password via API
-    console.log("Password change requested", {
-      currentPassword,
-      newPassword,
-      confirmPassword
+    setStatusMessage({
+      message: "Device added successfully!",
+      type: 'success'
     });
     
-    // Validate passwords
-    if (newPassword !== confirmPassword) {
-      alert("New passwords don't match!");
-      return;
-    }
-    
-    // Show success message and close modal
-    alert("Password changed successfully!");
-    togglePasswordModal();
+    // Clear message after 3 seconds
+    setTimeout(() => {
+      setStatusMessage(null);
+    }, 3000);
   };
   
-  // Handle time period change with proper typing
-  const handleTimePeriodChange = (value: string) => {
-    setDefaultTimePeriod(value as TimePeriod);
+  // Save settings handler
+  const handleSaveSettings = async () => {
+    try {
+      // In a real app, this would save the settings to the backend
+      console.log("Settings saved:", {
+        name,
+        location,
+        deviceId,
+        defaultTimePeriod,
+        refreshRate,
+        systemNotifications,
+        reportFrequency
+      });
+      
+      // Update user in context if needed
+      if (user) {
+        // Create updated user object
+        const updatedUser = {
+          ...user,
+          name
+        };
+        
+        // Update device location in the selected device
+        if (user.devices) {
+          updatedUser.devices = user.devices.map(device => 
+            device.deviceId === deviceId 
+              ? { ...device, location } 
+              : device
+          );
+        }
+        
+        // Update user in context
+        updateUser(updatedUser);
+      }
+      
+      // Show success message
+      setStatusMessage({
+        message: "Settings saved successfully!",
+        type: 'success'
+      });
+      
+      // Clear message after 3 seconds
+      setTimeout(() => {
+        setStatusMessage(null);
+      }, 3000);
+    } catch (error) {
+      console.error("Error saving settings:", error);
+      
+      // Show error message
+      setStatusMessage({
+        message: "Failed to save settings. Please try again.",
+        type: 'error'
+      });
+      
+      // Clear message after 3 seconds
+      setTimeout(() => {
+        setStatusMessage(null);
+      }, 3000);
+    }
   };
   
   return (
-    <div className="flex flex-col h-screen">
-      {/* Banner */}
+    <>
       <Banner activeTab="Settings" />
       
-      {/* Settings content container */}
-      <div className="flex-grow overflow-auto bg-[#fafdfb]">
-        <div className="max-w-[1000px] mx-auto p-6">
-          <div className="bg-white rounded-lg shadow-sm">
-            {/* Header */}
-            <div className="p-6 border-b">
-              <h1 className="text-2xl font-semibold text-[#1e3a29]">Settings</h1>
-              <p className="text-gray-500 text-sm mt-1">Configure your dashboard preferences</p>
+      <div className="max-w-5xl mx-auto py-6 px-4">
+        {/* Header section with title and actions */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center">
+            <h1 className="text-2xl font-semibold text-[#1e3a29]">Settings</h1>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <Button 
+              onClick={handleSaveSettings}
+              className="bg-white border border-[#65B08F] hover:bg-[#f0f9f4] text-[#1e3a29] flex items-center transition-colors"
+            >
+              <Save className="h-4 w-4 mr-2 text-[#65B08F]" />
+              Save Settings
+            </Button>
+          </div>
+        </div>
+        
+        {/* Status message */}
+        {statusMessage && (
+          <div className={`mb-4 p-3 rounded-md ${
+            statusMessage.type === 'success' 
+              ? 'bg-green-100 text-green-800 border border-green-200' 
+              : 'bg-red-100 text-red-800 border border-red-200'
+          }`}>
+            {statusMessage.message}
+          </div>
+        )}
+        
+        {/* Settings sections as cards, similar to Notes */}
+        <div className="space-y-6">
+          {/* Profile Section */}
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-gray-100 flex items-center">
+              <User className="h-5 w-5 mr-2 text-[#65B08F]" />
+              <h2 className="text-lg font-medium text-gray-800">Profile</h2>
             </div>
             
-            {/* Settings sections */}
-            <div className="p-6">
-              {/* General preferences section */}
-              <div className="mb-8">
-                <h2 className="text-lg font-medium text-gray-800 mb-4 flex items-center">
-                  <LayoutGrid className="h-5 w-5 mr-2 text-[#65B08F]" />
-                  General Preferences
-                </h2>
+            <div className="p-5 space-y-5">
+              {/* Device selection */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4 bg-[#FAFDFB] p-4 rounded-md border border-gray-100">
+                <div className="flex items-center">
+                  <Smartphone className="h-5 w-5 mr-2 text-gray-500" />
+                  <div>
+                    <Label className="block font-medium text-base">Current Device</Label>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {availableDevices.length > 0 
+                        ? "Select which device you're configuring" 
+                        : "No devices available. Add a device to get started."}
+                    </p>
+                  </div>
+                </div>
                 
-                <div className="space-y-4">
-                  {/* Default time period */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <Clock className="h-4 w-4 mr-2 text-gray-500" />
-                      <Label>Default Time Period</Label>
-                    </div>
-                    <Select 
-                      value={defaultTimePeriod} 
-                      onChange={handleTimePeriodChange}
-                      options={[
-                        { value: "24h", label: "24 Hours (Hourly)" },
-                        { value: "7d", label: "7 Days (Daily)" },
-                        { value: "30d", label: "30 Days (Weekly)" },
-                        { value: "90d", label: "90 Days (Monthly)" }
-                      ]}
-                      placeholder="Select time period"
-                      className="w-[180px]"
+                <div className="flex items-center gap-2">
+                  {availableDevices.length > 0 && (
+                    <DeviceSelector
+                      value={deviceId}
+                      devices={availableDevices}
+                      onChange={handleDeviceChange}
                     />
-                  </div>
+                  )}
                   
-                  {/* Default panel view */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <LayoutGrid className="h-4 w-4 mr-2 text-gray-500" />
-                      <Label>Default Panel View</Label>
-                    </div>
-                    <Select 
-                      value={defaultPanel} 
-                      onChange={setDefaultPanel}
-                      options={[
-                        { value: "All Panels", label: "All Panels" },
-                        { value: "Panel 1", label: "Panel 1" },
-                        { value: "Panel 2", label: "Panel 2" }
-                      ]}
-                      placeholder="Select panel"
-                      className="w-[180px]"
-                    />
-                  </div>
-                  
-                  {/* Data refresh rate */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <RefreshCw className="h-4 w-4 mr-2 text-gray-500" />
-                      <Label>Data Refresh Rate</Label>
-                    </div>
-                    <Select 
-                      value={refreshRate} 
-                      onChange={setRefreshRate}
-                      options={[
-                        { value: "1", label: "Every 1 minute" },
-                        { value: "5", label: "Every 5 minutes" },
-                        { value: "15", label: "Every 15 minutes" },
-                        { value: "30", label: "Every 30 minutes" },
-                        { value: "60", label: "Every hour" }
-                      ]}
-                      placeholder="Select refresh rate"
-                      className="w-[180px]"
-                    />
-                  </div>
-                  
-                  {/* Temperature unit */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <Thermometer className="h-4 w-4 mr-2 text-gray-500" />
-                      <Label>Temperature Unit</Label>
-                    </div>
-                    <RadioGroup 
-                      value={temperatureUnit} 
-                      onValueChange={setTemperatureUnit}
-                    >
-                      <RadioItem 
-                        id="celsius"
-                        value="celsius"
-                        checked={temperatureUnit === "celsius"}
-                        onChange={setTemperatureUnit}
-                      >
-                        °C
-                      </RadioItem>
-                      <RadioItem 
-                        id="fahrenheit"
-                        value="fahrenheit"
-                        checked={temperatureUnit === "fahrenheit"}
-                        onChange={setTemperatureUnit}
-                      >
-                        °F
-                      </RadioItem>
-                    </RadioGroup>
-                  </div>
+                  <AddDeviceButton onClick={() => setIsAddDeviceModalOpen(true)} />
                 </div>
               </div>
               
-              {/* Notification settings section */}
-              <div className="mb-8">
-                <h2 className="text-lg font-medium text-gray-800 mb-4 flex items-center">
-                  <Bell className="h-5 w-5 mr-2 text-[#65B08F]" />
-                  Notification Settings
-                </h2>
-                
-                <div className="space-y-4">
-                  {/* System alerts */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="block">System Alerts</Label>
-                      <p className="text-xs text-gray-500 mt-1">Get notified about system warnings and errors</p>
-                    </div>
-                    <Switch 
-                      checked={systemAlerts} 
-                      onCheckedChange={setSystemAlerts} 
-                    />
-                  </div>
-                  
-                  {/* Performance reports */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="block">Performance Reports</Label>
-                      <p className="text-xs text-gray-500 mt-1">Receive weekly performance summary reports</p>
-                    </div>
-                    <Switch 
-                      checked={performanceReports} 
-                      onCheckedChange={setPerformanceReports}
-                    />
-                  </div>
+              {/* Name */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4">
+                <div className="flex items-center">
+                  <User className="h-5 w-5 mr-2 text-gray-500" />
+                  <Label htmlFor="name" className="text-base">Name</Label>
+                </div>
+                <div className="md:w-1/2">
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full focus:border-[#65B08F] focus:ring-[#65B08F] focus:ring-opacity-20"
+                  />
                 </div>
               </div>
               
-              {/* Security section */}
-              <div className="mb-8">
-                <h2 className="text-lg font-medium text-gray-800 mb-4 flex items-center">
-                  <ShieldCheck className="h-5 w-5 mr-2 text-[#65B08F]" />
-                  Security
-                </h2>
-                
+              {/* Location */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4">
+                <div className="flex items-center">
+                  <MapPin className="h-5 w-5 mr-2 text-gray-500" />
+                  <Label htmlFor="location" className="text-base">Location</Label>
+                </div>
+                <div className="md:w-1/2">
+                  <Input
+                    id="location"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="Where is this device installed?"
+                    className="w-full focus:border-[#65B08F] focus:ring-[#65B08F] focus:ring-opacity-20"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Notification Settings */}
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-gray-100 flex items-center">
+              <Bell className="h-5 w-5 mr-2 text-[#65B08F]" />
+              <h2 className="text-lg font-medium text-gray-800">Notifications</h2>
+            </div>
+            
+            <div className="p-5 space-y-5">
+              {/* System Notifications */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4">
+                <div className="flex items-center">
+                  <Bell className="h-5 w-5 mr-2 text-gray-500" />
+                  <div>
+                    <Label className="block text-base">System Notifications</Label>
+                    <p className="text-sm text-gray-500 mt-1">Show notifications for system events</p>
+                  </div>
+                </div>
                 <div>
-                  {/* Change password button */}
-                  <button 
-                    onClick={togglePasswordModal}
-                    className="flex items-center justify-between w-full px-4 py-3 bg-[#FAFDFB] border border-gray-100 rounded-md hover:bg-[#f0f9f4] transition"
-                  >
-                    <span className="text-sm font-medium text-gray-700">Change Password</span>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
-                  </button>
+                  <Switch checked={systemNotifications} onChange={setSystemNotifications} />
+                </div>
+              </div>
+              
+              {/* Performance Reports */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4">
+                <div className="flex items-center">
+                  <RefreshCw className="h-5 w-5 mr-2 text-gray-500" />
+                  <div>
+                    <Label htmlFor="reportFrequency" className="block text-base">Performance Reports</Label>
+                    <p className="text-sm text-gray-500 mt-1">How often to receive system performance reports</p>
+                  </div>
+                </div>
+                <div className="md:w-1/2">
+                  <Select 
+                    value={reportFrequency} 
+                    onChange={setReportFrequency}
+                    options={[
+                      { value: "never", label: "Never" },
+                      { value: "daily", label: "Daily" },
+                      { value: "weekly", label: "Weekly" },
+                      { value: "monthly", label: "Monthly" }
+                    ]}
+                  />
                 </div>
               </div>
             </div>
+          </div>
+          
+          {/* Preferences Section */}
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-gray-100 flex items-center">
+              <Clock className="h-5 w-5 mr-2 text-[#65B08F]" />
+              <h2 className="text-lg font-medium text-gray-800">Data Preferences</h2>
+            </div>
             
-            {/* Footer with save button */}
-            <div className="p-6 border-t bg-[#FAFDFB]">
-              <Button 
-                onClick={handleSaveSettings}
-                className="bg-[#65B08F] hover:bg-[#4a9d75] flex items-center"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                Save Settings
-              </Button>
+            <div className="p-5 space-y-5">
+              {/* Default time period */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4">
+                <div className="flex items-center">
+                  <Clock className="h-5 w-5 mr-2 text-gray-500" />
+                  <div>
+                    <Label htmlFor="defaultTimePeriod" className="block text-base">Default Time Period</Label>
+                    <p className="text-sm text-gray-500 mt-1">Set default time range for data display</p>
+                  </div>
+                </div>
+                <div className="md:w-1/2">
+                  <Select 
+                    value={defaultTimePeriod} 
+                    onChange={(value) => setDefaultTimePeriod(value as TimePeriod)}
+                    options={[
+                      { value: "24h", label: "24 Hours (Hourly)" },
+                      { value: "7d", label: "7 Days (Daily)" },
+                      { value: "30d", label: "30 Days (Weekly)" },
+                      { value: "90d", label: "90 Days (Monthly)" }
+                    ]}
+                  />
+                </div>
+              </div>
+              
+              {/* Data refresh rate */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4">
+                <div className="flex items-center">
+                  <RefreshCw className="h-5 w-5 mr-2 text-gray-500" />
+                  <div>
+                    <Label htmlFor="refreshRate" className="block text-base">Data Refresh Rate</Label>
+                    <p className="text-sm text-gray-500 mt-1">How often should data be refreshed</p>
+                  </div>
+                </div>
+                <div className="md:w-1/2">
+                  <Select 
+                    value={refreshRate} 
+                    onChange={setRefreshRate}
+                    options={[
+                      { value: "1", label: "Every 1 minute" },
+                      { value: "5", label: "Every 5 minutes" },
+                      { value: "15", label: "Every 15 minutes" },
+                      { value: "30", label: "Every 30 minutes" },
+                      { value: "60", label: "Every hour" }
+                    ]}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
       
-      {/* Password change modal */}
-      {showPasswordModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Change Password</h3>
-            
-            <form onSubmit={handleChangePassword}>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="current-password" className="block mb-1">
-                    Current Password
-                  </Label>
-                  <input
-                    id="current-password"
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="new-password" className="block mb-1">
-                    New Password
-                  </Label>
-                  <input
-                    id="new-password"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="confirm-password" className="block mb-1">
-                    Confirm New Password
-                  </Label>
-                  <input
-                    id="confirm-password"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div className="flex justify-end space-x-3 mt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={togglePasswordModal}
-                  className="border-gray-300"
+      {/* Device Selector Dialog */}
+      <Dialog open={isDeviceSelectorOpen} onOpenChange={setIsDeviceSelectorOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">Select Device</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2 max-h-[300px] overflow-y-auto">
+            {availableDevices.length > 0 ? (
+              availableDevices.map((device) => (
+                <div 
+                  key={device.deviceId} 
+                  className={`flex items-center justify-between p-3 rounded-md cursor-pointer ${
+                    deviceId === device.deviceId 
+                      ? 'bg-[#f0f9f4] border border-[#65B08F]' 
+                      : 'border border-gray-100 hover:bg-[#FAFDFB]'
+                  }`}
+                  onClick={() => {
+                    handleDeviceChange(device.deviceId);
+                    setIsDeviceSelectorOpen(false);
+                  }}
                 >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit"
-                  className="bg-[#65B08F] hover:bg-[#4a9d75]"
-                >
-                  Update Password
-                </Button>
+                  <div className="flex flex-col">
+                    <span className="font-medium text-[#1e3a29]">{device.name}</span>
+                    <span className="text-xs text-gray-500">{device.location}</span>
+                  </div>
+                  {deviceId === device.deviceId && (
+                    <div className="h-5 w-5 text-[#65B08F] flex items-center justify-center">
+                      ✓
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-4 text-gray-500">
+                No devices available
               </div>
-            </form>
+            )}
           </div>
-        </div>
-      )}
-    </div>
+          <DialogFooter className="flex justify-end">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setIsDeviceSelectorOpen(false)}
+              className="mr-2"
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button"
+              onClick={() => setIsDeviceSelectorOpen(false)}
+              className="bg-white border border-[#65B08F] hover:bg-[#f0f9f4] text-[#1e3a29]"
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Add Device Modal */}
+      <AddDeviceModal 
+        onAddDevice={handleAddDevice} 
+        isOpen={isAddDeviceModalOpen} 
+        onOpenChange={setIsAddDeviceModalOpen}
+      />
+    </>
   );
 } 

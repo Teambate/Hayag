@@ -1,5 +1,5 @@
 import { AlertTriangle, CircleCheck, CircleOff, Battery, FileText, MoreHorizontal } from "lucide-react";
-import { NoteType, NoteItem } from "../../pages/Notes";
+import { NoteType, NoteItem } from "../../context/NotesContext";
 
 interface NoteCardProps {
   note: NoteItem;

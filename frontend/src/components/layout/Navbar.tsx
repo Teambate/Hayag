@@ -1,10 +1,10 @@
 import { Bell } from "lucide-react"
 import { Button } from "../ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import HayagLogo from "../../assets/HayagLogo.png"
-import GirlProfile from "../../assets/girl.png"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext"
+import { useNotes } from "../../context/NotesContext"
+import { ProfileMenu } from "./ProfileMenu"
 
 interface NavbarProps {
   activeTab: string;
@@ -13,7 +13,8 @@ interface NavbarProps {
 
 export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
   const navigate = useNavigate()
-  const { refreshUser, user } = useAuth()
+  const { user } = useAuth()
+  const { unreadCount, navigateToNotes } = useNotes()
 
   // Get current date
   const currentDate = new Date()
@@ -26,6 +27,11 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
   const handleTabChange = (item: string) => {
     setActiveTab(item)
     navigate(`/${item.toLowerCase()}`)
+  }
+
+  const handleNotificationClick = () => {
+    navigateToNotes()
+    setActiveTab("Notes")
   }
 
   return (
@@ -63,13 +69,22 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
             {month} {year}
           </span>
         </div>
-        <Button variant="ghost" size="icon" className="text-gray-600">
-          <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
-        </Button>
-        <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
-          <AvatarImage src={GirlProfile} alt="Profile" />
-          <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
-        </Avatar>
+        <div className="relative">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-gray-600 relative"
+            onClick={handleNotificationClick}
+          >
+            <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-amber-400 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </Button>
+        </div>
+        <ProfileMenu />
       </div>
     </nav>
   )
