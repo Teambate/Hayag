@@ -17,7 +17,7 @@ export const getCurrentSensorValuesService = async (params) => {
   const latestReading = await SensorReading.findOne(
     { deviceId: deviceId },
     {},
-    { sort: { createdAt: -1 } }
+    { sort: { endTime: -1 } }
   );
   
   if (!latestReading) {
@@ -27,7 +27,7 @@ export const getCurrentSensorValuesService = async (params) => {
   // Initialize result object with all sensor types
   const result = {
     deviceId: latestReading.deviceId,
-    timestamp: latestReading.createdAt,
+    timestamp: latestReading.endTime || latestReading.createdAt,
     sensors: {}
   };
   
@@ -151,34 +151,46 @@ export const getPanelIdsForDeviceService = async (deviceId) => {
     throw new Error("deviceId is required");
   }
   
-  // Define all sensor types that might have panel IDs
-  const sensorTypes = ["rain", "uv", "light", "dht22", "panel_temp", "ina226", "solar", "battery"];
-  
-  // Use MongoDB aggregation to get unique panel IDs directly from the database
-  // This is much more efficient than fetching all readings
-  const uniquePanelIds = [];
-  
-  // Process each sensor type separately
-  for (const sensorType of sensorTypes) {
-    // Build the path to check in aggregation
-    const path = `readings.${sensorType}.panelId`;
-    
-    // Aggregation pipeline to get unique panel IDs for this sensor type
-    const result = await SensorReading.aggregate([
-      { $match: { deviceId } },
-      { $unwind: `$readings.${sensorType}` },
-      { $match: { [`readings.${sensorType}.panelId`]: { $exists: true } } },
-      { $group: { _id: `$readings.${sensorType}.panelId` } },
-      { $project: { _id: 0, panelId: '$_id' } }
-    ]);
-    
-    // Add unique panel IDs from this sensor type to the result
-    result.forEach(item => {
-      if (item.panelId && !uniquePanelIds.includes(item.panelId)) {
-        uniquePanelIds.push(item.panelId);
+  // Use the optimized MongoDB aggregation pipeline to get all unique panel IDs across all sensor types
+  const result = await SensorReading.aggregate([
+    { $match: { deviceId } },
+    {
+      '$project': {
+        'panelIds': {
+          '$setUnion': [
+            '$readings.rain.panelId', 
+            '$readings.uv.panelId', 
+            '$readings.light.panelId', 
+            '$readings.dht22.panelId', 
+            '$readings.panel_temp.panelId', 
+            '$readings.ina226.panelId', 
+            '$readings.solar.panelId', 
+            '$readings.battery.panelId'
+          ]
+        }
       }
-    });
-  }
+    }, 
+    {
+      '$unwind': '$panelIds'
+    }, 
+    {
+      '$group': {
+        '_id': null, 
+        'uniquePanelIds': {
+          '$addToSet': '$panelIds'
+        }
+      }
+    }, 
+    {
+      '$project': {
+        '_id': 0, 
+        'uniquePanelIds': 1
+      }
+    }
+  ]);
+  
+  // Extract the unique panel IDs from the result or return empty array if no results
+  const uniquePanelIds = result.length > 0 ? result[0].uniquePanelIds : [];
   
   // Sort the panel IDs
   uniquePanelIds.sort();
@@ -338,24 +350,24 @@ export const bulkInsertReadingsService = async (readingsData, options = {}, io =
 
 async function calculatePowerAccumulation(result, deviceId, latestReading, panelIdsArray) {
   // Get start of today in device's timezone (or UTC if not available)
-  const today = new Date(latestReading.createdAt);
+  const today = new Date(latestReading.endTime);
   today.setHours(0, 0, 0, 0); // Set to beginning of the day
   
-  // Use aggregation pipeline instead of fetching all readings
+  // Use enhanced aggregation pipeline with more specific filters
   const pipeline = [
-    // Match readings from today until latest reading
     {
       $match: {
         deviceId: deviceId,
-        createdAt: { $gte: today, $lt: latestReading.createdAt }
+        endTime: { 
+          $gte: today, 
+          $lte: latestReading.endTime 
+        }
       }
     },
-    // Sort by creation time
-    { $sort: { createdAt: 1 } },
-    // Only include fields we need
+    { $sort: { endTime: 1 } },
     {
       $project: {
-        createdAt: 1,
+        endTime: 1,
         deviceId: 1,
         "readings.ina226": 1
       }
@@ -380,7 +392,7 @@ async function calculatePowerAccumulation(result, deviceId, latestReading, panel
   // Get readings
   const readings = await SensorReading.aggregate(pipeline);
   
-  // Include latest reading in the right position
+  // Include latest reading in the right position if not already included
   let allReadings = [...readings];
   
   // Only proceed if we have at least 2 readings
@@ -394,8 +406,8 @@ async function calculatePowerAccumulation(result, deviceId, latestReading, panel
       const prevReading = allReadings[i-1];
       const currReading = allReadings[i];
       
-      // Time difference in hours
-      const hoursDiff = (currReading.createdAt - prevReading.createdAt) / (1000 * 60 * 60);
+      // Time difference in hours - now using endTime instead of createdAt
+      const hoursDiff = (currReading.endTime - prevReading.endTime) / (1000 * 60 * 60);
       
       // Process each panel in the current reading
       for (const sensor of currReading.readings.ina226 || []) {

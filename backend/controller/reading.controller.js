@@ -57,7 +57,10 @@ export const getCurrentSensorValues = async (req, res) => {
     
     res.status(200).json({
       success: true,
-      data: formatNumericValues(result)
+      data: {
+        ...formatNumericValues(result),
+        timestamp: result.timestamp
+      }
     });
     
   } catch (error) {
