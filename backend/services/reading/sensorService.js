@@ -210,8 +210,10 @@ export const createReadingService = async (sensorReadings, io) => {
     // Send the current sensor values to subscribed clients
     const currentValues = await processReadingForCurrentValues(newSensorReading);
     
-    // Add these debug logs here
-    console.log(`Emitting to room: device:${newSensorReading.deviceId}`);
+    // Enhanced debug logs
+    console.log(`Socket.io is available. Device ID: ${newSensorReading.deviceId}`);
+    console.log(`Room name: device:${newSensorReading.deviceId}`);
+    console.log(`Connected clients: ${io.sockets.adapter.rooms.get(`device:${newSensorReading.deviceId}`)?.size || 0}`);
     console.log(`Current values:`, JSON.stringify(currentValues));
     
     // Emit to the specific device room
@@ -220,18 +222,20 @@ export const createReadingService = async (sensorReadings, io) => {
     // Emit to all chart subscribers for this device with the new chart data point
     const chartData = processReadingForCharts(newSensorReading);
     
-    // You can also add additional logs here
+    // Enhanced chart data logs
     console.log(`Chart data types:`, Object.keys(chartData));
-    
     Object.keys(chartData).forEach(chartType => {
-      io.to(`device:${newSensorReading.deviceId}:${chartType}`).emit('chartUpdate', {
+      const roomName = `device:${newSensorReading.deviceId}:${chartType}`;
+      const roomSize = io.sockets.adapter.rooms.get(roomName)?.size || 0;
+      console.log(`Emitting chart data for ${chartType} to ${roomSize} clients in room ${roomName}`);
+      
+      io.to(roomName).emit('chartUpdate', {
         chartType,
         dataPoint: chartData[chartType]
       });
     });
   } else {
-    // Add a debug log to check if io is undefined
-    console.log("Socket.io instance not available");
+    console.error("Socket.io instance not available - check server.js io initialization");
   }
   
   return newSensorReading;

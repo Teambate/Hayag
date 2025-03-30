@@ -12,8 +12,12 @@ export const useSocketConnection = (
     // Only connect if a deviceId is available
     if (!deviceId) return;
     
-    // Initialize Socket.io connection
-    socketRef.current = io();
+    // Initialize Socket.io connection with the server URL
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+    socketRef.current = io(BACKEND_URL, {
+      withCredentials: true,
+      transports: ['websocket', 'polling']
+    });
     
     // Setup event handlers
     socketRef.current.on('connect', () => {
@@ -31,36 +35,42 @@ export const useSocketConnection = (
       });
     });
     
+    // Handle connection errors
+    socketRef.current.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+    });
+    
     // Handle sensor updates
     socketRef.current.on('sensorUpdate', (data) => {
       console.log('Received sensor update:', data);
       
       // Update sensor data state
       if (data.sensors) {
+        // Extract the first item from each sensor array or use default value if not available
         const updatedSensorData: SensorDataType = {
           irradiance: { 
-            value: data.sensors.solar?.[0]?.value || 0, 
-            unit: data.sensors.solar?.[0]?.unit || 'W/m²' 
+            value: data.sensors.solar?.length ? data.sensors.solar[0].value : 0, 
+            unit: data.sensors.solar?.length ? data.sensors.solar[0].unit : 'W/m²' 
           },
           rain: { 
-            value: data.sensors.rain?.[0]?.value || 0, 
-            unit: data.sensors.rain?.[0]?.unit || '%' 
+            value: data.sensors.rain?.length ? data.sensors.rain[0].value : 0, 
+            unit: data.sensors.rain?.length ? data.sensors.rain[0].unit : '%' 
           },
           uvIndex: { 
-            value: data.sensors.uv?.[0]?.value || 0, 
-            unit: data.sensors.uv?.[0]?.unit || 'mW/cm²' 
+            value: data.sensors.uv?.length ? data.sensors.uv[0].value : 0, 
+            unit: data.sensors.uv?.length ? data.sensors.uv[0].unit : 'mW/cm²' 
           },
           light: { 
-            value: data.sensors.light?.[0]?.value || 0, 
-            unit: data.sensors.light?.[0]?.unit || 'lx' 
+            value: data.sensors.light?.length ? data.sensors.light[0].value : 0, 
+            unit: data.sensors.light?.length ? data.sensors.light[0].unit : 'lx' 
           },
           humidity: { 
-            value: data.sensors.humidity?.[0]?.value || 0, 
-            unit: data.sensors.humidity?.[0]?.unit || '%' 
+            value: data.sensors.humidity?.length ? data.sensors.humidity[0].value : 0, 
+            unit: data.sensors.humidity?.length ? data.sensors.humidity[0].unit : '%' 
           },
           temperature: { 
-            value: data.sensors.temperature?.[0]?.value || 0, 
-            unit: data.sensors.temperature?.[0]?.unit || '°C' 
+            value: data.sensors.temperature?.length ? data.sensors.temperature[0].value : 0, 
+            unit: data.sensors.temperature?.length ? data.sensors.temperature[0].unit : '°C' 
           }
         };
         
