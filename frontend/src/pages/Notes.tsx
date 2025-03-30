@@ -1,23 +1,10 @@
 import { useState, useEffect } from "react";
-import { Bell, Filter, Plus, CircleOff, AlertTriangle, Battery, FileText, CircleCheck } from "lucide-react";
+import { CircleOff, AlertTriangle, Battery, FileText, CircleCheck } from "lucide-react";
 import Banner from "../components/layout/Banner";
-import { useNavigate } from "react-router-dom";
 import NoteCard from "../components/ui/NoteCard";
 import AddNoteModal, { AddNoteButton } from "../components/ui/AddNoteModal";
 import NoteDetailModal from "../components/ui/NoteDetailModal";
-
-export type NoteType = "normal" | "warning" | "critical" | "offline" | "note";
-
-export interface NoteItem {
-  id: number;
-  type: NoteType;
-  title: string;
-  detail: string;
-  date: string;
-  time: string;
-  read: boolean;
-  system: boolean; // Indicates if the note was created by the system
-}
+import { useNotes, NoteType, NoteItem } from "../context/NotesContext";
 
 // Props for accessing the setActiveTab function
 interface NotesProps {
@@ -30,7 +17,9 @@ export default function Notes({ setActiveTab }: NotesProps) {
   const [selectedNote, setSelectedNote] = useState<NoteItem | null>(null);
   const [isNoteDetailModalOpen, setIsNoteDetailModalOpen] = useState(false);
   const [noteToEdit, setNoteToEdit] = useState<NoteItem | null>(null);
-  const navigate = useNavigate();
+
+  // Get notes data and functions from context
+  const { notes, setNotes, unreadCount, markAsRead, markAllAsRead } = useNotes();
 
   // Update navbar active tab when component mounts
   useEffect(() => {
@@ -38,60 +27,6 @@ export default function Notes({ setActiveTab }: NotesProps) {
       setActiveTab("Notes");
     }
   }, [setActiveTab]);
-
-  // Mock data for system notes/notifications with updated structure to match insights
-  const [notes, setNotes] = useState<NoteItem[]>([
-    {
-      id: 1,
-      type: "critical",
-      title: "Panel 1 Overheating",
-      detail: "Temperature threshold exceeded for Panel 1. Cooling system activated.",
-      date: "Today",
-      time: "11:23 AM",
-      read: false,
-      system: true
-    },
-    {
-      id: 2,
-      type: "warning",
-      title: "Battery Charge Low",
-      detail: "Battery charge level dropped below 30%. Consider reducing load or increasing charge rate.",
-      date: "Today",
-      time: "10:05 AM",
-      read: false,
-      system: true
-    },
-    {
-      id: 3,
-      type: "note",
-      title: "System Maintenance",
-      detail: "Scheduled maintenance will be performed tomorrow at 2:00 PM. System may experience brief downtime.",
-      date: "Yesterday",
-      time: "4:30 PM",
-      read: true,
-      system: true
-    },
-    {
-      id: 4,
-      type: "normal",
-      title: "Optimal Production Achieved",
-      detail: "Energy production has reached optimal levels. All systems operating at peak efficiency.",
-      date: "Yesterday",
-      time: "2:15 PM",
-      read: true,
-      system: true
-    },
-    {
-      id: 5,
-      type: "offline",
-      title: "Connectivity Issue",
-      detail: "Brief connection loss detected with sensor array. Connection restored automatically.",
-      date: "Oct 12",
-      time: "9:45 AM",
-      read: true,
-      system: true
-    },
-  ]);
 
   // Create filter definitions with icons and colors
   const filterOptions = [
@@ -142,16 +77,6 @@ export default function Notes({ setActiveTab }: NotesProps) {
     ? notes 
     : notes.filter(note => note.type === activeFilter);
 
-  // Calculate unread count
-  const unreadCount = notes.filter(note => !note.read).length;
-
-  // Handle marking a note as read
-  const handleMarkAsRead = (id: number) => {
-    setNotes(notes.map(note => 
-      note.id === id ? { ...note, read: true } : note
-    ));
-  };
-
   // Handle deleting a note
   const handleDeleteNote = (id: number) => {
     setNotes(notes.filter(note => note.id !== id));
@@ -160,11 +85,6 @@ export default function Notes({ setActiveTab }: NotesProps) {
       setIsNoteDetailModalOpen(false);
       setSelectedNote(null);
     }
-  };
-
-  // Handle marking all as read
-  const handleMarkAllAsRead = () => {
-    setNotes(notes.map(note => ({ ...note, read: true })));
   };
 
   // Handle viewing a note's details
@@ -234,7 +154,7 @@ export default function Notes({ setActiveTab }: NotesProps) {
             
             <button 
               className="text-sm bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-3 py-2 rounded-md shadow-sm"
-              onClick={handleMarkAllAsRead}
+              onClick={markAllAsRead}
               disabled={unreadCount === 0}
             >
               Mark All Read
@@ -274,7 +194,7 @@ export default function Notes({ setActiveTab }: NotesProps) {
             <NoteCard 
               key={note.id} 
               note={note}
-              onMarkAsRead={handleMarkAsRead}
+              onMarkAsRead={markAsRead}
               onDelete={handleDeleteNote}
               onViewDetails={handleViewNoteDetails}
               onEdit={handleEditNote}

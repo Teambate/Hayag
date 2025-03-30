@@ -51,14 +51,13 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="flex items-center justify-between gap-2 w-[220px] bg-[#FAFDFB] border-transparent hover:border-[#6CBC92] hover:bg-[#FAFDFB]"
+          className="flex items-center justify-between gap-2 w-[280px] bg-[#FAFDFB] border-transparent hover:border-[#6CBC92] hover:bg-[#FAFDFB]"
         >
           <CalendarIcon className="h-4 w-4" />
           {formattedDateRange}
-          <ChevronDown className="h-4 w-4 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto p-0" align="center">
         <Calendar
           mode="range"
           defaultMonth={value.from}

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, forwardRef } from "react"
 import { PlusIcon } from "lucide-react"
 import { Button } from "./button"
 import { Input } from "./input"
@@ -15,16 +15,30 @@ import api from "../../utils/api"
 import { useAuth } from "../../context/AuthContext"
 
 interface AddDeviceModalProps {
-  onAddDevice: (device: { deviceId: string; name: string; location: string }) => void
+  onAddDevice: (device: { deviceId: string; name: string; location: string }) => void;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  ref?: React.Ref<HTMLButtonElement>;
 }
 
-export default function AddDeviceModal({ onAddDevice }: AddDeviceModalProps) {
+const AddDeviceModal = forwardRef<HTMLButtonElement, AddDeviceModalProps>(({ 
+  onAddDevice, 
+  isOpen, 
+  onOpenChange 
+}, ref) => {
   const [deviceId, setDeviceId] = useState("")
   const [deviceName, setDeviceName] = useState("")
   const [deviceLocation, setDeviceLocation] = useState("")
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // Determine if we're using controlled or uncontrolled state
+  const isControlled = isOpen !== undefined && onOpenChange !== undefined
+  const open = isControlled ? isOpen : internalOpen
+  const setOpen = isControlled 
+    ? onOpenChange 
+    : setInternalOpen
   
   const { updateUser } = useAuth()
   
@@ -71,14 +85,17 @@ export default function AddDeviceModal({ onAddDevice }: AddDeviceModalProps) {
   
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          className="flex items-center gap-2 bg-[#6CBC92] hover:bg-[#5AA982] text-white px-4 py-2 font-medium"
-        >
-          <PlusIcon className="h-5 w-5" />
-          Add Device
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button
+            ref={ref}
+            className="flex items-center gap-2 bg-[#6CBC92] hover:bg-[#5AA982] text-white px-4 py-2 font-medium"
+          >
+            <PlusIcon className="h-5 w-5" />
+            Add Device
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContentWithoutCloseButton className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Add New Device</DialogTitle>
@@ -152,4 +169,8 @@ export default function AddDeviceModal({ onAddDevice }: AddDeviceModalProps) {
       </DialogContentWithoutCloseButton>
     </Dialog>
   )
-} 
+})
+
+AddDeviceModal.displayName = "AddDeviceModal"
+
+export default AddDeviceModal 

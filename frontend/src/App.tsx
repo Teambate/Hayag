@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import Navbar from "./components/layout/Navbar"
 import { useState, useEffect } from "react"
 import { AuthProvider, useAuth } from "./context/AuthContext"
+import { NotesProvider } from "./context/NotesContext"
 // Import your pages
 import Dashboard from "./pages/Dashboard"
 import Analytics from "./pages/Analytics"
@@ -158,7 +159,9 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <NotesProvider>
+          <AppRoutes />
+        </NotesProvider>
       </AuthProvider>
     </BrowserRouter>
   )
