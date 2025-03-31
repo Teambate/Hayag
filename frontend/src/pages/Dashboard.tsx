@@ -10,10 +10,12 @@ import Banner from "../components/layout/Banner";
 import AddDeviceModal from "../components/ui/AddDeviceModal";
 import { useAuth } from "../context/AuthContext";
 import { useDeviceData } from "../hooks/useDeviceData";
+import { useDevice } from "../context/DeviceContext";
 import { addDevice } from "../services/apiService";
 
 export default function Dashboard() {
   const { user, updateUser } = useAuth();
+  const { selectedPanel } = useDevice();
   
   // Use our combined hook for all device and panel data
   const {
@@ -189,23 +191,77 @@ export default function Dashboard() {
             {/* Left Column: Panel Status - now 2 cols wide instead of 3 */}
             <div className="col-span-12 lg:col-span-2 grid grid-cols-1 divide-y divide-gray-200 border-r border-gray-200">
              
-            {filteredPanelData.map(panel => (
-              <div key={panel.id} className="flex flex-col justify-center py-3 pl-4 pr-2">
-                <div className="flex items-start">
-                  <div className={`w-2 h-2 rounded-full mt-1.5 mr-1.5 flex-shrink-0 ${getStatusColor(panel.status)}`}></div>
-                  <div>
-                    <h3 className="text-xs font-medium">Panel {panel.id}</h3>
-                    <div className="mt-2">
-                      <div className="text-4xl font-bold leading-none tracking-tight">{panel.energy} <span className="text-xs text-gray-500 font-normal ml-0.5">kWH</span></div>
-                      <div className="flex mt-1 text-xs text-gray-600">
-                        <div className="mr-3">Voltage <span className="font-medium">{panel.voltage} V</span></div>
-                        <div>Current <span className="font-medium">{panel.current} A</span></div>
+            {/* Display panels using sensorData.power_accumulation.panels if available, otherwise fallback to filteredPanelData */}
+            {sensorData?.power_accumulation ? (
+              // Use power_accumulation data from sensorData
+              sensorData.power_accumulation.panels
+                .filter(panel => 
+                  // Filter based on selectedPanel
+                  selectedPanel === "All Panels" || 
+                  panel.panelId === `Panel_${selectedPanel.split(" ")[1]}` || 
+                  panel.panelId === selectedPanel.split(" ")[1]
+                )
+                .map(panel => {
+                  // Extract panel ID from panelId string
+                  const panelId = panel.panelId.includes("Panel_") 
+                    ? panel.panelId.split("_")[1] 
+                    : panel.panelId;
+                    
+                  // Try to find matching sensor data for this panel
+                  const sensorKeys = Object.keys(sensorData.sensors);
+                  const panelVoltage = sensorKeys.includes('voltage') && sensorData.sensors.voltage.panels 
+                    ? sensorData.sensors.voltage.panels.find(p => p.panelId === panel.panelId)?.value || 0
+                    : 0;
+                    
+                  const panelCurrent = sensorKeys.includes('current') && sensorData.sensors.current.panels
+                    ? sensorData.sensors.current.panels.find(p => p.panelId === panel.panelId)?.value || 0
+                    : 0;
+                    
+                  // Determine status (fallback logic)
+                  const status = panelVoltage > 0 && panelCurrent > 0 
+                    ? 'active' 
+                    : panelVoltage > 0 
+                      ? 'warning'
+                      : 'inactive';
+                      
+                  return (
+                    <div key={panel.panelId} className="flex flex-col justify-center py-3 pl-4 pr-2">
+                      <div className="flex items-start">
+                        <div className={`w-2 h-2 rounded-full mt-1.5 mr-1.5 flex-shrink-0 ${getStatusColor(status)}`}></div>
+                        <div>
+                          <h3 className="text-xs font-medium">Panel {panelId}</h3>
+                          <div className="mt-2">
+                            <div className="text-4xl font-bold leading-none tracking-tight">{panel.energy.toFixed(2)} <span className="text-xs text-gray-500 font-normal ml-0.5">{panel.unit}</span></div>
+                            <div className="flex mt-1 text-xs text-gray-600">
+                              <div className="mr-3">Voltage <span className="font-medium">{panelVoltage.toFixed(2)} V</span></div>
+                              <div>Current <span className="font-medium">{panelCurrent.toFixed(2)} A</span></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+            ) : (
+              // Fallback to filteredPanelData if power_accumulation is not available
+              filteredPanelData.map(panel => (
+                <div key={panel.id} className="flex flex-col justify-center py-3 pl-4 pr-2">
+                  <div className="flex items-start">
+                    <div className={`w-2 h-2 rounded-full mt-1.5 mr-1.5 flex-shrink-0 ${getStatusColor(panel.status)}`}></div>
+                    <div>
+                      <h3 className="text-xs font-medium">Panel {panel.id}</h3>
+                      <div className="mt-2">
+                        <div className="text-4xl font-bold leading-none tracking-tight">{panel.energy} <span className="text-xs text-gray-500 font-normal ml-0.5">kWH</span></div>
+                        <div className="flex mt-1 text-xs text-gray-600">
+                          <div className="mr-3">Voltage <span className="font-medium">{panel.voltage} V</span></div>
+                          <div>Current <span className="font-medium">{panel.current} A</span></div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
             </div>
             
           {/* Center Column: Energy Production - now 6 cols wide */}

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { SensorDataType, SensorType } from '../types/dashboardTypes';
+import { SensorDataType } from '../types/dashboardTypes';
 
 export const useSocketConnection = (
   deviceId: string, 
