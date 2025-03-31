@@ -22,9 +22,14 @@ export default function Dashboard() {
     deviceId, 
     setDeviceId,
     sensorData,
-    systemStatus,
     isLoading
   } = useDeviceData();
+  
+  // Create mock system status since fetchSystemStatus was removed
+  const systemStatus = {
+    temperature: 32,
+    batteryLevel: 75
+  };
   
   // State for device management
   const [availableDevices, setAvailableDevices] = useState<Array<{deviceId: string; name: string; location?: string}>>([]);

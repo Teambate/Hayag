@@ -12,8 +12,6 @@ export const useDeviceData = () => {
   // Get dashboard data using the selected device and panel
   const { 
     sensorData, 
-    panelData, 
-    systemStatus, 
     isLoading, 
     setSensorData,
     fetchDashboardData
@@ -22,17 +20,6 @@ export const useDeviceData = () => {
   // Set up socket connection
   const socketRef = useSocketConnection(deviceId, setSensorData);
   
-  // Get filtered panel data based on selection
-  const getFilteredPanelData = () => {
-    if (selectedPanel === "All Panels") {
-      return panelData;
-    } else {
-      const panelId = parseInt(selectedPanel.split(" ")[1]);
-      return panelData.filter(panel => panel.id === panelId);
-    }
-  };
-  
-  const filteredPanelData = getFilteredPanelData();
   
   return {
     // Device context
@@ -43,9 +30,6 @@ export const useDeviceData = () => {
     
     // Dashboard data
     sensorData,
-    panelData,
-    filteredPanelData,
-    systemStatus,
     isLoading,
     
     // Helper methods

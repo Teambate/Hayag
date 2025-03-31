@@ -34,22 +34,6 @@ export const fetchSensorData = async (deviceId: string) => {
   }
 };
 
-export const fetchPanelData = async (): Promise<PanelDataType[]> => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return [
-    { id: 1, status: 'inactive', energy: 90.88, voltage: 12.8, current: 3.5 },
-    { id: 2, status: 'active', energy: 90.88, voltage: 12.8, current: 3.5 }
-  ];
-};
-
-export const fetchSystemStatus = async (): Promise<SystemStatusType> => {
-  await new Promise(resolve => setTimeout(resolve, 200));
-  return {
-    temperature: 32,
-    batteryLevel: 75
-  };
-};
-
 export const addDevice = async (deviceData: { deviceId: string; name: string; location: string }) => {
   try {
     // This would be an actual API call in a real implementation

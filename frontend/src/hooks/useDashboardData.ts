@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
-import { SensorDataType, PanelDataType, SystemStatusType } from '../types/dashboardTypes';
-import { fetchSensorData, fetchPanelData, fetchSystemStatus } from '../services/apiService';
+import { SensorDataType } from '../types/dashboardTypes';
+import { fetchSensorData } from '../services/apiService';
 
 export const useDashboardData = (deviceId: string, selectedPanel: string) => {
   const [sensorData, setSensorData] = useState<SensorDataType | null>(null);
-  const [panelData, setPanelData] = useState<PanelDataType[]>([]);
-  const [systemStatus, setSystemStatus] = useState<SystemStatusType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch dashboard data
@@ -16,15 +14,8 @@ export const useDashboardData = (deviceId: string, selectedPanel: string) => {
     try {
       setIsLoading(true);
       
-      const [sensors, panels, status] = await Promise.all([
-        fetchSensorData(deviceId),
-        fetchPanelData(),
-        fetchSystemStatus()
-      ]);
-      
+      const sensors = await fetchSensorData(deviceId);
       setSensorData(sensors);
-      setPanelData(panels);
-      setSystemStatus(status);
     } catch (error) {
       console.error("Failed to fetch dashboard data:", error);
     } finally {
@@ -39,8 +30,6 @@ export const useDashboardData = (deviceId: string, selectedPanel: string) => {
 
   return {
     sensorData,
-    panelData,
-    systemStatus,
     isLoading,
     fetchDashboardData,
     setSensorData
