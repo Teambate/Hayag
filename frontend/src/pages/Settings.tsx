@@ -7,8 +7,6 @@ import {
   MapPin,
   Smartphone,
   Plus,
-  ChevronRight,
-  Settings as SettingsIcon,
   Bell,
   ChevronDown
 } from "lucide-react";
@@ -321,7 +319,7 @@ export default function Settings({ setActiveTab }: SettingsProps) {
   // Profile settings state
   const [name, setName] = useState(user?.name || "");
   const [location, setLocation] = useState(user?.devices?.[0]?.location || "");
-  const [currentDevice, setCurrentDevice] = useState(user?.devices?.[0]?.name || "");
+  const [, setCurrentDevice] = useState(user?.devices?.[0]?.name || "");
   const [deviceId, setDeviceId] = useState(user?.devices?.[0]?.deviceId || "");
   const [availableDevices, setAvailableDevices] = useState(
     user?.devices?.map(device => ({

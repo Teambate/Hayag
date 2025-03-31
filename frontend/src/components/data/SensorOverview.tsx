@@ -1,4 +1,5 @@
 import React from 'react';
+import { useDevice } from '../../context/DeviceContext';
 import IrradianceIcon from '../../assets/Irradiance.svg';
 import RainIcon from '../../assets/Rain.svg';
 import UVIndexIcon from '../../assets/UV Index.svg';
@@ -35,10 +36,12 @@ interface SensorResponseData {
 
 interface SensorDataProps {
   sensorData: SensorResponseData;
-  selectedPanel?: string;
 }
 
-const SensorOverview: React.FC<SensorDataProps> = ({ sensorData, selectedPanel = "All Panels" }) => {
+const SensorOverview: React.FC<SensorDataProps> = ({ sensorData }) => {
+  // Get selected panel from context
+  const { selectedPanel } = useDevice();
+  
   // Function to get the correct sensor value based on selected panel
   const getSensorValue = (sensorKey: string) => {
     // Safety check to ensure sensors and the specific sensor exist

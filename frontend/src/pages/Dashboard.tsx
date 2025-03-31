@@ -9,33 +9,26 @@ import { ThermometerIcon, BatteryMediumIcon } from "lucide-react";
 import Banner from "../components/layout/Banner";
 import AddDeviceModal from "../components/ui/AddDeviceModal";
 import { useAuth } from "../context/AuthContext";
-import { useDashboardData } from "../hooks/useDashboardData";
-import { useSocketConnection } from "../hooks/useSocketConnection";
-import { PanelDataType } from "../types/dashboardTypes";
+import { useDeviceData } from "../hooks/useDeviceData";
 import { addDevice } from "../services/apiService";
 
 export default function Dashboard() {
   const { user, updateUser } = useAuth();
   
-  // State
-  const [selectedPanel, setSelectedPanel] = useState<string>("All Panels");
-  const [deviceId, setDeviceId] = useState<string>("");
+  // Use our combined hook for all device and panel data
+  const {
+    deviceId, 
+    setDeviceId,
+    sensorData,
+    filteredPanelData,
+    systemStatus,
+    isLoading
+  } = useDeviceData();
+  
+  // State for device management
   const [availableDevices, setAvailableDevices] = useState<Array<{deviceId: string; name: string; location?: string}>>([]);
-  const [filteredPanelData, setFilteredPanelData] = useState<PanelDataType[]>([]);
   
-  // Custom hooks for data fetching and socket connection
-  const { 
-    sensorData, 
-    panelData, 
-    systemStatus, 
-    isLoading, 
-    setSensorData 
-  } = useDashboardData(deviceId, selectedPanel);
-  
-  // Socket connection hook
-  useSocketConnection(deviceId, setSensorData);
-  
-  // Set available devices and default device from user context
+  // Set available devices from user context
   useEffect(() => {
     if (user?.devices && user.devices.length > 0) {
       setAvailableDevices(user.devices.map(device => ({
@@ -43,29 +36,8 @@ export default function Dashboard() {
         name: device.name,
         location: device.location
       })));
-      
-      // Set the first device as default if no device is selected
-      if (!deviceId && user.devices[0].deviceId) {
-        setDeviceId(user.devices[0].deviceId);
-      }
     }
-  }, [user, deviceId]);
-
-  // Filter panels based on selection
-  useEffect(() => {
-    if (selectedPanel === "All Panels") {
-      setFilteredPanelData(panelData);
-    } else {
-      const panelId = parseInt(selectedPanel.split(" ")[1]);
-      setFilteredPanelData(panelData.filter(panel => panel.id === panelId));
-    }
-  }, [selectedPanel, panelData]);
-
-  // Function to handle panel selection
-  const handlePanelChange = (panel: string) => {
-    setSelectedPanel(panel);
-    console.log(`Panel selection changed to: ${panel}`);
-  };
+  }, [user]);
 
   // Function to handle device selection change
   const handleDeviceChange = (selectedDeviceId: string) => {
@@ -202,17 +174,12 @@ export default function Dashboard() {
       </div>
       
       {/* Banner integration */}
-      <Banner 
-        activeTab="Dashboard" 
-        onPanelChange={handlePanelChange}
-        deviceId={deviceId}
-        selectedPanel={selectedPanel}
-      />
+      <Banner activeTab="Dashboard" />
       
       {/* Row 1: Sensor Overview - Minimalist, Line-based Layout */}
       <section className="border-b border-gray-200">
         <div className="px-4">
-          {sensorData && <SensorOverview sensorData={sensorData} selectedPanel={selectedPanel} />}
+          {sensorData && <SensorOverview sensorData={sensorData} />}
         </div>
       </section>
       

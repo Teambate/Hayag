@@ -3,6 +3,7 @@ import Navbar from "./components/layout/Navbar"
 import { useState, useEffect } from "react"
 import { AuthProvider, useAuth } from "./context/AuthContext"
 import { NotesProvider } from "./context/NotesContext"
+import { DeviceProvider } from "./context/DeviceContext"
 // Import your pages
 import Dashboard from "./pages/Dashboard"
 import Analytics from "./pages/Analytics"
@@ -159,9 +160,11 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <NotesProvider>
-          <AppRoutes />
-        </NotesProvider>
+        <DeviceProvider>
+          <NotesProvider>
+            <AppRoutes />
+          </NotesProvider>
+        </DeviceProvider>
       </AuthProvider>
     </BrowserRouter>
   )

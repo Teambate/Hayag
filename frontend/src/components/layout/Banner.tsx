@@ -5,6 +5,7 @@ import { DateRangePicker } from "../ui/date-range-picker"
 import { DateRange } from "react-day-picker"
 import { TimePeriod } from "../graphs/EnergyProduction"
 import { useAuth } from "../../context/AuthContext"
+import { useDevice } from "../../context/DeviceContext"
 import DownloadModal from "../ui/DownloadModal"
 
 // Map UI intervals to TimePeriod values
@@ -41,12 +42,15 @@ export default function Banner({
   onPanelChange, 
   onDateRangeChange,
   selectedTimePeriod = '24h',
-  selectedPanel = 'All Panels',
+  selectedPanel,
   deviceId,
   selectedSensors = []
 }: BannerProps) {
-  // State for panel selection
-  const [panel, setPanel] = useState(selectedPanel);
+  // Get device context
+  const { deviceId: contextDeviceId, selectedPanel: contextSelectedPanel, setSelectedPanel } = useDevice();
+
+  // State for panel selection - use context value or prop as default
+  const [panel, setPanel] = useState(selectedPanel || contextSelectedPanel);
   // State for available panel IDs
   const [panelIds, setPanelIds] = useState<string[]>([])
   // State for loading panel IDs
@@ -64,17 +68,20 @@ export default function Banner({
     to: new Date(2025, 2, 4), // March 4, 2025
   })
 
-  // Get device ID from props, user context, or localStorage
+  // Get device ID from props, context, user context, or localStorage
   const getDeviceId = () => {
     // First priority: deviceId from props
     if (deviceId) return deviceId;
     
-    // Second priority: from user context
+    // Second priority: from context
+    if (contextDeviceId) return contextDeviceId;
+    
+    // Third priority: from user context
     if (user?.devices && user.devices.length > 0) {
       return user.devices[0].deviceId;
     }
     
-    // Third priority: from localStorage
+    // Fourth priority: from localStorage
     const storedDeviceId = localStorage.getItem('deviceId');
     return storedDeviceId || "";
   }
@@ -109,7 +116,7 @@ export default function Banner({
     };
     
     fetchPanelIds();
-  }, [deviceId, user]);
+  }, [deviceId, contextDeviceId, user]);
 
   // Update local state when props change (for controlled components)
   useEffect(() => {
@@ -119,12 +126,13 @@ export default function Banner({
     }
   }, [selectedTimePeriod]);
 
-  // Update panel state when prop changes
+  // Update panel state when prop or context changes
   useEffect(() => {
-    if (selectedPanel) {
-      setPanel(selectedPanel);
+    const newPanel = selectedPanel || contextSelectedPanel;
+    if (newPanel) {
+      setPanel(newPanel);
     }
-  }, [selectedPanel]);
+  }, [selectedPanel, contextSelectedPanel]);
 
   // If the active tab is Notes or Settings, don't show the banner
   if (activeTab === "Notes" || activeTab === "Settings") {
@@ -134,6 +142,11 @@ export default function Banner({
   // Handle panel change
   const handlePanelChange = (newPanel: string) => {
     setPanel(newPanel);
+    
+    // Update global context
+    setSelectedPanel(newPanel);
+    
+    // Also call prop callback if provided
     if (onPanelChange) {
       onPanelChange(newPanel);
     }
