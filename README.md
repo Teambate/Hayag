@@ -2,7 +2,7 @@
 
 **An IoT-enabled Solar PV Data Logger with an Interactive Dashboard designed for real-time monitoring and analysis of solar energy systems.**
 
-## 📌 About the Project
+## About the Project
 This project is a **companion app for a solar PV system** that allows users to **log and visualize real-time sensor data** collected from a **Raspberry Pi-powered system**. The **data is stored in MongoDB** and displayed on an **interactive dashboard** to track performance, optimize efficiency, and support research efforts.
 
 ## ⚡ Key Features
@@ -13,7 +13,7 @@ This project is a **companion app for a solar PV system** that allows users to *
 - **Alerts & Notifications** – Get notified about anomalies, inefficiencies, or faults.
 - **Historical Data & Trends** – Analyze past performance with easy-to-read graphs.
 
-## 💻 Tech Stack
+## Tech Stack
 - **Frontend:** React, Vite, TailwindCSS
 - **Backend:** Node.js, Express
 - **IoT Hardware:** Raspberry Pi
@@ -21,7 +21,7 @@ This project is a **companion app for a solar PV system** that allows users to *
 - **Visualization:** Chart.js, Shadcn
 - **Deployment:** Vercel / Firebase Hosting
 
-## 🔢 Sensors Used
+## Sensors Used
 | Sensor | Description |
 |---------|------------|
 | Rain | Detects rainfall presence and intensity |
@@ -35,16 +35,16 @@ This project is a **companion app for a solar PV system** that allows users to *
 | Panel Current | Measures the electrical current produced by the solar panel |
 | Battery Voltage | Monitors battery charge levels |
 
-## 🛠 Web App Features
+## Web App Features
 - **Interactive Dashboard** – Displays real-time and historical solar data.
 - **Graphs & Charts** – Visual representation of energy trends and sensor readings.
 - **Sort & Filter by Date** – View data for specific timeframes.
 - **Smart Insights** – AI-driven analysis for performance trends.
 - **Customizable Dashboard** – Personalize widgets and display options.
 - **Advanced Filters** – Filter specific data points for detailed analysis.
-- 👤 **Export Data** – Download reports in CSV or PDF format.
+- **Export Data** – Download reports in CSV or PDF format.
 
-## 📅 Project Timeline
+## Project Timeline
 - Research & Planning
 - System Architecture & Prototyping
 - IoT Sensor Integration
@@ -52,16 +52,16 @@ This project is a **companion app for a solar PV system** that allows users to *
 - Testing & Optimization
 - Final Deployment & Documentation
 
-## 🎡 Project Goal
+## Project Goal
 To develop and implement an **IoT Solar PV Data Logger with Interactive Dashboard** for real-time monitoring and collection of data from environmental sensors and power output data of a PV system. The project aims to **optimize efficiency, track long-term and peak performance, and support future research efforts** by enabling **correlation studies and predictive modeling**.
 
-## 🔍 Objectives
+## Objectives
 1. **Design and build an IoT Solar PV Data Logger** with integrated sensors (**irradiance, power output measurement, temperature, humidity, precipitation, and UV sensors, etc**).
 2. **Develop a real-time interactive dashboard** for visualizing and analyzing sensor data to identify trends, patterns, peak performance, and critical data points.
 3. **Analyze trends and correlations** between sensor data to better understand solar PV performance.
 4. **[Future Scope]** Develop regression models, conduct correlation studies, and determine feature importance for each sensor data input considered during modeling.
 
-## 👤 Contributors
+## Contributors
 - **John William Embate** – Lead Hardware Engineer & System Architect
 - **Ira Hans Dedicatoria** – Lead Software Developer & Backend Engineer
 - **Courtney Viola** – UI/UX Designer & Frontend Developer
