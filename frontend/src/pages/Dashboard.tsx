@@ -7,11 +7,9 @@ import PanelTemperatureOverheating from "../components/graphs/PanelTemperatureOv
 import IrradianceGraph from "../components/graphs/IrradianceGraph";
 import { ThermometerIcon, BatteryMediumIcon } from "lucide-react";
 import Banner from "../components/layout/Banner";
-import AddDeviceModal from "../components/ui/AddDeviceModal";
 import { useAuth } from "../context/AuthContext";
 import { useDeviceData } from "../hooks/useDeviceData";
 import { useDevice } from "../context/DeviceContext";
-import { addDevice } from "../services/apiService";
 
 export default function Dashboard() {
   const { user, updateUser } = useAuth();
@@ -29,71 +27,6 @@ export default function Dashboard() {
   const systemStatus = {
     temperature: 32,
     batteryLevel: 75
-  };
-  
-  // State for device management
-  const [availableDevices, setAvailableDevices] = useState<Array<{deviceId: string; name: string; location?: string}>>([]);
-  
-  // Set available devices from user context
-  useEffect(() => {
-    if (user?.devices && user.devices.length > 0) {
-      setAvailableDevices(user.devices.map(device => ({
-        deviceId: device.deviceId,
-        name: device.name,
-        location: device.location
-      })));
-    }
-  }, [user]);
-
-  // Function to handle device selection change
-  const handleDeviceChange = (selectedDeviceId: string) => {
-    setDeviceId(selectedDeviceId);
-    console.log(`Device changed to: ${selectedDeviceId}`);
-  };
-  
-  // Function to handle adding a new device
-  const handleAddDevice = async (deviceData: { deviceId: string; name: string; location: string }) => {
-    try {
-      // Call API to add device
-      const result = await addDevice(deviceData);
-      
-      if (result.success) {
-        // Get current date as ISO string for dateAdded
-        const currentDate = new Date().toISOString();
-        
-        // Update local state with new device
-        const newDevice = {
-          deviceId: deviceData.deviceId,
-          name: deviceData.name,
-          location: deviceData.location,
-          dateAdded: currentDate
-        };
-        
-        setAvailableDevices(prev => [...prev, newDevice]);
-        
-        // Update user context if updateUser function is available
-        if (updateUser && user) {
-          const updatedDevices = [...(user.devices || []), {
-            deviceId: deviceData.deviceId,
-            name: deviceData.name,
-            location: deviceData.location,
-            dateAdded: currentDate
-          }];
-          
-          updateUser({
-            ...user,
-            devices: updatedDevices
-          });
-        }
-        
-        // If this is the first device, set it as the selected device
-        if (availableDevices.length === 0) {
-          setDeviceId(deviceData.deviceId);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to add device:", error);
-    }
   };
   
   // Loading state when no devices are available
@@ -139,7 +72,6 @@ export default function Dashboard() {
         </div>
         <p className="text-lg font-medium text-gray-800 mb-2">No devices found</p>
         <p className="text-sm text-gray-500 mb-6">Add your first device to start monitoring your solar energy system</p>
-        <AddDeviceModal onAddDevice={handleAddDevice} />
       </div>
     );
   }
@@ -158,27 +90,6 @@ export default function Dashboard() {
 
   return (
     <div>
-      {/* Device selector and add device button */}
-      <div className="px-4 py-2 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <span className="text-sm font-medium mr-2">Device:</span>
-            <select 
-              value={deviceId} 
-              onChange={(e) => handleDeviceChange(e.target.value)}
-              className="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-            >
-              {availableDevices.map((device) => (
-                <option key={device.deviceId} value={device.deviceId}>
-                  {device.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <AddDeviceModal onAddDevice={handleAddDevice} />
-        </div>
-      </div>
-      
       {/* Banner integration */}
       <Banner activeTab="Dashboard" />
       

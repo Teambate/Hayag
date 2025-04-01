@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { Button } from "../ui/button"
@@ -7,7 +7,7 @@ import { useAuth } from "../../context/AuthContext"
 import GirlProfile from "../../assets/girl.png"
 import { DeviceSelector } from './DeviceSelector'
 import AddDeviceModal from "../ui/AddDeviceModal"
-import { DialogTrigger } from "../ui/dialog"
+import { useDeviceData } from "../../hooks/useDeviceData"
 
 export interface ProfileMenuProps {
   className?: string
@@ -15,26 +15,33 @@ export interface ProfileMenuProps {
 
 export function ProfileMenu({ className }: ProfileMenuProps) {
   const { user, refreshUser } = useAuth()
-  const [currentDevice, setCurrentDevice] = useState(user?.devices?.[0]?.name || 'No device')
+  const { deviceId, setDeviceId } = useDeviceData()
   const [isDeviceSelectorOpen, setIsDeviceSelectorOpen] = useState(false)
   const [isPopoverOpen, setIsPopoverOpen] = useState(false)
   const addDeviceButtonRef = useRef<HTMLButtonElement>(null)
   
-  // Get user's location from the first device or default to Unknown
-  const userLocation = user?.devices?.[0]?.location || 'Unknown'
+  // Get current device details based on deviceId from context
+  const currentDevice = user?.devices?.find(d => d.deviceId === deviceId)
+  const currentDeviceName = currentDevice?.name || 'No device'
+  const userLocation = currentDevice?.location || 'Unknown'
   
-  const handleDeviceSelection = (deviceName: string) => {
-    setCurrentDevice(deviceName)
-    // Here you would likely update this in your API/backend
+  // Effect to set initial deviceId if none is set and user has devices
+  useEffect(() => {
+    if (!deviceId && user?.devices && user.devices.length > 0) {
+      setDeviceId(user.devices[0].deviceId)
+    }
+  }, [deviceId, user?.devices, setDeviceId])
+  
+  const handleDeviceSelection = (selectedDeviceId: string) => {
+    setDeviceId(selectedDeviceId) // Use setDeviceId from context
+    // Close the selector modal
+    setIsDeviceSelectorOpen(false)
   }
   
-  const handleDeviceAdded = (device: { deviceId: string; name: string; location: string }) => {
-    // Device was added successfully, refresh user data
-    refreshUser()
-    // Update current device if this is the first one
-    if (!user?.devices?.length) {
-      setCurrentDevice(device.name)
-    }
+  const handleDeviceAdded = async (newDeviceData: { deviceId: string; name: string; location: string }) => {
+    await refreshUser() // Refresh user data to get the latest device list
+    // Set the new device as the current device
+    setDeviceId(newDeviceData.deviceId)
   }
   
   return (
@@ -64,7 +71,7 @@ export function ProfileMenu({ className }: ProfileMenuProps) {
             <div className="space-y-2">
               <h5 className="text-md font-medium text-[#4F4F4F]">Current Device</h5>
               <div className="flex items-center justify-between p-2 bg-[#FAFDFB] rounded-md border border-gray-100">
-                <span className="text-[#664300]">{currentDevice}</span>
+                <span className="text-[#664300]">{currentDeviceName}</span>
                 <Button 
                   variant="ghost" 
                   size="sm" 
@@ -103,7 +110,7 @@ export function ProfileMenu({ className }: ProfileMenuProps) {
       <DeviceSelector 
         open={isDeviceSelectorOpen}
         onOpenChange={setIsDeviceSelectorOpen}
-        currentDevice={currentDevice}
+        currentDevice={deviceId || ''}
         onSelectDevice={handleDeviceSelection}
       />
 

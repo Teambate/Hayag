@@ -8,7 +8,7 @@ interface DeviceSelectorProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   currentDevice: string
-  onSelectDevice: (deviceName: string) => void
+  onSelectDevice: (deviceId: string) => void
 }
 
 export function DeviceSelector({ 
@@ -32,17 +32,17 @@ export function DeviceSelector({
               <div 
                 key={device.deviceId} 
                 className={`flex items-center justify-between p-3 rounded-md cursor-pointer ${
-                  currentDevice === device.name 
+                  currentDevice === device.deviceId 
                     ? 'bg-[#FFF8E7] border border-[#FFBC3B]' 
                     : 'border border-gray-100 hover:bg-[#FAFDFB]'
                 }`}
-                onClick={() => onSelectDevice(device.name)}
+                onClick={() => onSelectDevice(device.deviceId)}
               >
                 <div className="flex flex-col">
                   <span className="font-medium text-[#664300]">{device.name}</span>
                   <span className="text-xs text-gray-500">{device.location}</span>
                 </div>
-                {currentDevice === device.name && (
+                {currentDevice === device.deviceId && (
                   <Check className="h-5 w-5 text-[#FFBC3B]" />
                 )}
               </div>
