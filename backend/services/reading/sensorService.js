@@ -200,8 +200,13 @@ export const createReadingService = async (sensorReadings, io) => {
   
   // Send the current sensor values to subscribed clients if socket.io is available
   if (io) {
-    // Send the current sensor values to subscribed clients
+    // Process the reading and also calculate power accumulation
     const currentValues = await processReadingForCurrentValues(newSensorReading);
+    
+    // Calculate power for the reading and update currentValues
+    if (newSensorReading.readings.ina226 && newSensorReading.readings.ina226.length > 0) {
+      await calculatePowerAccumulation(currentValues, newSensorReading.deviceId, newSensorReading);
+    }
     
     // Enhanced debug logs
     console.log(`Socket.io is available. Device ID: ${newSensorReading.deviceId}`);
@@ -209,7 +214,7 @@ export const createReadingService = async (sensorReadings, io) => {
     console.log(`Connected clients: ${io.sockets.adapter.rooms.get(`device:${newSensorReading.deviceId}`)?.size || 0}`);
     console.log(`Current values:`, JSON.stringify(currentValues));
     
-    // Emit to the specific device room
+    // Emit the complete data including power accumulation
     io.to(`device:${newSensorReading.deviceId}`).emit('sensorUpdate', currentValues);
     
     // Emit to all chart subscribers for this device with the new chart data point

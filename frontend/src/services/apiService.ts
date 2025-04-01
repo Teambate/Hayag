@@ -1,4 +1,3 @@
-import { PanelDataType, SystemStatusType } from "../types/dashboardTypes";
 
 // API service for dashboard data
 export const fetchSensorData = async (deviceId: string) => {

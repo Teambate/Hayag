@@ -2,7 +2,7 @@
 import { formatDecimal } from './numberUtils.js';
 
 // Helper function to process a reading for current sensor values
-export function processReadingForCurrentValues(reading) {
+export function processReadingForCurrentValues(reading, additionalData = {}) {
   const result = {
     deviceId: reading.deviceId,
     timestamp: reading.createdAt,
@@ -47,5 +47,6 @@ export function processReadingForCurrentValues(reading) {
     }
   }
   
-  return result;
+  // Merge any additional data (like power_accumulation) that might be passed in
+  return { ...result, ...additionalData };
 } 

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { SensorDataType } from '../types/dashboardTypes';
 import { fetchSensorData } from '../services/apiService';
 
-export const useDashboardData = (deviceId: string, selectedPanel: string) => {
+export const useDashboardData = (deviceId: string, _selectedPanel: string) => {
   const [sensorData, setSensorData] = useState<SensorDataType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 

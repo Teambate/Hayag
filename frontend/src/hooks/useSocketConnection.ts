@@ -111,6 +111,11 @@ export const useSocketConnection = (
             }
           });
           
+          // In the sensorUpdate handler, add handling for power_accumulation
+          if (sensorData.power_accumulation) {
+            transformedData.power_accumulation = sensorData.power_accumulation;
+          }
+          
           console.log('Transformed sensor data:', transformedData);
           setSensorData(transformedData);
         } else {
