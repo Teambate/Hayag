@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import SensorOverview from "../components/data/SensorOverview";
 import EnergyProduction from "../components/graphs/EnergyProduction";
 import SystemHealth from "../components/data/SystemHealth";
@@ -12,13 +11,11 @@ import { useDeviceData } from "../hooks/useDeviceData";
 import { useDevice } from "../context/DeviceContext";
 
 export default function Dashboard() {
-  const { user, updateUser } = useAuth();
+  const { user } = useAuth();
   const { selectedPanel } = useDevice();
   
   // Use our combined hook for all device and panel data
   const {
-    deviceId, 
-    setDeviceId,
     sensorData,
     isLoading
   } = useDeviceData();

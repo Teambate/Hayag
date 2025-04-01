@@ -22,7 +22,7 @@ export const getCurrentSensorValuesService = async (params) => {
   // Initialize result object with all sensor types
   const result = {
     deviceId: latestReading.deviceId,
-    timestamp: latestReading.endTime || latestReading.createdAt,
+    timestamp: latestReading.endTime,
     sensors: {}
   };
   
@@ -466,7 +466,7 @@ function processReadingForCharts(reading) {
     irradiance: []
   };
   
-  const timestamp = reading.createdAt.getTime();
+  const timestamp = reading.endTime.getTime();
   
   // Energy production (using current and voltage)
   if (reading.readings.ina226 && reading.readings.ina226.length > 0) {

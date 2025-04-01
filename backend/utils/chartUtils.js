@@ -23,7 +23,7 @@ export function aggregateDataByTimeInterval(readings, timeIntervalMs, chartType,
   if (readings.length === 0) return [];
   
   const result = [];
-  const startTime = new Date(readings[0].createdAt).getTime();
+  const startTime = new Date(readings[0].endTime).getTime();
   let currentBucket = {
     timestamp: new Date(startTime),
     values: []
@@ -33,7 +33,7 @@ export function aggregateDataByTimeInterval(readings, timeIntervalMs, chartType,
   let nextBucketTime = startTime + timeIntervalMs;
   
   for (const reading of readings) {
-    const readingTime = new Date(reading.createdAt).getTime();
+    const readingTime = new Date(reading.endTime).getTime();
     
     // If this reading belongs to the next time bucket, finalize the current bucket and create a new one
     if (readingTime >= nextBucketTime) {
@@ -204,7 +204,7 @@ export function processReadingForCharts(reading) {
     irradiance: []
   };
   
-  const timestamp = reading.createdAt.getTime();
+  const timestamp = reading.endTime.getTime();
   
   // Energy production (using current and voltage)
   if (reading.readings.ina226 && reading.readings.ina226.length > 0) {

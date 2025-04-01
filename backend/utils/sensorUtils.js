@@ -5,7 +5,7 @@ import { formatDecimal } from './numberUtils.js';
 export function processReadingForCurrentValues(reading, additionalData = {}) {
   const result = {
     deviceId: reading.deviceId,
-    timestamp: reading.createdAt,
+    timestamp: reading.endTime,
     sensors: {}
   };
   

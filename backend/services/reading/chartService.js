@@ -54,7 +54,7 @@ export const getChartDataService = async (params) => {
   pipeline.push({
     $match: {
       deviceId: deviceId,
-      createdAt: {
+      endTime: {
         $gte: new Date(startDateTime),
         $lte: new Date(endDateTime)
       }
@@ -64,7 +64,7 @@ export const getChartDataService = async (params) => {
   // Project stage - only include the fields we need
   const projectStage = {
     deviceId: 1,
-    createdAt: 1
+    endTime: 1
   };
   
   // Add the required sensor types to the projection
@@ -91,7 +91,7 @@ export const getChartDataService = async (params) => {
     pipeline.push({
       $project: {
         deviceId: 1,
-        createdAt: 1,
+        endTime: 1,
         readings: newReadingsObj
       }
     });
@@ -109,7 +109,7 @@ export const getChartDataService = async (params) => {
   }
   
   // Sort by timestamp
-  pipeline.push({ $sort: { createdAt: 1 } });
+  pipeline.push({ $sort: { endTime: 1 } });
   
   // Execute the aggregation pipeline
   const readings = await SensorReading.aggregate(pipeline);
@@ -184,8 +184,8 @@ export const getDashboardChartDataService = async (params) => {
   // First, find the latest reading to determine which day to show
   const latestReading = await SensorReading.findOne(
     { deviceId: deviceId },
-    { createdAt: 1 },
-    { sort: { createdAt: -1 } }
+    { endTime: 1 },
+    { sort: { endTime: -1 } }
   );
   
   if (!latestReading) {
@@ -193,7 +193,7 @@ export const getDashboardChartDataService = async (params) => {
   }
   
   // Get the start of the day for the latest reading (in UTC)
-  const latestDate = new Date(latestReading.createdAt);
+  const latestDate = new Date(latestReading.endTime);
   const startOfDay = new Date(latestDate);
   startOfDay.setUTCHours(0, 0, 0, 0);
   
@@ -207,7 +207,7 @@ export const getDashboardChartDataService = async (params) => {
   pipeline.push({
     $match: {
       deviceId: deviceId,
-      createdAt: {
+      endTime: {
         $gte: startOfDay,
         $lte: endOfDay
       }
@@ -217,7 +217,7 @@ export const getDashboardChartDataService = async (params) => {
   // Project stage - only include the fields we need
   const projectStage = {
     deviceId: 1,
-    createdAt: 1
+    endTime: 1
   };
   
   // Add the required sensor types to the projection
@@ -244,7 +244,7 @@ export const getDashboardChartDataService = async (params) => {
     pipeline.push({
       $project: {
         deviceId: 1,
-        createdAt: 1,
+        endTime: 1,
         readings: newReadingsObj
       }
     });
@@ -262,7 +262,7 @@ export const getDashboardChartDataService = async (params) => {
   }
   
   // Sort by timestamp
-  pipeline.push({ $sort: { createdAt: 1 } });
+  pipeline.push({ $sort: { endTime: 1 } });
   
   // Execute the aggregation pipeline
   const readings = await SensorReading.aggregate(pipeline);

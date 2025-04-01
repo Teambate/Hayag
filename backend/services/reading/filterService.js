@@ -22,9 +22,9 @@ export const getFilteredReadingsService = async (params) => {
   // Stage 1: Match documents based on time range and deviceId
   const matchStage = {};
   if (startDateTime || endDateTime) {
-    matchStage.createdAt = {};
-    if (startDateTime) matchStage.createdAt.$gte = new Date(startDateTime);
-    if (endDateTime) matchStage.createdAt.$lte = new Date(endDateTime);
+    matchStage.endTime = {};
+    if (startDateTime) matchStage.endTime.$gte = new Date(startDateTime);
+    if (endDateTime) matchStage.endTime.$lte = new Date(endDateTime);
   }
   
   // Add deviceId to match stage if provided
@@ -54,7 +54,7 @@ export const getFilteredReadingsService = async (params) => {
   const projectStage = {
     deviceId: 1,
     metadata: 1,
-    createdAt: 1
+    endTime: 1
   };
   
   // Add requested sensor types to projection
@@ -91,7 +91,7 @@ export const getFilteredReadingsService = async (params) => {
         $project: {
           deviceId: 1,
           metadata: 1,
-          createdAt: 1,
+          endTime: 1,
           readings: newReadingsObj
         }
       });
@@ -131,7 +131,7 @@ export const getFilteredReadingsService = async (params) => {
         $project: {
           deviceId: 1,
           metadata: 1,
-          createdAt: 1,
+          endTime: 1,
           readings: newReadingsObj
         }
       });
