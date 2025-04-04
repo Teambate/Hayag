@@ -9,16 +9,25 @@ import Banner from "../components/layout/Banner";
 import { useAuth } from "../context/AuthContext";
 import { useDeviceData } from "../hooks/useDeviceData";
 import { useDevice } from "../context/DeviceContext";
+import { useState, useEffect } from "react";
+import { useDashboardCharts } from "../hooks/useDashboardCharts";
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { selectedPanel } = useDevice();
+  const { deviceId, selectedPanel } = useDevice();
   
   // Use our combined hook for all device and panel data
   const {
     sensorData,
-    isLoading
+    isLoading: isLoadingSensorData
   } = useDeviceData();
+  
+  // Use our hook for chart data
+  const {
+    chartData,
+    isLoading: isLoadingChartData,
+    error: chartError
+  } = useDashboardCharts(deviceId);
   
   // Create mock system status since fetchSystemStatus was removed
   const systemStatus = {
@@ -74,8 +83,8 @@ export default function Dashboard() {
   }
   
   // Loading state
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-full py-20">Loading dashboard data...</div>;
+  if (isLoadingSensorData) {
+    return <div className="flex justify-center items-center h-full py-20">Loading sensor data...</div>;
   }
   
   // Status indicator helper
@@ -178,7 +187,13 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="w-full h-[280px] md:h-[40vw] max-h-[280px]">
-                <EnergyProduction />
+                {isLoadingChartData ? (
+                  <div className="flex items-center justify-center h-full text-gray-500">Loading chart data...</div>
+                ) : chartError ? (
+                  <div className="flex items-center justify-center h-full text-red-500">Failed to load chart data</div>
+                ) : (
+                  <EnergyProduction chartData={chartData?.energy || []} />
+                )}
               </div>
             </div>
           </div>
@@ -207,7 +222,13 @@ export default function Dashboard() {
                 Battery Charge
               </h3>
               <div className="w-full h-[220px] md:h-[35vw] max-h-[220px]">
-                <BatteryChargeDischarge />
+                {isLoadingChartData ? (
+                  <div className="flex items-center justify-center h-full text-gray-500">Loading chart data...</div>
+                ) : chartError ? (
+                  <div className="flex items-center justify-center h-full text-red-500">Failed to load chart data</div>
+                ) : (
+                  <BatteryChargeDischarge chartData={chartData?.battery || []} />
+                )}
               </div>
             </div>
           </div>
@@ -219,7 +240,13 @@ export default function Dashboard() {
                 Panel Temperature
               </h3>
               <div className="w-full h-[220px] md:h-[35vw] max-h-[220px]">
-                <PanelTemperatureOverheating />
+                {isLoadingChartData ? (
+                  <div className="flex items-center justify-center h-full text-gray-500">Loading chart data...</div>
+                ) : chartError ? (
+                  <div className="flex items-center justify-center h-full text-red-500">Failed to load chart data</div>
+                ) : (
+                  <PanelTemperatureOverheating chartData={chartData?.panel_temp || []} />
+                )}
               </div>
             </div>
           </div>
@@ -231,7 +258,13 @@ export default function Dashboard() {
                 Irradiance
               </h3>
               <div className="w-full h-[220px] md:h-[35vw] max-h-[220px]">
-                <IrradianceGraph />
+                {isLoadingChartData ? (
+                  <div className="flex items-center justify-center h-full text-gray-500">Loading chart data...</div>
+                ) : chartError ? (
+                  <div className="flex items-center justify-center h-full text-red-500">Failed to load chart data</div>
+                ) : (
+                  <IrradianceGraph chartData={chartData?.irradiance || []} />
+                )}
               </div>
             </div>
           </div>

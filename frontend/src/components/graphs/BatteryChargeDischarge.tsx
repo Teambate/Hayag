@@ -1,6 +1,7 @@
 import React from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { TimePeriod } from './EnergyProduction';
+import { ChartDataPoint } from '../../hooks/useDashboardCharts';
 
 // Different mock data sets for different time periods
 const batteryDataSets = {
@@ -39,11 +40,41 @@ const batteryDataSets = {
 // Component props interface
 interface BatteryChargeDischargeProps {
   timePeriod?: TimePeriod;
+  chartData?: ChartDataPoint[];
 }
 
-const BatteryChargeDischarge: React.FC<BatteryChargeDischargeProps> = ({ timePeriod = '24h' }) => {
-  // Get the correct data set based on the time period
-  const batteryData = batteryDataSets[timePeriod];
+const BatteryChargeDischarge: React.FC<BatteryChargeDischargeProps> = ({ timePeriod = '24h', chartData = [] }) => {
+  // Use real data if available, otherwise fallback to mock data
+  const batteryData = chartData.length > 0 
+    ? chartData.map((point, index) => {
+        // Format time for display using 24-hour format
+        const time = new Date(point.timestamp.toString()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+        
+        // Create an object with time and a data point for each panel
+        const dataPoint: any = { time };
+        
+        // Add each panel's battery voltage as a separate data key
+        point.panels.forEach(panel => {
+          const panelId = panel.panelId.replace('Panel_', '');
+          dataPoint[`battery${panelId}`] = panel.value;
+        });
+        
+        return dataPoint;
+      })
+    : batteryDataSets[timePeriod];
+
+  // Get panel IDs from the first data point (if available)
+  const panelIds = chartData.length > 0 && chartData[0].panels 
+    ? chartData[0].panels.map(panel => panel.panelId.replace('Panel_', '')) 
+    : ['1', '2'];  // Default panel IDs if no data
+
+  // Determine unit from data or use default
+  const unit = chartData.length > 0 && chartData[0].panels.length > 0 
+    ? chartData[0].panels[0].unit 
+    : 'V';
+
+  // Line colors for each panel
+  const panelColors = ['#4CAF50', '#2196F3', '#FFC107', '#FF5722', '#9C27B0', '#00BCD4'];
   
   return (
     <div className="flex flex-col h-full">
@@ -67,42 +98,42 @@ const BatteryChargeDischarge: React.FC<BatteryChargeDischargeProps> = ({ timePer
               tick={{ fontSize: 12 }} 
               domain={[10, 14]}
               tickCount={5}
-              label={{ value: 'Voltage (V)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#6B7280', fontSize: 12 } }}
+              label={{ value: `Voltage (${unit})`, angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#6B7280', fontSize: 12 } }}
             />
             <Tooltip />
-            <Line 
-              type="monotone" 
-              dataKey="battery1" 
-              stroke="#4CAF50" 
-              strokeWidth={2}
-              dot={{ r: 3 }}
-              activeDot={{ r: 5 }}
-              name="Battery 1 (Panel 1)"
-            />
-            <Line 
-              type="monotone" 
-              dataKey="battery2" 
-              stroke="#2196F3" 
-              strokeWidth={2}
-              dot={{ r: 3 }}
-              activeDot={{ r: 5 }}
-              name="Battery 2 (Panel 2)"
-            />
+            
+            {/* Map each panel to a Line */}
+            {panelIds.map((panelId, index) => (
+              <Line 
+                key={panelId}
+                type="monotone" 
+                dataKey={`battery${panelId}`} 
+                stroke={panelColors[index % panelColors.length]} 
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+                name={`Panel ${panelId}`}
+              />
+            ))}
+            
+            {chartData.length > 0 && <Legend />}
           </LineChart>
         </ResponsiveContainer>
       </div>
       
-      {/* Legend - No border and centered */}
-      <div className="flex justify-center space-x-4 text-sm text-gray-500 pt-1">
-        <div className="flex items-center">
-          <div className="w-3 h-3 rounded-full bg-green-500 mr-1"></div>
-          <span>Battery 1 (Panel 1)</span>
+      {/* Legend - No border and centered (only shown for mock data) */}
+      {chartData.length === 0 && (
+        <div className="flex justify-center space-x-4 text-sm text-gray-500 pt-1">
+          <div className="flex items-center">
+            <div className="w-3 h-3 rounded-full bg-green-500 mr-1"></div>
+            <span>Battery 1 (Panel 1)</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-3 rounded-full bg-blue-500 mr-1"></div>
+            <span>Battery 2 (Panel 2)</span>
+          </div>
         </div>
-        <div className="flex items-center">
-          <div className="w-3 h-3 rounded-full bg-blue-500 mr-1"></div>
-          <span>Battery 2 (Panel 2)</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

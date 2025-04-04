@@ -1,6 +1,7 @@
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, ReferenceLine, Legend } from 'recharts';
 import { TimePeriod } from './EnergyProduction';
+import { ChartDataPoint } from '../../hooks/useDashboardCharts';
 
 // Different mock data sets for different time periods
 const temperatureDataSets = {
@@ -35,11 +36,41 @@ const temperatureDataSets = {
 // Component props interface
 interface PanelTemperatureOverheatingProps {
   timePeriod?: TimePeriod;
+  chartData?: ChartDataPoint[];
 }
 
-const PanelTemperatureOverheating: React.FC<PanelTemperatureOverheatingProps> = ({ timePeriod = '24h' }) => {
-  // Get the correct data set based on the time period
-  const temperatureData = temperatureDataSets[timePeriod];
+const PanelTemperatureOverheating: React.FC<PanelTemperatureOverheatingProps> = ({ timePeriod = '24h', chartData = [] }) => {
+  // Use real data if available, otherwise fallback to mock data
+  const temperatureData = chartData.length > 0 
+    ? chartData.map((point, index) => {
+        // Format time for display using 24-hour format
+        const time = new Date(point.timestamp.toString()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+        
+        // Create an object with time and a data point for each panel
+        const dataPoint: any = { time };
+        
+        // Add each panel's temperature as a separate data key
+        point.panels.forEach(panel => {
+          const panelId = panel.panelId.replace('Panel_', '');
+          dataPoint[`panel${panelId}`] = panel.value;
+        });
+        
+        return dataPoint;
+      })
+    : temperatureDataSets[timePeriod];
+
+  // Get panel IDs from the first data point (if available)
+  const panelIds = chartData.length > 0 && chartData[0].panels 
+    ? chartData[0].panels.map(panel => panel.panelId.replace('Panel_', '')) 
+    : ['1', '2'];  // Default panel IDs if no data
+
+  // Determine unit from data or use default
+  const unit = chartData.length > 0 && chartData[0].panels.length > 0 
+    ? chartData[0].panels[0].unit 
+    : '°C';
+
+  // Bar colors for each panel
+  const panelColors = ['#81C784', '#FFB74D', '#64B5F6', '#FF8A65', '#BA68C8', '#4DD0E1'];
   
   return (
     <div className="flex flex-col h-full">
@@ -64,7 +95,7 @@ const PanelTemperatureOverheating: React.FC<PanelTemperatureOverheatingProps> = 
               domain={[0, 100]}
               tick={{ fontSize: 12, fill: '#6B7280' }}
               tickCount={5}
-              label={{ value: 'Temperature (°C)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#6B7280', fontSize: 12 } }}
+              label={{ value: `Temperature (${unit})`, angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#6B7280', fontSize: 12 } }}
             />
             <Tooltip />
             <ReferenceLine y={80} stroke="red" strokeDasharray="3 3" 
@@ -74,8 +105,20 @@ const PanelTemperatureOverheating: React.FC<PanelTemperatureOverheatingProps> = 
                 fontSize: 10
               }} 
             />
-            <Bar dataKey="panel1" fill="#81C784" name="Panel 1" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="panel2" fill="#FFB74D" name="Panel 2" radius={[4, 4, 0, 0]} />
+            
+            {/* Map each panel to a Bar */}
+            {panelIds.map((panelId, index) => (
+              <Bar 
+                key={panelId}
+                dataKey={`panel${panelId}`} 
+                fill={panelColors[index % panelColors.length]} 
+                name={`Panel ${panelId}`} 
+                radius={[4, 4, 0, 0]}
+                barSize={20} 
+              />
+            ))}
+            
+            {chartData.length > 0 && <Legend />}
           </BarChart>
         </ResponsiveContainer>
       </div>

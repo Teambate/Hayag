@@ -1,4 +1,3 @@
-
 // API service for dashboard data
 export const fetchSensorData = async (deviceId: string) => {
   try {
@@ -29,6 +28,38 @@ export const fetchSensorData = async (deviceId: string) => {
         humidity: { value: 0, unit: "%" },
         temperature: { value: 0, unit: "°C" }
       }
+    };
+  }
+};
+
+import api from '../utils/api'; // Import the configured axios instance
+
+// Fetch dashboard chart data for all graphs
+export const fetchDashboardChartData = async (deviceId: string) => {
+  try {
+    // Build the query parameters
+    const params = new URLSearchParams();
+    params.append('deviceId', deviceId);
+    
+    // Use the axios instance which includes auth cookies
+    const response = await api.get(`/readings/dashboard/chart?${params.toString()}`);
+    
+    // Axios automatically throws for non-2xx responses, 
+    // so we check the success flag in the data
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to fetch dashboard chart data');
+    }
+    
+    // Return the API response data
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching dashboard chart data:", error);
+    // Return fallback empty data structure on error
+    return {
+      energy: [],
+      battery: [],
+      panel_temp: [],
+      irradiance: []
     };
   }
 };

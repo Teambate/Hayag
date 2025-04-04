@@ -1,6 +1,7 @@
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { BatteryIcon, ZapIcon } from 'lucide-react';
+import { ChartDataPoint } from '../../hooks/useDashboardCharts';
 
 // Define the type for time period
 export type TimePeriod = '24h' | '7d' | '30d' | '90d';
@@ -41,11 +42,36 @@ const energyDataSets = {
 // Component props interface
 interface EnergyProductionProps {
   timePeriod?: TimePeriod;
+  chartData?: ChartDataPoint[];
 }
 
-const EnergyProduction: React.FC<EnergyProductionProps> = ({ timePeriod = '24h' }) => {
-  // Get the correct data set based on the time period
-  const energyData = energyDataSets[timePeriod];
+const EnergyProduction: React.FC<EnergyProductionProps> = ({ timePeriod = '24h', chartData = [] }) => {
+  // Use real data if available, otherwise fallback to mock data
+  const energyData = chartData.length > 0 
+    ? chartData.map((point, index) => {
+        // Format time for display using 24-hour format
+        const time = new Date(point.timestamp.toString()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+        
+        // Create an object with time and a data point for each panel
+        const dataPoint: any = { time };
+        
+        // Add each panel's energy as a separate data key
+        point.panels.forEach(panel => {
+          const panelId = panel.panelId.replace('Panel_', '');
+          dataPoint[`panel${panelId}`] = panel.energy;
+        });
+        
+        return dataPoint;
+      })
+    : energyDataSets[timePeriod];
+
+  // Get panel IDs from the first data point (if available)
+  const panelIds = chartData.length > 0 && chartData[0].panels 
+    ? chartData[0].panels.map(panel => panel.panelId.replace('Panel_', '')) 
+    : ['1', '2'];  // Default panel IDs if no data
+
+  // Generate colors for each panel
+  const panelColors = ['#4CAF50', '#81C784', '#2196F3', '#64B5F6', '#FFC107', '#FFD54F'];
 
   return (
     <div className="flex flex-col h-full">
@@ -54,14 +80,16 @@ const EnergyProduction: React.FC<EnergyProductionProps> = ({ timePeriod = '24h' 
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={energyData} margin={{ top: 5, right: 5, left: 25, bottom: 5 }}>
             <defs>
-              <linearGradient id="colorEnergy" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#4CAF50" stopOpacity={0.8} />
-                <stop offset="95%" stopColor="#81C784" stopOpacity={0.6} />
-              </linearGradient>
+              {panelIds.map((panelId, index) => (
+                <linearGradient key={panelId} id={`colorPanel${panelId}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={panelColors[index % panelColors.length]} stopOpacity={0.8} />
+                  <stop offset="95%" stopColor={panelColors[index % panelColors.length]} stopOpacity={0.6} />
+                </linearGradient>
+              ))}
             </defs>
             <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
             <XAxis 
-              dataKey="name" 
+              dataKey={chartData.length > 0 ? "time" : "name"} 
               axisLine={false} 
               tickLine={false} 
               tick={{ fontSize: 12 }}
@@ -76,25 +104,57 @@ const EnergyProduction: React.FC<EnergyProductionProps> = ({ timePeriod = '24h' 
             />
             <Tooltip 
               cursor={{fill: 'rgba(0, 0, 0, 0.05)'}}
-              formatter={(value) => [`${value} kWH`, 'Production']}
+              formatter={(value, name) => {
+                // Check if name is a string before using string methods
+                const isPanel = typeof name === 'string' && name.startsWith('panel');
+                const displayName = typeof name === 'string' 
+                  ? (isPanel ? `Panel ${name.replace('panel', '')}` : name) 
+                  : name; // Use name directly if it's not a string (e.g., a number)
+                
+                return [
+                  `${value} kWh`, 
+                  displayName
+                ];
+              }}
             />
-            <Bar 
-              dataKey="value" 
-              fill="url(#colorEnergy)" 
-              radius={[4, 4, 0, 0]} 
-              barSize={30}
-            />
+            
+            {/* If we have real data, render a Bar for each panel */}
+            {chartData.length > 0 ? (
+              panelIds.map((panelId, index) => (
+                <Bar 
+                  key={panelId}
+                  dataKey={`panel${panelId}`} 
+                  fill={`url(#colorPanel${panelId})`} 
+                  radius={[4, 4, 0, 0]} 
+                  barSize={30/panelIds.length}
+                  name={`Panel ${panelId}`}
+                />
+              ))
+            ) : (
+              // Otherwise use the mock data format
+              <Bar 
+                dataKey="value" 
+                fill="url(#colorEnergy)" 
+                radius={[4, 4, 0, 0]} 
+                barSize={30}
+              />
+            )}
+            
+            {chartData.length > 0 && <Legend />}
+            
           </BarChart>
         </ResponsiveContainer>
       </div>
       
-      {/* Legend - No border and centered */}
-      <div className="flex mt-1 space-x-4 text-sm text-gray-500 justify-center pt-1 pb-1">
-        <div className="flex items-center">
-          <div className="w-3 h-3 rounded-full bg-green-500 mr-1"></div>
-          <span>Energy Output (kWh)</span>
+      {/* Legend - No border and centered (only shown for mock data) */}
+      {chartData.length === 0 && (
+        <div className="flex mt-1 space-x-4 text-sm text-gray-500 justify-center pt-1 pb-1">
+          <div className="flex items-center">
+            <div className="w-3 h-3 rounded-full bg-green-500 mr-1"></div>
+            <span>Energy Output (kWh)</span>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

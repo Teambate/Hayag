@@ -45,6 +45,11 @@ export function formatNumericValues(data, decimalPlaces = 2, significantDigits =
     return formatDecimal(data, decimalPlaces, significantDigits);
   }
   
+  // Check if the data is a Date object
+  if (data instanceof Date) {
+    return data; // Return Date objects directly
+  }
+  
   if (Array.isArray(data)) {
     return data.map(item => formatNumericValues(item, decimalPlaces, significantDigits));
   }
