@@ -83,7 +83,7 @@ const BatteryChargeDischarge: React.FC<BatteryChargeDischargeProps> = ({ timePer
         <ResponsiveContainer width="100%" height="100%">
           <LineChart 
             data={batteryData} 
-            margin={{ top: 5, right: 5, left: 25, bottom: 5 }}
+            margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
             <XAxis 
@@ -98,7 +98,6 @@ const BatteryChargeDischarge: React.FC<BatteryChargeDischargeProps> = ({ timePer
               tick={{ fontSize: 12 }} 
               domain={[10, 14]}
               tickCount={5}
-              label={{ value: `Voltage (${unit})`, angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#6B7280', fontSize: 12 } }}
             />
             <Tooltip />
             

@@ -79,7 +79,7 @@ const PanelTemperatureOverheating: React.FC<PanelTemperatureOverheatingProps> = 
         <ResponsiveContainer width="100%" height="100%">
           <BarChart 
             data={temperatureData} 
-            margin={{ top: 5, right: 10, left: 25, bottom: 5 }} 
+            margin={{ top: 5, right: 10, left: 0, bottom: 5 }} 
             barGap={2}
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
@@ -95,7 +95,6 @@ const PanelTemperatureOverheating: React.FC<PanelTemperatureOverheatingProps> = 
               domain={[0, 100]}
               tick={{ fontSize: 12, fill: '#6B7280' }}
               tickCount={5}
-              label={{ value: `Temperature (${unit})`, angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#6B7280', fontSize: 12 } }}
             />
             <Tooltip />
             <ReferenceLine y={80} stroke="red" strokeDasharray="3 3" 

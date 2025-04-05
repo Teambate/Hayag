@@ -99,7 +99,6 @@ const EnergyProduction: React.FC<EnergyProductionProps> = ({ timePeriod = '24h',
               tick={{ fontSize: 12 }} 
               domain={[0, 'auto']} 
               tickCount={5}
-              label={{ value: 'Energy (kWh)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#6B7280', fontSize: 12 } }}
             />
             <Tooltip 
               cursor={{fill: 'rgba(0, 0, 0, 0.05)'}}
