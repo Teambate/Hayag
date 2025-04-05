@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { TrendingUp, ArrowUp, SunIcon, GaugeIcon, Plus, CircleOff, Battery, AlertTriangle, FileText, CircleCheck, Maximize } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { TrendingUp, ArrowUp, SunIcon, GaugeIcon, CircleOff, Battery, AlertTriangle, FileText, CircleCheck } from "lucide-react";
+import { Link } from "react-router-dom";
 import { DateRange } from "react-day-picker";
 
 // Import graph components
@@ -41,13 +41,12 @@ interface AnalyticsProps {
 }
 
 export default function Analytics({ setActiveTab }: AnalyticsProps) {
-  const navigate = useNavigate();
   const [isAddNoteModalOpen, setIsAddNoteModalOpen] = useState(false);
 
   // State for selections from Banner
-  const [selectedPanel, setSelectedPanel] = useState<string>("All Panels");
+  const [, setSelectedPanel] = useState<string>("All Panels");
   const [selectedTimePeriod, setSelectedTimePeriod] = useState<TimePeriod>("24h");
-  const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({
+  const [, setSelectedDateRange] = useState<DateRange>({
     from: new Date(2025, 1, 23),
     to: new Date(2025, 2, 4),
   });
@@ -366,7 +365,7 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <h3 className="text-lg font-medium mb-1">Battery Charge & Discharge</h3>
                 <p className="text-sm text-gray-500 mb-4">Tracking battery charge levels and energy consumption</p>
                 <div className="h-64">
-                  <BatteryChargeDischarge timePeriod={selectedTimePeriod} />
+                  <BatteryChargeDischarge chartData={[]} />
                 </div>
               </div>
             </div>
@@ -382,7 +381,7 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <h3 className="text-lg font-medium mb-1">Panel Temperature & Overheating</h3>
                 <p className="text-sm text-gray-500 mb-4">Monitoring temperature fluctuations and overheating risks</p>
                 <div className="h-64">
-                  <PanelTemperatureOverheating timePeriod={selectedTimePeriod} />
+                  <PanelTemperatureOverheating chartData={[]} />
                 </div>
               </div>
             </div>
@@ -393,7 +392,7 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <h3 className="text-lg font-medium mb-1">Solar Irradiance vs Power Output</h3>
                 <p className="text-sm text-gray-500 mb-4">Comparing sunlight intensity with generated power</p>
                 <div className="h-64">
-                  <IrradianceGraph timePeriod={selectedTimePeriod} />
+                  <IrradianceGraph chartData={[]} />
                 </div>
               </div>
             </div>

@@ -7,6 +7,8 @@ interface EnergyProductionProps {
   chartData: ChartDataPoint[]; // Make chartData required
 }
 
+export type TimePeriod = '24h' | '7d' | '30d' | '90d';
+
 const EnergyProduction: React.FC<EnergyProductionProps> = ({ chartData }) => {
   // Process real data
   const energyData = chartData.map((point) => {

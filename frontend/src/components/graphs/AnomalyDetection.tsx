@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 import { TimePeriod } from './EnergyProduction';
 
 // Define sensor types
