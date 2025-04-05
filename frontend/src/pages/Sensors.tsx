@@ -4,7 +4,6 @@ import SensorTable from "../components/data/SensorTable"
 import MultiSensorTable from "../components/data/MultiSensorTable"
 import Banner from "../components/layout/Banner"
 import filterIcon from "../assets/filter.svg"
-import noDataIcon from "../assets/NoData.svg"
 
 // Add custom animation styles
 const animationStyles = `

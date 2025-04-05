@@ -14,7 +14,7 @@ import { DashboardChartData } from "../hooks/useDashboardCharts";
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { deviceId, selectedPanel } = useDevice();
+  const { selectedPanel } = useDevice();
   
   // Use our combined hook for all device, panel and chart data
   const {
