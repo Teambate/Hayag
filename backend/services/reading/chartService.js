@@ -138,8 +138,8 @@ export const getDashboardChartDataService = async (params) => {
   }
   
   // Validate time interval
-  if (!['5min', '10min', '15min', '30min', 'hourly', 'daily'].includes(timeInterval)) {
-    throw new Error("Invalid timeInterval. Must be one of: 5min, 10min, 15min, 30min, hourly, daily");
+  if (!['5min', '10min', '15min', '30min', 'hourly', 'daily', 'weekly', 'monthly'].includes(timeInterval)) {
+    throw new Error("Invalid timeInterval. Must be one of: 5min, 10min, 15min, 30min, hourly, daily, weekly, monthly");
   }
   
   // Convert chart types to array if provided
@@ -181,7 +181,7 @@ export const getDashboardChartDataService = async (params) => {
   // Convert Set back to array
   const sensorTypes = Array.from(sensorTypesSet);
   
-  // First, find the latest reading to determine which day to show
+  // Find the latest reading to determine the reference date
   const latestReading = await SensorReading.findOne(
     { deviceId: deviceId },
     { endTime: 1 },
@@ -192,24 +192,55 @@ export const getDashboardChartDataService = async (params) => {
     throw new Error(`No readings found for device ${deviceId}`);
   }
   
-  // Get the start of the day for the latest reading (in UTC)
+  // Get the reference date based on the latest reading (in UTC)
   const latestDate = new Date(latestReading.endTime);
-  const startOfDay = new Date(latestDate);
-  startOfDay.setUTCHours(0, 0, 0, 0);
   
-  const endOfDay = new Date(latestDate);
-  endOfDay.setUTCHours(23, 59, 59, 999);
+  // Determine the date range based on the time interval
+  let startDate, endDate;
+  
+  switch (timeInterval) {
+    case 'daily':
+      // For daily interval, return current month data
+      startDate = new Date(latestDate);
+      startDate.setUTCDate(1); // First day of the month
+      startDate.setUTCHours(0, 0, 0, 0);
+      
+      endDate = new Date(latestDate);
+      endDate.setUTCHours(23, 59, 59, 999);
+      break;
+      
+    case 'weekly':
+    case 'monthly':
+      // For weekly and monthly intervals, return whole year data
+      startDate = new Date(latestDate);
+      startDate.setUTCMonth(0, 1); // January 1st
+      startDate.setUTCHours(0, 0, 0, 0);
+      
+      endDate = new Date(latestDate);
+      endDate.setUTCHours(23, 59, 59, 999);
+      break;
+      
+    default:
+      // Default behavior for 5min, 10min, 15min, 30min, hourly
+      // Return current day data
+      startDate = new Date(latestDate);
+      startDate.setUTCHours(0, 0, 0, 0);
+      
+      endDate = new Date(latestDate);
+      endDate.setUTCHours(23, 59, 59, 999);
+      break;
+  }
   
   // Build the aggregation pipeline
   const pipeline = [];
   
-  // Match stage - filter by deviceId and date of latest reading
+  // Match stage - filter by deviceId and date range
   pipeline.push({
     $match: {
       deviceId: deviceId,
       endTime: {
-        $gte: startOfDay,
-        $lte: endOfDay
+        $gte: startDate,
+        $lte: endDate
       }
     }
   });
@@ -279,7 +310,8 @@ export const getDashboardChartDataService = async (params) => {
   
   return {
     timeInterval: timeInterval,
-    date: startOfDay.toISOString().split('T')[0],
+    startDate: startDate.toISOString().split('T')[0],
+    endDate: endDate.toISOString().split('T')[0],
     data: result
   };
 }; 

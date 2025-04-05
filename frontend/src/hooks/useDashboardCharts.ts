@@ -23,6 +23,8 @@ export interface DashboardChartData {
   battery: ChartDataPoint[];
   panel_temp: ChartDataPoint[];
   irradiance: ChartDataPoint[];
+  startDate?: string;
+  endDate?: string;
 }
 
 export const useDashboardCharts = (deviceId: string, timeInterval: string = '10min') => {

@@ -9,7 +9,7 @@ import { useAuth } from "../context/AuthContext";
 import { useDeviceData } from "../hooks/useDeviceData";
 import { useDevice } from "../context/DeviceContext";
 import { useCallback, useState } from "react";
-import { DashboardChartData } from "../hooks/useDashboardCharts";
+import { DashboardChartData, ChartDataPoint } from "../hooks/useDashboardCharts";
 import { TimePeriod } from "../components/graphs/EnergyProduction";
 
 export default function Dashboard() {
@@ -48,7 +48,7 @@ export default function Dashboard() {
     const dataLength = chartData[chartType].length;
     if (dataLength === 0) return `${chartType}-empty`;
     
-    const latestTimestamp = chartData[chartType][dataLength-1].timestamp;
+    const latestTimestamp = (chartData[chartType][dataLength-1] as ChartDataPoint).timestamp;
     return `${chartType}-${dataLength}-${latestTimestamp}`;
   }, [chartData]);
   
@@ -194,6 +194,11 @@ export default function Dashboard() {
                 <h3 className="text-base font-semibold text-gray-800">
                   Energy Production
                 </h3>
+                {chartData && chartData.startDate && chartData.endDate && (
+                  <div className="text-sm text-gray-500">
+                    {new Date(chartData.startDate).toLocaleDateString()} - {new Date(chartData.endDate).toLocaleDateString()}
+                  </div>
+                )}
               </div>
               <div className="w-full h-[280px] md:h-[40vw] max-h-[280px]">
                 {isLoadingChartData ? (

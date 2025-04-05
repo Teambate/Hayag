@@ -13,6 +13,10 @@ export function getTimeIntervalInMs(intervalString) {
       return 60 * 60 * 1000;
     case 'daily':
       return 24 * 60 * 60 * 1000;
+    case 'weekly':
+      return 7 * 24 * 60 * 60 * 1000; // 7 days
+    case 'monthly':
+      return 30 * 24 * 60 * 60 * 1000; // ~30 days
     default:
       return 15 * 60 * 1000; // Default to 15 minutes
   }
