@@ -9,7 +9,6 @@ import Banner from "../components/layout/Banner";
 import { useAuth } from "../context/AuthContext";
 import { useDeviceData } from "../hooks/useDeviceData";
 import { useDevice } from "../context/DeviceContext";
-import { useState, useEffect } from "react";
 import { useDashboardCharts } from "../hooks/useDashboardCharts";
 
 export default function Dashboard() {

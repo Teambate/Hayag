@@ -46,7 +46,7 @@ interface IrradianceGraphProps {
 const IrradianceGraph: React.FC<IrradianceGraphProps> = ({ timePeriod = '24h', chartData = [] }) => {
   // Use real data if available, otherwise fallback to mock data
   const irradianceData = chartData.length > 0 
-    ? chartData.map((point, index) => {
+    ? chartData.map((point) => {
         // Format time for display using 24-hour format
         const time = new Date(point.timestamp.toString()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
         

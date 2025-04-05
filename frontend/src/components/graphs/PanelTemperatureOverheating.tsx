@@ -42,7 +42,7 @@ interface PanelTemperatureOverheatingProps {
 const PanelTemperatureOverheating: React.FC<PanelTemperatureOverheatingProps> = ({ timePeriod = '24h', chartData = [] }) => {
   // Use real data if available, otherwise fallback to mock data
   const temperatureData = chartData.length > 0 
-    ? chartData.map((point, index) => {
+    ? chartData.map((point) => {
         // Format time for display using 24-hour format
         const time = new Date(point.timestamp.toString()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
         

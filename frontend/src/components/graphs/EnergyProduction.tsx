@@ -1,6 +1,5 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { BatteryIcon, ZapIcon } from 'lucide-react';
 import { ChartDataPoint } from '../../hooks/useDashboardCharts';
 
 // Define the type for time period
@@ -48,7 +47,7 @@ interface EnergyProductionProps {
 const EnergyProduction: React.FC<EnergyProductionProps> = ({ timePeriod = '24h', chartData = [] }) => {
   // Use real data if available, otherwise fallback to mock data
   const energyData = chartData.length > 0 
-    ? chartData.map((point, index) => {
+    ? chartData.map((point) => {
         // Format time for display using 24-hour format
         const time = new Date(point.timestamp.toString()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
         
@@ -120,7 +119,7 @@ const EnergyProduction: React.FC<EnergyProductionProps> = ({ timePeriod = '24h',
             
             {/* If we have real data, render a Bar for each panel */}
             {chartData.length > 0 ? (
-              panelIds.map((panelId, index) => (
+              panelIds.map((panelId) => (
                 <Bar 
                   key={panelId}
                   dataKey={`panel${panelId}`} 
