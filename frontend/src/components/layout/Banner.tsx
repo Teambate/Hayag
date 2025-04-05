@@ -70,8 +70,8 @@ export default function Banner({
 
   // State for date range - only used for Analytics and Sensors tabs
   const [dateRange, setDateRange] = useState<DateRange>({
-    from: new Date(2025, 1, 23), // Feb 23, 2025
-    to: new Date(2025, 2, 4), // March 4, 2025
+    from: new Date(),
+    to: new Date(),
   })
 
   // Get device ID from props, context, user context, or localStorage

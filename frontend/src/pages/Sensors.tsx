@@ -81,8 +81,8 @@ export default function Sensors() {
   
   // State for date range
   const [dateRange, setDateRange] = useState<DateRange>({
-    from: new Date(2025, 1, 23), // Feb 23, 2025
-    to: new Date(2025, 2, 4),    // March 4, 2025
+    from: new Date(), // Today
+    to: new Date(),   // Today
   })
   
   const sensorTypes = [
