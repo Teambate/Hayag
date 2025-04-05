@@ -10,18 +10,20 @@ import DownloadModal from "../ui/DownloadModal"
 
 // Map UI intervals to TimePeriod values
 const intervalToTimePeriod: Record<string, TimePeriod> = {
-  "Hourly": "24h",
-  "Daily": "7d",
-  "Weekly": "30d",
-  "Monthly": "90d"
+  "10min": "24h",
+  "30min": "24h",
+  "hourly": "24h",
+  "daily": "7d",
+  "weekly": "30d",
+  "monthly": "90d"
 };
 
 // Map TimePeriod values to UI intervals
 const timePeriodToInterval: Record<TimePeriod, string> = {
-  "24h": "Hourly",
-  "7d": "Daily",
-  "30d": "Weekly",
-  "90d": "Monthly"
+  "24h": "hourly",
+  "7d": "daily",
+  "30d": "weekly",
+  "90d": "monthly"
 };
 
 interface BannerProps {
@@ -29,9 +31,11 @@ interface BannerProps {
   // Props for Dashboard integration
   onTimePeriodChange?: (period: TimePeriod) => void;
   onPanelChange?: (panel: string) => void;
+  onIntervalChange?: (interval: string) => void;
   onDateRangeChange?: (range: DateRange) => void;
   selectedTimePeriod?: TimePeriod;
   selectedPanel?: string;
+  selectedInterval?: string;
   deviceId?: string;
   selectedSensors?: string[];
 }
@@ -40,9 +44,11 @@ export default function Banner({
   activeTab, 
   onTimePeriodChange, 
   onPanelChange, 
+  onIntervalChange,
   onDateRangeChange,
   selectedTimePeriod = '24h',
   selectedPanel,
+  selectedInterval,
   deviceId,
   selectedSensors = []
 }: BannerProps) {
@@ -60,7 +66,7 @@ export default function Banner({
   const { user } = useAuth()
 
   // State for interval - UI representation (Hourly, Daily, Monthly)
-  const [interval, setInterval] = useState<string>("Hourly")
+  const [interval, setInterval] = useState<string>(selectedInterval || "10min");
 
   // State for date range - only used for Analytics and Sensors tabs
   const [dateRange, setDateRange] = useState<DateRange>({
@@ -134,6 +140,13 @@ export default function Banner({
     }
   }, [selectedPanel, contextSelectedPanel]);
 
+  // Update interval state when prop changes
+  useEffect(() => {
+    if (selectedInterval) {
+      setInterval(selectedInterval);
+    }
+  }, [selectedInterval]);
+
   // If the active tab is Notes or Settings, don't show the banner
   if (activeTab === "Notes" || activeTab === "Settings") {
     return null;
@@ -156,7 +169,12 @@ export default function Banner({
   const handleIntervalChange = (newInterval: string) => {
     setInterval(newInterval);
     
-    // Convert UI interval to TimePeriod and pass to parent component
+    // Call parent interval change callback if provided
+    if (onIntervalChange) {
+      onIntervalChange(newInterval);
+    }
+    
+    // Also convert UI interval to TimePeriod and pass to parent component if provided
     if (onTimePeriodChange) {
       const timePeriod = intervalToTimePeriod[newInterval];
       onTimePeriodChange(timePeriod);
@@ -205,10 +223,12 @@ export default function Banner({
   // Get interval options - now always showing user-friendly labels
   const getIntervalOptions = () => {
     return [
-      { value: "Hourly", label: "Hourly" },
-      { value: "Daily", label: "Daily" },
-      { value: "Weekly", label: "Weekly" },
-      { value: "Monthly", label: "Monthly" }
+      { value: "10min", label: "10 min" },
+      { value: "30min", label: "30 min" },
+      { value: "hourly", label: "Hourly" },
+      { value: "daily", label: "Daily" },
+      { value: "weekly", label: "Weekly" },
+      { value: "monthly", label: "Monthly" }
     ];
   }
 

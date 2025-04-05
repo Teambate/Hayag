@@ -17,10 +17,12 @@ export interface IntervalSelectorProps {
 }
 
 const defaultOptions: IntervalOption[] = [
-  { value: "Hourly", label: "Hourly" },
-  { value: "Daily", label: "Daily" },
-  { value: "Weekly", label: "Weekly" },
-  { value: "Monthly", label: "Monthly" }
+  { value: "10min", label: "10 min" },
+  { value: "30min", label: "30 min" },
+  { value: "hourly", label: "Hourly" },
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" }
 ]
 
 export function IntervalSelector({ 

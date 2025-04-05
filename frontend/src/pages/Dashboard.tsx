@@ -4,17 +4,30 @@ import SystemHealth from "../components/data/SystemHealth";
 import BatteryChargeDischarge from "../components/graphs/BatteryChargeDischarge";
 import PanelTemperatureOverheating from "../components/graphs/PanelTemperatureOverheating";
 import IrradianceGraph from "../components/graphs/IrradianceGraph";
-import { ThermometerIcon, BatteryMediumIcon } from "lucide-react";
 import Banner from "../components/layout/Banner";
 import { useAuth } from "../context/AuthContext";
 import { useDeviceData } from "../hooks/useDeviceData";
 import { useDevice } from "../context/DeviceContext";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { DashboardChartData } from "../hooks/useDashboardCharts";
+import { TimePeriod } from "../components/graphs/EnergyProduction";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { selectedPanel } = useDevice();
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('24h');
+  const [timeInterval, setTimeInterval] = useState<string>('10min');
+  
+  // Handle time period change from Banner
+  const handleTimePeriodChange = (period: TimePeriod) => {
+    setTimePeriod(period);
+  };
+  
+  // Handle interval change via Banner's onPanelChange prop
+  // Note: We're reusing the existing prop for a different purpose
+  const handleIntervalChange = (interval: string) => {
+    setTimeInterval(interval);
+  };
   
   // Use our combined hook for all device, panel and chart data
   const {
@@ -23,13 +36,8 @@ export default function Dashboard() {
     chartData,
     isLoadingChartData,
     chartError
-  } = useDeviceData();
+  } = useDeviceData(timeInterval);
   
-  // Create mock system status since fetchSystemStatus was removed
-  const systemStatus = {
-    temperature: 32,
-    batteryLevel: 75
-  };
   
   // Helper to create a unique key for chart components based on their data
   // This ensures React will re-render when data changes
@@ -106,7 +114,13 @@ export default function Dashboard() {
   return (
     <div>
       {/* Banner integration */}
-      <Banner activeTab="Dashboard" />
+      <Banner 
+        activeTab="Dashboard" 
+        onTimePeriodChange={handleTimePeriodChange}
+        onIntervalChange={handleIntervalChange}
+        selectedTimePeriod={timePeriod}
+        selectedInterval={timeInterval}
+      />
       
       {/* Row 1: Sensor Overview - Minimalist, Line-based Layout */}
       <section className="border-b border-gray-200">
@@ -180,20 +194,6 @@ export default function Dashboard() {
                 <h3 className="text-base font-semibold text-gray-800">
                   Energy Production
                 </h3>
-                <div className="flex items-center space-x-4">
-                  {systemStatus && (
-                    <>
-                      <div className="flex items-center text-gray-600">
-                        <ThermometerIcon className="mr-1" size={14} />
-                        <span className="text-xs font-medium">{systemStatus.temperature}°C</span>
-                      </div>
-                      <div className="flex items-center text-gray-600">
-                        <BatteryMediumIcon className="mr-1" size={14} />
-                        <span className="text-xs font-medium">{systemStatus.batteryLevel}%</span>
-                      </div>
-                    </>
-                  )}
-                </div>
               </div>
               <div className="w-full h-[280px] md:h-[40vw] max-h-[280px]">
                 {isLoadingChartData ? (

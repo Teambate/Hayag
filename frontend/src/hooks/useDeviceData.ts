@@ -7,7 +7,7 @@ import { useDashboardCharts } from "./useDashboardCharts";
  * Custom hook that combines device context with dashboard data
  * for simplified access to device and panel data across the app.
  */
-export const useDeviceData = () => {
+export const useDeviceData = (timeInterval: string = '10min') => {
   const { deviceId, selectedPanel, setDeviceId, setSelectedPanel } = useDevice();
   
   // Get dashboard data using the selected device and panel
@@ -24,8 +24,10 @@ export const useDeviceData = () => {
     isLoading: isLoadingChartData,
     error: chartError,
     refreshChartData,
-    setChartData
-  } = useDashboardCharts(deviceId);
+    setChartData,
+    timeInterval: currentTimeInterval,
+    setTimeInterval
+  } = useDashboardCharts(deviceId, timeInterval);
   
   // Set up socket connection with both sensor and chart data setters
   const socketRef = useSocketConnection(deviceId, setSensorData, chartData, setChartData);
@@ -46,6 +48,8 @@ export const useDeviceData = () => {
     chartData,
     isLoadingChartData,
     chartError,
+    timeInterval: currentTimeInterval,
+    setTimeInterval,
     
     // Helper methods
     refreshSensorData: fetchDashboardData,

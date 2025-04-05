@@ -35,11 +35,12 @@ export const fetchSensorData = async (deviceId: string) => {
 import api from '../utils/api'; // Import the configured axios instance
 
 // Fetch dashboard chart data for all graphs
-export const fetchDashboardChartData = async (deviceId: string) => {
+export const fetchDashboardChartData = async (deviceId: string, timeInterval: string = '10min') => {
   try {
     // Build the query parameters
     const params = new URLSearchParams();
     params.append('deviceId', deviceId);
+    params.append('timeInterval', timeInterval);
     
     // Use the axios instance which includes auth cookies
     const response = await api.get(`/readings/dashboard/chart?${params.toString()}`);
