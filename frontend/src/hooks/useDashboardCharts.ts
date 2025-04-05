@@ -59,6 +59,7 @@ export const useDashboardCharts = (deviceId: string) => {
 
   return {
     chartData,
+    setChartData,
     isLoading,
     error,
     refreshChartData: fetchChartData

@@ -229,6 +229,9 @@ export function finalizeDataBucket(bucket, chartType) {
   delete bucket.values;
 }
 
+// Track previous readings for energy accumulation calculations in real-time updates
+const previousReadingsCache = {};
+
 // Helper function to process a reading for chart updates
 export function processReadingForCharts(reading) {
   const chartData = {
@@ -240,23 +243,41 @@ export function processReadingForCharts(reading) {
   
   const timestamp = reading.endTime.getTime();
   
-  // Energy production - now include both power (W) and energy (kWh) data
-  // For real-time updates, the frontend will still need instantaneous power
-  // but we'll also include energy information for accumulation display
+  // Energy production - calculate both power (W) and energy accumulation (kWh)
   if (reading.readings.ina226 && reading.readings.ina226.length > 0) {
     reading.readings.ina226.forEach(sensor => {
       const voltage = sensor.voltage.average;
       const current = sensor.current.average;
-      const power = voltage * current / 1000; // Convert to watts
+      const currentPower = voltage * current / 1000; // Convert to watts
+      
+      // Get previous reading for this panel to calculate energy accumulation
+      const prevReading = previousReadingsCache[sensor.panelId];
+      let energyKWh = 0;
+      
+      if (prevReading) {
+        // Calculate energy accumulation (kWh) between readings using the same method as in processReadingForChart
+        const hoursDiff = (new Date(reading.endTime) - new Date(prevReading.timestamp)) / (1000 * 60 * 60);
+        const avgPower = (currentPower + prevReading.power) / 2; // W
+        energyKWh = avgPower * hoursDiff / 1000; // kWh
+        
+        // Avoid negative values
+        energyKWh = energyKWh > 0 ? energyKWh : 0;
+      }
+      
+      // Update previous reading cache for next calculation
+      previousReadingsCache[sensor.panelId] = {
+        timestamp: reading.endTime,
+        voltage: voltage,
+        current: current,
+        power: currentPower
+      };
       
       chartData.energy.push({
         panelId: sensor.panelId,
         timestamp: timestamp,
-        power: power,
+        power: currentPower,
+        energy: energyKWh,
         unit: 'W',
-        // The actual energy accumulation will be calculated by the frontend
-        // based on time differences between readings or by the backend
-        // when querying historical data
         energyUnit: 'kWh'
       });
     });

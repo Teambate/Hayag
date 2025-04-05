@@ -1,6 +1,7 @@
 import { useDevice } from "../context/DeviceContext";
 import { useDashboardData } from "./useDashboardData";
 import { useSocketConnection } from "./useSocketConnection";
+import { useDashboardCharts } from "./useDashboardCharts";
 
 /**
  * Custom hook that combines device context with dashboard data
@@ -12,13 +13,22 @@ export const useDeviceData = () => {
   // Get dashboard data using the selected device and panel
   const { 
     sensorData, 
-    isLoading, 
+    isLoading: isLoadingSensorData, 
     setSensorData,
     fetchDashboardData
   } = useDashboardData(deviceId, selectedPanel);
   
-  // Set up socket connection
-  const socketRef = useSocketConnection(deviceId, setSensorData);
+  // Get chart data
+  const {
+    chartData,
+    isLoading: isLoadingChartData,
+    error: chartError,
+    refreshChartData,
+    setChartData
+  } = useDashboardCharts(deviceId);
+  
+  // Set up socket connection with both sensor and chart data setters
+  const socketRef = useSocketConnection(deviceId, setSensorData, chartData, setChartData);
   
   
   return {
@@ -30,10 +40,16 @@ export const useDeviceData = () => {
     
     // Dashboard data
     sensorData,
-    isLoading,
+    isLoadingSensorData,
+    
+    // Chart data
+    chartData,
+    isLoadingChartData,
+    chartError,
     
     // Helper methods
-    refreshData: fetchDashboardData,
+    refreshSensorData: fetchDashboardData,
+    refreshChartData,
     socketRef
   };
 }; 

@@ -1,10 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { SensorDataType } from '../types/dashboardTypes';
+import { ChartDataPoint, DashboardChartData } from './useDashboardCharts';
 
 export const useSocketConnection = (
   deviceId: string, 
-  setSensorData: React.Dispatch<React.SetStateAction<SensorDataType | null>>
+  setSensorData: React.Dispatch<React.SetStateAction<SensorDataType | null>>,
+  chartData?: DashboardChartData | null,
+  setChartData?: React.Dispatch<React.SetStateAction<DashboardChartData | null>>
 ) => {
   const socketRef = useRef<Socket | null>(null);
 
@@ -127,7 +130,102 @@ export const useSocketConnection = (
     // Handle chart updates
     socketRef.current.on('chartUpdate', (data) => {
       console.log('Received chart update:', data);
-      // Will implement chart data updates in the next iteration
+      
+      // Skip if we don't have setChartData or chart data
+      if (!setChartData || !chartData) return;
+      
+      const { chartType, dataPoint } = data;
+      
+      // Make sure we have a valid data structure
+      if (!chartType || !dataPoint || !Array.isArray(dataPoint)) {
+        console.error('Invalid chart data structure:', data);
+        return;
+      }
+      
+      // Update the chart data by adding the new data point
+      setChartData(prevChartData => {
+        if (!prevChartData) return prevChartData;
+        
+        // Deep clone the previous chart data
+        const newChartData = JSON.parse(JSON.stringify(prevChartData));
+        
+        // Format the new data point as needed for each chart type
+        if (chartType === 'energy') {
+          // Group data by panel ID
+          const panelGroups: Record<string, any> = {};
+          
+          // Process each panel's data point
+          dataPoint.forEach((panelData: any) => {
+            panelGroups[panelData.panelId] = {
+              panelId: panelData.panelId,
+              energy: panelData.energy || 0,
+              unit: panelData.energyUnit || 'kWh'
+            };
+          });
+          
+          // Create a new chart data point
+          const newPoint: ChartDataPoint = {
+            timestamp: new Date(dataPoint[0].timestamp), // Use timestamp from first panel
+            panels: Object.values(panelGroups),
+            average: {
+              value: Object.values(panelGroups).reduce((sum: number, panel: any) => sum + panel.energy, 0),
+              unit: 'kWh'
+            }
+          };
+          
+          // Add new point to the chart data
+          // Limit array to 30 points to avoid memory issues
+          const updatedData = [...newChartData[chartType], newPoint].slice(-30);
+          newChartData[chartType] = updatedData;
+        } else {
+          // Process other chart types (battery, panel_temp, irradiance)
+          // Group data by panel ID
+          const panelGroups: Record<string, any> = {};
+          
+          // Process each panel's data point
+          dataPoint.forEach((panelData: any) => {
+            // The key difference: Now we need to match the data structure expected by the charts
+            // The charts look for panel.value, so we need to ensure it's there
+            panelGroups[panelData.panelId] = {
+              panelId: panelData.panelId,
+              value: panelData.value, // This is the important property for other charts
+              unit: panelData.unit
+            };
+          });
+          
+          // Calculate average value
+          const avgValue = Object.values(panelGroups).length > 0 
+            ? Object.values(panelGroups).reduce((sum: number, panel: any) => sum + panel.value, 0) / Object.values(panelGroups).length
+            : 0;
+          
+          // Create a new chart data point
+          const newPoint: ChartDataPoint = {
+            timestamp: new Date(dataPoint[0].timestamp), // Use timestamp from first panel
+            panels: Object.values(panelGroups),
+            average: {
+              value: avgValue,
+              unit: dataPoint[0]?.unit || ''
+            }
+          };
+          
+          // Log the specific format for chart type to help debug
+          console.log(`Creating ${chartType} chart point:`, {
+            timestamp: new Date(dataPoint[0].timestamp),
+            panels: Object.values(panelGroups),
+            average: { value: avgValue, unit: dataPoint[0]?.unit || '' }
+          });
+          
+          // Add new point to the chart data
+          // Limit array to 30 points to avoid memory issues
+          const updatedData = [...newChartData[chartType], newPoint].slice(-30);
+          newChartData[chartType] = updatedData;
+          
+          // Debug log for chart update
+          console.log(`Updated ${chartType} chart data - now has ${updatedData.length} points`);
+        }
+        
+        return newChartData;
+      });
     });
     
     // Clean up on component unmount
@@ -148,7 +246,7 @@ export const useSocketConnection = (
         socketRef.current.disconnect();
       }
     };
-  }, [deviceId, setSensorData]); // Re-connect if deviceId changes or setter changes
+  }, [deviceId, setSensorData, chartData, setChartData]); // Re-connect if deviceId changes or setter changes
 
   return socketRef;
 }; 

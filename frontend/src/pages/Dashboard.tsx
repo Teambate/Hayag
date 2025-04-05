@@ -9,30 +9,40 @@ import Banner from "../components/layout/Banner";
 import { useAuth } from "../context/AuthContext";
 import { useDeviceData } from "../hooks/useDeviceData";
 import { useDevice } from "../context/DeviceContext";
-import { useDashboardCharts } from "../hooks/useDashboardCharts";
+import { useCallback } from "react";
+import { DashboardChartData } from "../hooks/useDashboardCharts";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { deviceId, selectedPanel } = useDevice();
   
-  // Use our combined hook for all device and panel data
+  // Use our combined hook for all device, panel and chart data
   const {
     sensorData,
-    isLoading: isLoadingSensorData
-  } = useDeviceData();
-  
-  // Use our hook for chart data
-  const {
+    isLoadingSensorData,
     chartData,
-    isLoading: isLoadingChartData,
-    error: chartError
-  } = useDashboardCharts(deviceId);
+    isLoadingChartData,
+    chartError
+  } = useDeviceData();
   
   // Create mock system status since fetchSystemStatus was removed
   const systemStatus = {
     temperature: 32,
     batteryLevel: 75
   };
+  
+  // Helper to create a unique key for chart components based on their data
+  // This ensures React will re-render when data changes
+  const getChartKey = useCallback((chartType: keyof DashboardChartData) => {
+    if (!chartData || !chartData[chartType]) return chartType;
+    
+    // Use the latest timestamp and data length as part of the key
+    const dataLength = chartData[chartType].length;
+    if (dataLength === 0) return `${chartType}-empty`;
+    
+    const latestTimestamp = chartData[chartType][dataLength-1].timestamp;
+    return `${chartType}-${dataLength}-${latestTimestamp}`;
+  }, [chartData]);
   
   // Loading state when no devices are available
   if (!user?.devices || user.devices.length === 0) {
@@ -191,7 +201,10 @@ export default function Dashboard() {
                 ) : chartError ? (
                   <div className="flex items-center justify-center h-full text-red-500">Failed to load chart data</div>
                 ) : (
-                  <EnergyProduction chartData={chartData?.energy || []} />
+                  <EnergyProduction 
+                    key={getChartKey('energy')} 
+                    chartData={chartData?.energy || []} 
+                  />
                 )}
               </div>
             </div>
@@ -226,7 +239,10 @@ export default function Dashboard() {
                 ) : chartError ? (
                   <div className="flex items-center justify-center h-full text-red-500">Failed to load chart data</div>
                 ) : (
-                  <BatteryChargeDischarge chartData={chartData?.battery || []} />
+                  <BatteryChargeDischarge 
+                    key={getChartKey('battery')} 
+                    chartData={chartData?.battery || []} 
+                  />
                 )}
               </div>
             </div>
@@ -244,7 +260,10 @@ export default function Dashboard() {
                 ) : chartError ? (
                   <div className="flex items-center justify-center h-full text-red-500">Failed to load chart data</div>
                 ) : (
-                  <PanelTemperatureOverheating chartData={chartData?.panel_temp || []} />
+                  <PanelTemperatureOverheating 
+                    key={getChartKey('panel_temp')} 
+                    chartData={chartData?.panel_temp || []} 
+                  />
                 )}
               </div>
             </div>
@@ -262,7 +281,10 @@ export default function Dashboard() {
                 ) : chartError ? (
                   <div className="flex items-center justify-center h-full text-red-500">Failed to load chart data</div>
                 ) : (
-                  <IrradianceGraph chartData={chartData?.irradiance || []} />
+                  <IrradianceGraph 
+                    key={getChartKey('irradiance')}
+                    chartData={chartData?.irradiance || []} 
+                  />
                 )}
               </div>
             </div>

@@ -457,7 +457,9 @@ async function calculatePowerAccumulation(result, deviceId, latestReading) {
   }
 }
 
-// Helper function to process a reading for chart updates
+// Track previous readings for energy accumulation calculations in real-time updates
+const previousReadingsCache = {};
+
 function processReadingForCharts(reading) {
   const chartData = {
     energy: [],
@@ -468,18 +470,41 @@ function processReadingForCharts(reading) {
   
   const timestamp = reading.endTime.getTime();
   
-  // Energy production (using current and voltage)
+  // Energy production - calculate both power (W) and energy accumulation (kWh)
   if (reading.readings.ina226 && reading.readings.ina226.length > 0) {
     reading.readings.ina226.forEach(sensor => {
       const voltage = sensor.voltage.average;
       const current = sensor.current.average;
-      const power = voltage * current / 1000; // Convert to watts
+      const currentPower = voltage * current / 1000; // Convert to watts
+      
+      // Get previous reading for this panel to calculate energy accumulation
+      const panelCacheKey = `${reading.deviceId}:${sensor.panelId}`;
+      const prevReading = previousReadingsCache[panelCacheKey];
+      let energyKWh = 0;
+      
+      if (prevReading) {
+        // Calculate energy accumulation (kWh) between readings
+        const hoursDiff = (new Date(reading.endTime) - new Date(prevReading.timestamp)) / (1000 * 60 * 60);
+        const avgPower = (currentPower + prevReading.power) / 2; // W
+        energyKWh = avgPower * hoursDiff / 1000; // kWh
+        
+        // Avoid negative values
+        energyKWh = energyKWh > 0 ? energyKWh : 0;
+      }
+      
+      // Update previous reading cache for next calculation
+      previousReadingsCache[panelCacheKey] = {
+        timestamp: reading.endTime,
+        power: currentPower
+      };
       
       chartData.energy.push({
         panelId: sensor.panelId,
         timestamp: timestamp,
-        value: power,
-        unit: 'W'
+        power: currentPower,
+        energy: energyKWh,
+        unit: 'W',
+        energyUnit: 'kWh'
       });
     });
   }
@@ -519,6 +544,13 @@ function processReadingForCharts(reading) {
       });
     });
   }
+  
+  // Log data being sent to ensure proper structure
+  Object.keys(chartData).forEach(chartType => {
+    if (chartData[chartType].length > 0) {
+      console.log(`Emitting ${chartType} chart data`, JSON.stringify(chartData[chartType]));
+    }
+  });
   
   return chartData;
 } 
