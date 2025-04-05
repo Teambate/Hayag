@@ -1,9 +1,12 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "../components/ui/button"
 import SensorTable from "../components/data/SensorTable"
 import MultiSensorTable from "../components/data/MultiSensorTable"
 import Banner from "../components/layout/Banner"
 import filterIcon from "../assets/filter.svg"
+import { useDevice } from "../context/DeviceContext"
+import { format } from "date-fns"
+import { DateRange } from "react-day-picker"
 
 // Add custom animation styles
 const animationStyles = `
@@ -41,8 +44,46 @@ const animationStyles = `
 .animate-spin-slow { animation: spin-slow 12s linear infinite; }
 `;
 
+// Define mapping between sensor types in the UI and backend
+const sensorTypeMapping: Record<string, string> = {
+  "Light": "light",
+  "Irradiance": "solar",
+  "Humidity": "dht22", // Will need to extract 'humidity' from this
+  "Rain": "rain",
+  "Ambient Temperature": "dht22", // Will need to extract 'temperature' from this
+  "Battery": "battery",
+  "Panel Temperature": "panel_temp",
+  "Panel Voltage": "ina226", // Will need to extract 'voltage' from this
+  "Panel Current": "ina226"  // Will need to extract 'current' from this
+};
+
+// Mapping for units
+const unitMapping: Record<string, string> = {
+  "Light": "lux",
+  "Irradiance": "W/m²",
+  "Humidity": "%",
+  "Rain": "mm",
+  "Ambient Temperature": "°C",
+  "Battery": "%",
+  "Panel Temperature": "°C",
+  "Panel Voltage": "V",
+  "Panel Current": "A"
+};
+
 export default function Sensors() {
   const [selectedSensors, setSelectedSensors] = useState<string[]>([])
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [error, setError] = useState<string | null>(null)
+  const [sensorData, setSensorData] = useState<any[]>([])
+  
+  // Get deviceId and selectedPanel from context
+  const { deviceId, selectedPanel } = useDevice()
+  
+  // State for date range
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: new Date(2025, 1, 23), // Feb 23, 2025
+    to: new Date(2025, 2, 4),    // March 4, 2025
+  })
   
   const sensorTypes = [
     "Light",
@@ -56,191 +97,215 @@ export default function Sensors() {
     "Panel Current"
   ]
 
-  // Sample data for single sensor view
-  const singleSensorData = {
-    "Light": [
-      {
-        sensorType: "Light",
-        panel1: "4500 lux",
-        panel2: "4800 lux",
-        status: "Warning",
-        time: "10:00 am",
-        date: "12/28/2025"
-      }
-    ],
-    "Irradiance": [
-      {
-        sensorType: "Irradiance",
-        panel1: "850 W/m²",
-        panel2: "920 W/m²",
-        status: "Normal",
-        time: "10:00 am",
-        date: "12/28/2025"
-      }
-    ],
-    "Humidity": [
-      {
-        sensorType: "Humidity",
-        panel1: "65%",
-        panel2: "68%",
-        status: "Normal",
-        time: "10:00 am",
-        date: "12/28/2025"
-      }
-    ],
-    "Rain": [
-      {
-        sensorType: "Rain",
-        panel1: "25 mm",
-        panel2: "30 mm",
-        status: "Normal",
-        time: "10:00 am",
-        date: "12/28/2025"
-      }
-    ],
-    "Ambient Temperature": [
-      {
-        sensorType: "Ambient Temperature",
-        panel1: "32°C",
-        panel2: "45°C",
-        status: "Critical",
-        time: "10:00 am",
-        date: "12/28/2025"
-      }
-    ],
-    "Battery": [
-      {
-        sensorType: "Battery",
-        panel1: "85%",
-        panel2: "92%",
-        status: "Normal",
-        time: "10:00 am",
-        date: "12/28/2025"
-      }
-    ],
-    "Panel Temperature": [
-      {
-        sensorType: "Panel Temperature",
-        panel1: "45°C",
-        panel2: "48°C",
-        status: "Warning",
-        time: "10:00 am",
-        date: "12/28/2025"
-      }
-    ],
-    "Panel Voltage": [
-      {
-        sensorType: "Panel Voltage",
-        panel1: "24.5 V",
-        panel2: "25.2 V",
-        status: "Normal",
-        time: "10:00 am",
-        date: "12/28/2025"
-      }
-    ],
-    "Panel Current": [
-      {
-        sensorType: "Panel Current",
-        panel1: "5.8 A",
-        panel2: "6.2 A",
-        status: "Normal",
-        time: "10:00 am",
-        date: "12/28/2025"
-      }
-    ]
-  }
-
-  // Sample data for multi-sensor view
-  const multiSensorData = [
-    {
-      timestamp: "02/23/2025 06:00am",
-      rain: {
-        value1: "25 mm",
-        value2: "30 mm"
-      },
-      light: {
-        value1: "4500 lux",
-        value2: "4800 lux"
-      },
-      ambientTemp: {
-        value1: "32°C",
-        value2: "45°C"
-      }
-    },
-    {
-      timestamp: "02/23/2025 07:00am",
-      rain: {
-        value1: "28 mm",
-        value2: "33 mm"
-      },
-      light: {
-        value1: "5200 lux",
-        value2: "5500 lux"
-      },
-      ambientTemp: {
-        value1: "34°C",
-        value2: "47°C"
-      }
-    },
-    {
-      timestamp: "02/23/2025 08:00am",
-      rain: {
-        value1: "30 mm",
-        value2: "35 mm"
-      },
-      light: {
-        value1: "6000 lux",
-        value2: "6300 lux"
-      },
-      ambientTemp: {
-        value1: "36°C",
-        value2: "48°C"
-      }
+  // Format panel selection for API
+  const getPanelIdFromSelection = () => {
+    if (!selectedPanel || selectedPanel === "All Panels") {
+      return null;
     }
-  ]
-
-  // Function to get the appropriate table data based on selected sensors
-  const getTableData = () => {
+    
+    // Extract panel number from string like "Panel 1"
+    const panelMatch = selectedPanel.match(/Panel (\d+)/);
+    return panelMatch ? panelMatch[1] : null;
+  }
+  
+  // Function to fetch sensor data from the backend
+  const fetchSensorData = async () => {
     if (selectedSensors.length === 0) {
-      return []
-    } else if (selectedSensors.length === 1) {
-      return singleSensorData[selectedSensors[0] as keyof typeof singleSensorData] || []
+      setSensorData([]);
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      
+      // Add deviceId
+      if (deviceId) {
+        params.append('deviceId', deviceId);
+      }
+      
+      // Add panel ID if a specific panel is selected
+      const panelId = getPanelIdFromSelection();
+      if (panelId) {
+        params.append('panelIds', panelId);
+      }
+      
+      // Add date range
+      if (dateRange.from) {
+        params.append('startDateTime', dateRange.from.toISOString());
+      }
+      if (dateRange.to) {
+        params.append('endDateTime', dateRange.to.toISOString());
+      }
+      
+      // Map UI sensor types to backend sensor types
+      const backendSensorTypes = selectedSensors
+        .map(sensor => sensorTypeMapping[sensor])
+        .filter((value, index, self) => value && self.indexOf(value) === index); // Remove duplicates
+        
+      // Add sensor types
+      backendSensorTypes.forEach(sensorType => {
+        params.append('sensorTypes', sensorType);
+      });
+      
+      // Make API call
+      const response = await fetch(`/api/readings/filtered?${params.toString()}`);
+      
+      if (!response.ok) {
+        throw new Error(`Error fetching sensor data: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to fetch sensor data');
+      }
+      
+      // Format the data based on the number of selected sensors
+      const formattedData = formatSensorData(result.data);
+      setSensorData(formattedData);
+      
+    } catch (err) {
+      console.error("Error fetching sensor data:", err);
+      setError(err instanceof Error ? err.message : String(err));
+      setSensorData([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Format sensor data for UI display
+  const formatSensorData = (apiData: any[]) => {
+    if (!apiData || apiData.length === 0) {
+      return [];
+    }
+    
+    if (selectedSensors.length === 1) {
+      // Format for single sensor view (SensorTable)
+      const sensorType = selectedSensors[0];
+      const mappedType = sensorTypeMapping[sensorType];
+      
+      return apiData.map(reading => {
+        const formattedReading: any = {
+          sensorType: sensorType,
+          panel1: "N/A",
+          panel2: "N/A",
+          status: "Normal",
+          time: format(new Date(reading.endTime), "h:mm a"),
+          date: format(new Date(reading.endTime), "MM/dd/yyyy")
+        };
+        
+        // Extract sensor readings
+        if (reading.readings[mappedType]) {
+          const sensorReadings = reading.readings[mappedType];
+          
+          // Handle nested values for humidity, temperature, voltage, current
+          if (sensorType === "Humidity" || sensorType === "Ambient Temperature") {
+            const valueField = sensorType === "Humidity" ? "humidity" : "temperature";
+            
+            if (sensorReadings.length > 0) {
+              formattedReading.panel1 = sensorReadings[0]?.[valueField]?.average.toFixed(1) + " " + unitMapping[sensorType];
+              if (sensorReadings.length > 1) {
+                formattedReading.panel2 = sensorReadings[1]?.[valueField]?.average.toFixed(1) + " " + unitMapping[sensorType];
+              }
+            }
+          } else if (sensorType === "Panel Voltage" || sensorType === "Panel Current") {
+            const valueField = sensorType === "Panel Voltage" ? "voltage" : "current";
+            
+            if (sensorReadings.length > 0) {
+              formattedReading.panel1 = sensorReadings[0]?.[valueField]?.average.toFixed(1) + " " + unitMapping[sensorType];
+              if (sensorReadings.length > 1) {
+                formattedReading.panel2 = sensorReadings[1]?.[valueField]?.average.toFixed(1) + " " + unitMapping[sensorType];
+              }
+            }
+          } else {
+            // Direct values like light, rain, etc.
+            if (sensorReadings.length > 0) {
+              formattedReading.panel1 = sensorReadings[0]?.average.toFixed(1) + " " + unitMapping[sensorType];
+              if (sensorReadings.length > 1) {
+                formattedReading.panel2 = sensorReadings[1]?.average.toFixed(1) + " " + unitMapping[sensorType];
+              }
+            }
+          }
+          
+          // Determine status based on thresholds (simplified example)
+          // This would need to be expanded with actual thresholds per sensor type
+          if (sensorType === "Ambient Temperature") {
+            const temp = parseFloat(formattedReading.panel1);
+            if (temp > 40) formattedReading.status = "Critical";
+            else if (temp > 35) formattedReading.status = "Warning";
+          } else if (sensorType === "Panel Temperature") {
+            const temp = parseFloat(formattedReading.panel1);
+            if (temp > 45) formattedReading.status = "Warning";
+            if (temp > 50) formattedReading.status = "Critical";
+          }
+        }
+        
+        return formattedReading;
+      });
     } else {
-      // For multiple sensors, transform the data for MultiSensorTable
-      return multiSensorData.map(row => {
-        // Initialize with explicit type for sensors
-        const newRow: {
+      // Format for multi-sensor view (MultiSensorTable)
+      return apiData.map(reading => {
+        const formattedReading: {
           timestamp: string;
           sensors: Record<string, {value1: string; value2: string}>;
         } = {
-          timestamp: row.timestamp,
+          timestamp: format(new Date(reading.endTime), "MM/dd/yyyy h:mm a"),
           sensors: {}
         };
         
-        // Add selected sensors to the data
-        if (selectedSensors.includes("Rain")) {
-          newRow.sensors["Rain"] = row.rain;
-        }
-        if (selectedSensors.includes("Light")) {
-          newRow.sensors["Light"] = row.light;
-        }
-        if (selectedSensors.includes("Ambient Temperature")) {
-          newRow.sensors["Ambient Temperature"] = row.ambientTemp;
-        }
-        
-        // Add dummy data for other selected sensors
-        selectedSensors.forEach(sensor => {
-          if (!newRow.sensors[sensor]) {
-            newRow.sensors[sensor] = {
-              value1: `${sensor} Panel 1 Value`,
-              value2: `${sensor} Panel 2 Value`
+        // Process each selected sensor
+        selectedSensors.forEach(sensorType => {
+          const mappedType = sensorTypeMapping[sensorType];
+          
+          // Handle different sensor types
+          if (sensorType === "Humidity" || sensorType === "Ambient Temperature") {
+            const valueField = sensorType === "Humidity" ? "humidity" : "temperature";
+            const sensorReadings = reading.readings["dht22"] || [];
+            
+            formattedReading.sensors[sensorType] = {
+              value1: sensorReadings[0]?.[valueField]?.average.toFixed(1) + " " + unitMapping[sensorType] || "N/A",
+              value2: sensorReadings[1]?.[valueField]?.average.toFixed(1) + " " + unitMapping[sensorType] || "N/A"
+            };
+          } else if (sensorType === "Panel Voltage" || sensorType === "Panel Current") {
+            const valueField = sensorType === "Panel Voltage" ? "voltage" : "current";
+            const sensorReadings = reading.readings["ina226"] || [];
+            
+            formattedReading.sensors[sensorType] = {
+              value1: sensorReadings[0]?.[valueField]?.average.toFixed(1) + " " + unitMapping[sensorType] || "N/A",
+              value2: sensorReadings[1]?.[valueField]?.average.toFixed(1) + " " + unitMapping[sensorType] || "N/A"
+            };
+          } else {
+            // Direct values
+            const sensorReadings = reading.readings[mappedType] || [];
+            
+            formattedReading.sensors[sensorType] = {
+              value1: sensorReadings[0]?.average.toFixed(1) + " " + unitMapping[sensorType] || "N/A",
+              value2: sensorReadings[1]?.average.toFixed(1) + " " + unitMapping[sensorType] || "N/A"
             };
           }
         });
         
-        return newRow;
+        return formattedReading;
       });
     }
+  };
+  
+  // Fetch data when selections change
+  useEffect(() => {
+    fetchSensorData();
+  }, [selectedSensors, deviceId, selectedPanel, dateRange]);
+
+  // Function to get the appropriate table data
+  const getTableData = () => {
+    if (selectedSensors.length === 0) {
+      return [];
+    }
+    
+    return sensorData;
   }
 
   // Handle "All" button click
@@ -254,12 +319,26 @@ export default function Sensors() {
     }
   }
 
+  // Handle Banner callbacks
+  const handlePanelChange = (panel: string) => {
+    // Banner component already updates the context
+  }
+  
+  const handleDateRangeChange = (range: DateRange) => {
+    setDateRange(range);
+  }
+
   return (
     <div className="flex flex-col">
       {/* Include animation styles */}
       <style dangerouslySetInnerHTML={{ __html: animationStyles }} />
       
-      <Banner activeTab="Sensors" selectedSensors={selectedSensors} />
+      <Banner 
+        activeTab="Sensors" 
+        selectedSensors={selectedSensors} 
+        onPanelChange={handlePanelChange}
+        onDateRangeChange={handleDateRangeChange}
+      />
       {/* Subtitle */}
       <p className="text-[#6F6F6F] px-6 mt-2">
         Select specific sensors to view real-time data
@@ -311,9 +390,17 @@ export default function Sensors() {
         ))}
       </div>
 
-      {/* Table Component - conditionally render based on selection */}
+      {/* Table Component */}
       <div className="px-6 mt-3 w-full mx-auto">
-        {selectedSensors.length === 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center items-center py-16">
+            <div className="animate-spin h-8 w-8 border-4 border-[#65B08F] border-t-transparent rounded-full"></div>
+          </div>
+        ) : error ? (
+          <div className="flex justify-center items-center py-16">
+            <p className="text-red-500">{error}</p>
+          </div>
+        ) : selectedSensors.length === 0 ? (
           <div className="flex flex-col justify-center items-center py-16">
             <div className="mb-8 relative">
               {/* Background glow effects */}
@@ -380,12 +467,24 @@ export default function Sensors() {
             <p className="text-base text-gray-500">Please select at least one sensor to view data</p>
           </div>
         ) : selectedSensors.length === 1 ? (
-          <SensorTable data={getTableData() as any[]} />
+          sensorData.length > 0 ? (
+            <SensorTable data={getTableData() as any[]} />
+          ) : (
+            <div className="text-center py-8">
+              <p>No data available for the selected sensor and time range.</p>
+            </div>
+          )
         ) : (
-          <MultiSensorTable 
-            data={getTableData() as any[]} 
-            selectedSensors={selectedSensors}
-          />
+          sensorData.length > 0 ? (
+            <MultiSensorTable 
+              data={getTableData() as any[]} 
+              selectedSensors={selectedSensors}
+            />
+          ) : (
+            <div className="text-center py-8">
+              <p>No data available for the selected sensors and time range.</p>
+            </div>
+          )
         )}
       </div>
     </div>
