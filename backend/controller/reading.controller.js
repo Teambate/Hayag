@@ -1,6 +1,6 @@
 import SensorReading from "../model/reading.model.js";
 import { getFilteredReadingsService } from "../services/reading/filterService.js";
-import { getChartDataService, getDashboardChartDataService } from "../services/reading/chartService.js";
+import { getChartDataService, getDashboardChartDataService, getAnalyticsDataService } from "../services/reading/chartService.js";
 import { getCurrentSensorValuesService, getPanelIdsForDeviceService, createReadingService, bulkInsertReadingsService } from "../services/reading/sensorService.js";
 import { formatNumericValues } from "../utils/numberUtils.js";
 
@@ -132,6 +132,29 @@ export const getPanelIdsForDevice = async (req, res) => {
       success: false, 
       message: "Failed to fetch unique panel IDs",
       error: error.message 
+    });
+  }
+};
+
+export const getAnalyticsData = async (req, res) => {
+  try {
+    const result = await getAnalyticsDataService(req.query);
+    
+    res.status(200).json({
+      success: true,
+      timeInterval: result.timeInterval,
+      startDate: result.startDate,
+      endDate: result.endDate,
+      summaryValues: formatNumericValues(result.summaryValues),
+      data: formatNumericValues(result.data)
+    });
+    
+  } catch (error) {
+    console.error("Error fetching analytics data:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch analytics data",
+      error: error.message
     });
   }
 };
