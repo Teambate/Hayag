@@ -249,6 +249,11 @@ export default function Sensors() {
     } else {
       // Format for multi-sensor view (MultiSensorTable)
       return apiData.map(reading => {
+        // Skip invalid readings
+        if (!reading || !reading.endTime) {
+          return null;
+        }
+        
         const formattedReading: {
           timestamp: string;
           sensors: Record<string, {value1: string; value2: string}>;
@@ -257,40 +262,69 @@ export default function Sensors() {
           sensors: {}
         };
         
+        // Initialize all selected sensors with default values
+        // This ensures every selected sensor has an entry in the sensors object
+        selectedSensors.forEach(sensorType => {
+          formattedReading.sensors[sensorType] = {
+            value1: "N/A",
+            value2: "N/A"
+          };
+        });
+        
+        // Make sure readings object exists before processing
+        if (!reading.readings) {
+          return formattedReading;
+        }
+        
         // Process each selected sensor
         selectedSensors.forEach(sensorType => {
           const mappedType = sensorTypeMapping[sensorType];
+          
+          // Skip processing if no mapped type
+          if (!mappedType) return;
           
           // Handle different sensor types
           if (sensorType === "Humidity" || sensorType === "Ambient Temperature") {
             const valueField = sensorType === "Humidity" ? "humidity" : "temperature";
             const sensorReadings = reading.readings["dht22"] || [];
             
-            formattedReading.sensors[sensorType] = {
-              value1: sensorReadings[0]?.[valueField]?.average.toFixed(1) + " " + unitMapping[sensorType] || "N/A",
-              value2: sensorReadings[1]?.[valueField]?.average.toFixed(1) + " " + unitMapping[sensorType] || "N/A"
-            };
+            if (sensorReadings.length > 0 && sensorReadings[0] && sensorReadings[0][valueField] && sensorReadings[0][valueField].average !== undefined) {
+              formattedReading.sensors[sensorType] = {
+                value1: sensorReadings[0][valueField].average.toFixed(1) + " " + unitMapping[sensorType],
+                value2: (sensorReadings[1] && sensorReadings[1][valueField] && sensorReadings[1][valueField].average !== undefined) 
+                  ? sensorReadings[1][valueField].average.toFixed(1) + " " + unitMapping[sensorType] 
+                  : "N/A"
+              };
+            }
           } else if (sensorType === "Panel Voltage" || sensorType === "Panel Current") {
             const valueField = sensorType === "Panel Voltage" ? "voltage" : "current";
             const sensorReadings = reading.readings["ina226"] || [];
             
-            formattedReading.sensors[sensorType] = {
-              value1: sensorReadings[0]?.[valueField]?.average.toFixed(1) + " " + unitMapping[sensorType] || "N/A",
-              value2: sensorReadings[1]?.[valueField]?.average.toFixed(1) + " " + unitMapping[sensorType] || "N/A"
-            };
+            if (sensorReadings.length > 0 && sensorReadings[0] && sensorReadings[0][valueField] && sensorReadings[0][valueField].average !== undefined) {
+              formattedReading.sensors[sensorType] = {
+                value1: sensorReadings[0][valueField].average.toFixed(1) + " " + unitMapping[sensorType],
+                value2: (sensorReadings[1] && sensorReadings[1][valueField] && sensorReadings[1][valueField].average !== undefined) 
+                  ? sensorReadings[1][valueField].average.toFixed(1) + " " + unitMapping[sensorType] 
+                  : "N/A"
+              };
+            }
           } else {
             // Direct values
             const sensorReadings = reading.readings[mappedType] || [];
             
-            formattedReading.sensors[sensorType] = {
-              value1: sensorReadings[0]?.average.toFixed(1) + " " + unitMapping[sensorType] || "N/A",
-              value2: sensorReadings[1]?.average.toFixed(1) + " " + unitMapping[sensorType] || "N/A"
-            };
+            if (sensorReadings.length > 0 && sensorReadings[0] && sensorReadings[0].average !== undefined) {
+              formattedReading.sensors[sensorType] = {
+                value1: sensorReadings[0].average.toFixed(1) + " " + unitMapping[sensorType],
+                value2: (sensorReadings[1] && sensorReadings[1].average !== undefined) 
+                  ? sensorReadings[1].average.toFixed(1) + " " + unitMapping[sensorType] 
+                  : "N/A"
+              };
+            }
           }
         });
         
         return formattedReading;
-      });
+      }).filter(Boolean); // Remove any null entries
     }
   };
   
@@ -320,7 +354,7 @@ export default function Sensors() {
   }
 
   // Handle Banner callbacks
-  const handlePanelChange = (panel: string) => {
+  const handlePanelChange = () => {
     // Banner component already updates the context
   }
   

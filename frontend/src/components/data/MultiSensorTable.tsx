@@ -18,6 +18,12 @@ interface MultiSensorTableProps {
 }
 
 export default function MultiSensorTable({ data, selectedSensors }: MultiSensorTableProps) {
+  // Add safety check for data validation
+  const validateData = (rowData: MultiSensorData): boolean => {
+    if (!rowData || !rowData.sensors) return false;
+    return true;
+  };
+
   return (
     <div className="w-full overflow-x-auto">
       <table className="w-full border-collapse min-w-[900px]">
@@ -31,15 +37,19 @@ export default function MultiSensorTable({ data, selectedSensors }: MultiSensorT
           </tr>
         </thead>
         <tbody>
-          {data.map((row, index) => (
+          {data.filter(validateData).map((row, index) => (
             <tr key={index} className="border-t border-gray-100">
               <td className="py-3 px-4 lg:py-5 lg:px-6 font-medium text-[#000000] text-sm text-center">{row.timestamp}</td>
-              {/* Dynamically generate table cells based on selected sensors */}
-              {selectedSensors.map(sensor => (
-                <td key={sensor} className="py-3 px-4 lg:py-5 lg:px-6 font-medium text-[#000000] text-sm text-center">
-                  {row.sensors[sensor]?.value1 || "-"} | {row.sensors[sensor]?.value2 || "-"}
-                </td>
-              ))}
+              {/* Dynamically generate table cells based on selected sensors with enhanced safety */}
+              {selectedSensors.map(sensor => {
+                // Check if the sensor data exists, if not return default values
+                const sensorData = row.sensors[sensor] || { value1: "N/A", value2: "N/A" };
+                return (
+                  <td key={sensor} className="py-3 px-4 lg:py-5 lg:px-6 font-medium text-[#000000] text-sm text-center">
+                    {sensorData.value1 || "-"} | {sensorData.value2 || "-"}
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>
