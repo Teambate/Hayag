@@ -46,6 +46,22 @@ export const determineTimeFormat = (timestamps: (string | number)[]) => {
 
   // Force daily format if timestamps span multiple days
   if (isDailyOrLonger) {
+    // Calculate total date range in days
+    const totalDaysRange = (dates[dates.length - 1].getTime() - dates[0].getTime()) / (1000 * 60 * 60 * 24);
+    
+    // If spanning a few days (<=7), show date with time
+    if (totalDaysRange <= 7) {
+      return {
+        type: 'dayTime',
+        format: (timestamp: string | number) => {
+          const date = new Date(timestamp);
+          const dateStr = date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+          const timeStr = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+          return `${dateStr} ${timeStr}`;
+        }
+      };
+    }
+    
     // If spanning more than a month, show month/year format
     if (hourInterval > 24 * 30) {
       return {
