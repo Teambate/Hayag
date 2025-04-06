@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import { TimePeriod } from './EnergyProduction';
+import { formatTimestamp, determineTimeFormat } from '../../utils/dateUtils';
 
 // Mock data for peak solar hours with trend indicators
 const peakSolarDataDaily = [
@@ -36,6 +37,40 @@ const formatHour = (hour: number): string => {
 };
 
 const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ timePeriod = '24h', chartData = [] }) => {
+  // Extract all timestamps for interval determination
+  const allTimestamps = useMemo(() => {
+    return chartData.map(item => {
+      // Use timestamp property if it exists, otherwise use the numeric timestamp
+      return typeof item.timestamp === 'string' 
+        ? item.timestamp 
+        : item.timestamp || item.timestamp;
+    });
+  }, [chartData]);
+
+  // Determine the time format based on the interval between timestamps
+  const timeFormatInfo = useMemo(() => {
+    return determineTimeFormat(allTimestamps);
+  }, [allTimestamps]);
+
+  // Check if timestamps span multiple days
+  const isDailyData = useMemo(() => {
+    if (chartData.length < 2) return false;
+    
+    // If we have hour field in data, check the timestamp dates
+    if (chartData[0].hour !== undefined) {
+      const dates = chartData.map(item => {
+        const timestamp = item.timestamp?.toString() || '';
+        return new Date(timestamp).toDateString();
+      });
+      
+      // Check if all dates are the same
+      const firstDate = dates[0];
+      return !dates.every(date => date === firstDate);
+    }
+    
+    return timeFormatInfo.type === 'day' || timeFormatInfo.type === 'month';
+  }, [chartData, timeFormatInfo]);
+
   // Transform API data format to chart format
   const transformedData = useMemo(() => {
     if (chartData.length === 0) {
@@ -58,8 +93,17 @@ const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ timePeriod = '24h', cha
       const averageValue = item.average?.value || 0;
       const unit = item.average?.unit || 'kWh';
       
-      // Format the hour
-      const hourDisplay = item.hour !== undefined ? formatHour(item.hour) : '?';
+      // Format the time display based on data type
+      let timeDisplay;
+
+      // If data has hour field and we're not in daily mode, use hour format
+      if (item.hour !== undefined && !isDailyData) {
+        timeDisplay = formatHour(item.hour);
+      } else {
+        // For daily data or data without hour field, use timestamp formatting
+        const timestamp = item.timestamp?.toString() || '';
+        timeDisplay = formatTimestamp(timestamp, allTimestamps);
+      }
       
       // Determine trend (simple logic: higher than previous is 'up')
       const prevItem = index > 0 ? chartData[index - 1] : null;
@@ -67,14 +111,14 @@ const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ timePeriod = '24h', cha
       const trend = averageValue >= prevValue ? 'up' : 'down';
       
       return {
-        day: hourDisplay,
+        day: timeDisplay,
         value: parseFloat(averageValue.toFixed(2)),
         label: unit,
         trend: trend,
         highlight: index === maxIndex
       };
     });
-  }, [chartData, timePeriod]);
+  }, [chartData, timePeriod, allTimestamps, timeFormatInfo, isDailyData]);
   
   return (
     <div className="flex flex-col h-full">

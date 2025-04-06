@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 import { TimePeriod } from './EnergyProduction';
+import { formatTimestamp } from '../../utils/dateUtils';
 
 // Mock data for panel performance comparison
 const performanceData = [
@@ -27,13 +28,15 @@ interface PanelPerformanceProps {
   chartData?: any[];
 }
 
-// Helper to format timestamp as a readable string
-const formatTimestamp = (timestamp: string): string => {
-  const date = new Date(timestamp);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-};
-
 const PanelPerformance: React.FC<PanelPerformanceProps> = ({ timePeriod = '24h', chartData = [] }) => {
+  // Extract all timestamps for interval determination
+  const allTimestamps = useMemo(() => {
+    return chartData.map(item => {
+      // Handle both string and number timestamp formats
+      return item.timestamp?.toString() || '';
+    });
+  }, [chartData]);
+
   // Transform API data format to chart format
   const transformedData = useMemo(() => {
     if (chartData.length === 0) {
@@ -42,15 +45,16 @@ const PanelPerformance: React.FC<PanelPerformanceProps> = ({ timePeriod = '24h',
     
     // Transform the data from the API to a format that Recharts can handle
     return chartData.map(item => {
+      const timestamp = item.timestamp?.toString() || '';
       const result: any = {
-        time: formatTimestamp(item.timestamp),
+        time: formatTimestamp(timestamp, allTimestamps),
         // Add average if available
         average: item.average?.value || 0
       };
       
       // Map each panel's energy to a property like panel1, panel2, etc.
       if (item.panels && Array.isArray(item.panels)) {
-        item.panels.forEach((panel: { panelId: string, energy: number }, index: number) => {
+        item.panels.forEach((panel: { panelId: string, energy: number }) => {
           // Extract panel number from panelId (e.g., "Panel_1" -> "1")
           let panelNumber;
           if (panel.panelId.includes('Panel_')) {
@@ -68,7 +72,7 @@ const PanelPerformance: React.FC<PanelPerformanceProps> = ({ timePeriod = '24h',
       
       return result;
     });
-  }, [chartData, timePeriod]);
+  }, [chartData, timePeriod, allTimestamps]);
   
   // Dynamically determine which panel lines to show based on data
   const panelKeys = useMemo(() => {

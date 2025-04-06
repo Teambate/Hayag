@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 import { TimePeriod } from './EnergyProduction';
+import { formatTimestamp } from '../../utils/dateUtils';
 
 // Mock data for environment vs efficiency
 const envEfficiencyDataDaily = [
@@ -26,26 +27,31 @@ interface EfficiencyEnvironmentProps {
   chartData?: any[];
 }
 
-// Helper to format timestamp as a readable string
-const formatTimestamp = (timestamp: string): string => {
-  const date = new Date(timestamp);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-};
-
 const EfficiencyEnvironment: React.FC<EfficiencyEnvironmentProps> = ({ timePeriod = '24h', chartData = [] }) => {
+  // Extract all timestamps for interval determination
+  const allTimestamps = useMemo(() => {
+    return chartData.map(item => {
+      // Handle both string and number timestamp formats
+      return item.timestamp?.toString() || '';
+    });
+  }, [chartData]);
+
   // Transform API data format to chart format
   const transformedData = useMemo(() => {
     if (chartData.length === 0) {
       return envEfficiencyDataSets[timePeriod];
     }
     
-    return chartData.map(item => ({
-      month: formatTimestamp(item.timestamp),
-      temperature: item.temperature?.value || 0,
-      efficiency: item.energy?.value ? (item.energy.value * 100) : 0, // Convert to efficiency percentage
-      humidity: item.humidity?.value || 0
-    }));
-  }, [chartData, timePeriod]);
+    return chartData.map(item => {
+      const timestamp = item.timestamp?.toString() || '';
+      return {
+        month: formatTimestamp(timestamp, allTimestamps),
+        temperature: item.temperature?.value || 0,
+        efficiency: item.energy?.value ? (item.energy.value * 100) : 0, // Convert to efficiency percentage
+        humidity: item.humidity?.value || 0
+      };
+    });
+  }, [chartData, timePeriod, allTimestamps]);
   
   return (
     <div className="flex flex-col h-full">

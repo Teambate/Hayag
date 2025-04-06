@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { ChartDataPoint } from '../../hooks/useDashboardCharts';
+import { formatTimestamp } from '../../utils/dateUtils';
 
 // Component props interface
 interface BatteryChargeDischargeProps {
@@ -8,22 +9,33 @@ interface BatteryChargeDischargeProps {
 }
 
 const BatteryChargeDischarge: React.FC<BatteryChargeDischargeProps> = ({ chartData }) => {
-  // Process real data
-  const batteryData = chartData.map((point) => {
-    // Format time for display using 24-hour format
-    const time = new Date(point.timestamp.toString()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-    
-    // Create an object with time and a data point for each panel
-    const dataPoint: any = { time };
-    
-    // Add each panel's battery voltage as a separate data key
-    point.panels.forEach(panel => {
-      const panelId = panel.panelId.replace('Panel_', '');
-      dataPoint[`battery${panelId}`] = panel.value ?? 0;
+  // Extract all timestamps for interval determination
+  const allTimestamps = useMemo(() => {
+    return chartData.map(point => {
+      // Handle both string and number timestamp formats
+      return point.timestamp?.toString() || '';
     });
-    
-    return dataPoint;
-  });
+  }, [chartData]);
+
+  // Process real data
+  const batteryData = useMemo(() => {
+    return chartData.map((point) => {
+      // Format time based on timestamp intervals
+      const timestamp = point.timestamp?.toString() || '';
+      const time = formatTimestamp(timestamp, allTimestamps);
+      
+      // Create an object with time and a data point for each panel
+      const dataPoint: any = { time };
+      
+      // Add each panel's battery voltage as a separate data key
+      point.panels.forEach(panel => {
+        const panelId = panel.panelId.replace('Panel_', '');
+        dataPoint[`battery${panelId}`] = panel.value ?? 0;
+      });
+      
+      return dataPoint;
+    });
+  }, [chartData, allTimestamps]);
 
   // Get panel IDs from the first data point (if available)
   const panelIds = chartData.length > 0 && chartData[0].panels 
