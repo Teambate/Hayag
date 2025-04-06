@@ -15,6 +15,39 @@ import Banner from "../components/layout/Banner";
 import { TimePeriod } from "../components/graphs/EnergyProduction";
 import { AddNoteButton } from "../components/ui/AddNoteModal";
 import AddNoteModal from "../components/ui/AddNoteModal";
+import { useDevice } from "../context/DeviceContext";
+
+// Analytics data interface
+interface AnalyticsData {
+  timeInterval: string;
+  startDate: string;
+  endDate: string;
+  summaryValues: {
+    efficiency: {
+      value: number;
+      trend: number;
+      unit: string;
+    };
+    dailyYield: {
+      value: number;
+      unit: string;
+    };
+    peakSolarHours: {
+      start: string;
+      end: string;
+      bestTime: string;
+    };
+  };
+  data: {
+    panelPerformance: any[];
+    batteryCharge: any[];
+    panelTemperature: any[];
+    irradiance: any[];
+    peakSolarHours: any[];
+    efficiencyEnvironment: any[];
+    irradiancePower?: any[];
+  };
+}
 
 // Expand icon component
 const ExpandIcon = ({ className = "w-4 h-4" }) => (
@@ -42,13 +75,19 @@ interface AnalyticsProps {
 
 export default function Analytics({ setActiveTab }: AnalyticsProps) {
   const [isAddNoteModalOpen, setIsAddNoteModalOpen] = useState(false);
+  const { deviceId } = useDevice();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // State for analytics data
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
 
   // State for selections from Banner
-  const [, setSelectedPanel] = useState<string>("All Panels");
+  const [selectedPanel, setSelectedPanel] = useState<string>("All Panels");
   const [selectedTimePeriod, setSelectedTimePeriod] = useState<TimePeriod>("24h");
-  const [, setSelectedDateRange] = useState<DateRange>({
-    from: new Date(2025, 1, 23),
-    to: new Date(2025, 2, 4),
+  const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({
+    from: new Date(new Date().setDate(new Date().getDate() - 7)), // Default to last 7 days
+    to: new Date(),
   });
 
   // Update navbar active tab when component mounts
@@ -58,43 +97,72 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
     }
   }, [setActiveTab]);
 
-  // Analytics data - would be replaced with actual API calls in production
-  const [analyticsData] = useState({
-    efficiency: { 
-      value: 85, 
-      trend: 2,
-      trendDirection: "up" 
-    },
-    peakSolarHours: {
-      start: "10am",
-      end: "2pm",
-      bestTime: "11am"
-    },
-    dailyYield: {
-      value: 90.88,
-      unit: "kWh"
-    }
-  });
+  // Fetch analytics data
+  useEffect(() => {
+    const fetchAnalyticsData = async () => {
+      if (!deviceId) return;
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        // Prepare query parameters
+        const params = new URLSearchParams();
+        params.append('deviceId', deviceId);
+        
+        // Add panel filter if specific panel is selected
+        if (selectedPanel !== 'All Panels') {
+          const panelId = selectedPanel.includes('Panel_') 
+            ? selectedPanel 
+            : `Panel_${selectedPanel.split(' ')[1]}`;
+          params.append('panelIds', panelId);
+        }
+        
+        // Add date range
+        if (selectedDateRange.from) {
+          params.append('startDateTime', selectedDateRange.from.toISOString());
+        }
+        if (selectedDateRange.to) {
+          params.append('endDateTime', selectedDateRange.to.toISOString());
+        }
+
+        const response = await fetch(`/api/readings/analytics?${params.toString()}`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch analytics data: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          setAnalyticsData(data);
+        } else {
+          throw new Error(data.message || 'Failed to fetch analytics data');
+        }
+      } catch (err) {
+        setError((err as Error).message);
+        console.error('Error fetching analytics data:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAnalyticsData();
+  }, [deviceId, selectedPanel, selectedDateRange, selectedTimePeriod]);
 
   // Handle panel selection change
   const handlePanelChange = (panel: string) => {
     setSelectedPanel(panel);
-    console.log("Selected panel:", panel);
-    // In a real app, you would fetch new data based on this selection
   };
 
   // Handle time period change
   const handleTimePeriodChange = (period: TimePeriod) => {
     setSelectedTimePeriod(period);
-    console.log("Selected time period:", period);
-    // In a real app, you would fetch new data based on this selection
   };
 
   // Handle date range change
   const handleDateRangeChange = (range: DateRange) => {
     setSelectedDateRange(range);
-    console.log("Selected date range:", range);
-    // In a real app, you would fetch new data based on this selection
   };
 
   // Mock data for insights with updated structure to match design
@@ -186,6 +254,42 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
     alert("Note added successfully!");
   };
 
+  // Loading state
+  if (isLoading && !analyticsData) {
+    return (
+      <>
+        <Banner 
+          activeTab="Analytics"
+          onPanelChange={handlePanelChange}
+          onTimePeriodChange={handleTimePeriodChange}
+          onDateRangeChange={handleDateRangeChange}
+          selectedTimePeriod={selectedTimePeriod}
+        />
+        <div className="flex justify-center items-center h-64">
+          <div className="text-gray-600">Loading analytics data...</div>
+        </div>
+      </>
+    );
+  }
+
+  // Error state
+  if (error && !analyticsData) {
+    return (
+      <>
+        <Banner 
+          activeTab="Analytics"
+          onPanelChange={handlePanelChange}
+          onTimePeriodChange={handleTimePeriodChange}
+          onDateRangeChange={handleDateRangeChange}
+          selectedTimePeriod={selectedTimePeriod}
+        />
+        <div className="flex justify-center items-center h-64">
+          <div className="text-red-600">Error: {error}</div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <Banner 
@@ -213,11 +317,15 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                     <div className="flex-1">
                       <div className="text-gray-500 text-xs mb-1">Efficiency</div>
                       <div className="flex items-baseline">
-                        <span className="text-2xl sm:text-3xl font-bold">{analyticsData.efficiency.value}</span>
+                        <span className="text-2xl sm:text-3xl font-bold">
+                          {analyticsData?.summaryValues.efficiency.value || 0}
+                        </span>
                         <span className="text-base sm:text-lg ml-0.5">%</span>
                         <div className="ml-2 text-xs text-green-500 flex items-center">
                           <ArrowUp size={12} className="mr-0.5" />
-                          <span className="hidden md:inline">+{analyticsData.efficiency.trend}% Today</span>
+                          <span className="hidden md:inline">
+                            +{analyticsData?.summaryValues.efficiency.trend || 0}% Today
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -233,9 +341,13 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                     <div className="flex-1">
                       <div className="text-gray-500 text-xs mb-1">Peak Solar Hours</div>
                       <div className="flex items-baseline">
-                        <span className="text-2xl sm:text-3xl font-bold">{analyticsData.peakSolarHours.start}</span>
+                        <span className="text-2xl sm:text-3xl font-bold">
+                          {analyticsData?.summaryValues.peakSolarHours.start || 'N/A'}
+                        </span>
                         <span className="text-base sm:text-lg mx-1">-</span>
-                        <span className="text-2xl sm:text-3xl font-bold">{analyticsData.peakSolarHours.end}</span>
+                        <span className="text-2xl sm:text-3xl font-bold">
+                          {analyticsData?.summaryValues.peakSolarHours.end || 'N/A'}
+                        </span>
                         <div className="ml-2 text-xs text-green-500 flex items-center">
                           <ArrowUp size={12} className="mr-0.5" />
                           <span className="hidden md:inline">Best Solar Time</span>
@@ -254,8 +366,12 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                     <div className="flex-1">
                       <div className="text-gray-500 text-xs mb-1">Daily Yield</div>
                       <div className="flex items-baseline">
-                        <span className="text-2xl sm:text-3xl font-bold">{analyticsData.dailyYield.value}</span>
-                        <span className="text-sm sm:text-base ml-1 text-gray-500">{analyticsData.dailyYield.unit}</span>
+                        <span className="text-2xl sm:text-3xl font-bold">
+                          {analyticsData?.summaryValues.dailyYield.value.toFixed(2) || '0.00'}
+                        </span>
+                        <span className="text-sm sm:text-base ml-1 text-gray-500">
+                          {analyticsData?.summaryValues.dailyYield.unit || 'kWh'}
+                        </span>
                         <div className="ml-2 text-xs text-green-500 flex items-center">
                           <ArrowUp size={12} className="mr-0.5" />
                           <span className="hidden md:inline"></span>
@@ -271,7 +387,10 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <h3 className="text-lg font-medium mb-1">Panel Performance Comparison</h3>
                 <p className="text-sm text-gray-500 mb-4">Comparing power output between panels and identifying anomalies</p>
                 <div className="h-72 sm:h-80">
-                  <PanelPerformance timePeriod={selectedTimePeriod} />
+                  <PanelPerformance 
+                    timePeriod={selectedTimePeriod} 
+                    chartData={analyticsData?.data.panelPerformance || []}
+                  />
                 </div>
               </div>
             </div>
@@ -327,7 +446,10 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <h3 className="text-lg font-medium mb-1">Efficiency vs Environment</h3>
                 <p className="text-sm text-gray-500 mb-4">Impact of temperature and humidity on efficiency</p>
                 <div className="h-64">
-                  <EfficiencyEnvironment timePeriod={selectedTimePeriod} />
+                  <EfficiencyEnvironment 
+                    timePeriod={selectedTimePeriod}
+                    chartData={analyticsData?.data.efficiencyEnvironment || []}
+                  />
                 </div>
               </div>
             </div>
@@ -354,7 +476,10 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <h3 className="text-lg font-medium mb-1">Peak Solar Hours & Off-Peak Analysis</h3>
                 <p className="text-sm text-gray-500 mb-4">Solar energy generation trends throughout the week</p>
                 <div className="h-64">
-                  <PeakSolarHours timePeriod={selectedTimePeriod} />
+                  <PeakSolarHours 
+                    timePeriod={selectedTimePeriod}
+                    chartData={analyticsData?.data.peakSolarHours || []}
+                  />
                 </div>
               </div>
             </div>
@@ -365,7 +490,9 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <h3 className="text-lg font-medium mb-1">Battery Charge & Discharge</h3>
                 <p className="text-sm text-gray-500 mb-4">Tracking battery charge levels and energy consumption</p>
                 <div className="h-64">
-                  <BatteryChargeDischarge chartData={[]} />
+                  <BatteryChargeDischarge 
+                    chartData={analyticsData?.data.batteryCharge || []}
+                  />
                 </div>
               </div>
             </div>
@@ -381,7 +508,9 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <h3 className="text-lg font-medium mb-1">Panel Temperature & Overheating</h3>
                 <p className="text-sm text-gray-500 mb-4">Monitoring temperature fluctuations and overheating risks</p>
                 <div className="h-64">
-                  <PanelTemperatureOverheating chartData={[]} />
+                  <PanelTemperatureOverheating 
+                    chartData={analyticsData?.data.panelTemperature || []}
+                  />
                 </div>
               </div>
             </div>
@@ -392,7 +521,9 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <h3 className="text-lg font-medium mb-1">Solar Irradiance vs Power Output</h3>
                 <p className="text-sm text-gray-500 mb-4">Comparing sunlight intensity with generated power</p>
                 <div className="h-64">
-                  <IrradianceGraph chartData={[]} />
+                  <IrradianceGraph 
+                    chartData={analyticsData?.data.irradiance || []}
+                  />
                 </div>
               </div>
             </div>

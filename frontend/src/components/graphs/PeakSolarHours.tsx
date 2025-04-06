@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import { TimePeriod } from './EnergyProduction';
 
@@ -24,16 +24,62 @@ const peakSolarDataSets = {
 // Component props interface
 interface PeakSolarHoursProps {
   timePeriod?: TimePeriod;
+  chartData?: any[];
 }
 
-const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ timePeriod = '24h' }) => {
-  // Get the correct data set based on the time period
-  const peakSolarData = peakSolarDataSets[timePeriod];
+// Helper to format hour as a readable string
+const formatHour = (hour: number): string => {
+  return hour === 0 || hour === 24 ? '12am' :
+         hour === 12 ? '12pm' :
+         hour < 12 ? `${hour}am` :
+         `${hour - 12}pm`;
+};
+
+const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ timePeriod = '24h', chartData = [] }) => {
+  // Transform API data format to chart format
+  const transformedData = useMemo(() => {
+    if (chartData.length === 0) {
+      return peakSolarDataSets[timePeriod];
+    }
+    
+    // Find the highest energy value to highlight it
+    let maxEnergy = 0;
+    let maxIndex = -1;
+    
+    chartData.forEach((item, index) => {
+      if (item.average && item.average.value > maxEnergy) {
+        maxEnergy = item.average.value;
+        maxIndex = index;
+      }
+    });
+    
+    // Transform the data to match expected format
+    return chartData.map((item, index) => {
+      const averageValue = item.average?.value || 0;
+      const unit = item.average?.unit || 'kWh';
+      
+      // Format the hour
+      const hourDisplay = item.hour !== undefined ? formatHour(item.hour) : '?';
+      
+      // Determine trend (simple logic: higher than previous is 'up')
+      const prevItem = index > 0 ? chartData[index - 1] : null;
+      const prevValue = prevItem?.average?.value || 0;
+      const trend = averageValue >= prevValue ? 'up' : 'down';
+      
+      return {
+        day: hourDisplay,
+        value: parseFloat(averageValue.toFixed(2)),
+        label: unit,
+        trend: trend,
+        highlight: index === maxIndex
+      };
+    });
+  }, [chartData, timePeriod]);
   
   return (
     <div className="flex flex-col h-full">
       <div className="grid grid-cols-7 flex-grow">
-        {peakSolarData.map((day, index) => (
+        {transformedData.map((day, index) => (
           <div key={index} className="text-center flex flex-col border-r last:border-r-0 border-gray-200 relative">
             {/* Day header */}
             <div className={`text-lg font-medium py-3 flex items-center justify-center gap-1 ${day.highlight ? 'text-amber-500' : 'text-gray-600'}`}>
@@ -67,11 +113,11 @@ const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ timePeriod = '24h' }) =
       <div className="flex space-x-4 text-sm text-gray-500 justify-center pt-4">
         <div className="flex items-center">
           <div className="w-3 h-3 rounded-full bg-gray-200 mr-1"></div>
-          <span>Normal Day</span>
+          <span>Normal Hour</span>
         </div>
         <div className="flex items-center">
           <div className="w-3 h-3 rounded-full bg-amber-200 mr-1"></div>
-          <span>Peak Day</span>
+          <span>Peak Hour</span>
         </div>
       </div>
     </div>

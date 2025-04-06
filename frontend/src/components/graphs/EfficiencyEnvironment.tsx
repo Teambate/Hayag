@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 import { TimePeriod } from './EnergyProduction';
 
@@ -23,18 +23,36 @@ const envEfficiencyDataSets = {
 // Component props interface
 interface EfficiencyEnvironmentProps {
   timePeriod?: TimePeriod;
+  chartData?: any[];
 }
 
-const EfficiencyEnvironment: React.FC<EfficiencyEnvironmentProps> = ({ timePeriod = '24h' }) => {
-  // Get the correct data set based on the time period
-  const envEfficiencyData = envEfficiencyDataSets[timePeriod];
+// Helper to format timestamp as a readable string
+const formatTimestamp = (timestamp: string): string => {
+  const date = new Date(timestamp);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+const EfficiencyEnvironment: React.FC<EfficiencyEnvironmentProps> = ({ timePeriod = '24h', chartData = [] }) => {
+  // Transform API data format to chart format
+  const transformedData = useMemo(() => {
+    if (chartData.length === 0) {
+      return envEfficiencyDataSets[timePeriod];
+    }
+    
+    return chartData.map(item => ({
+      month: formatTimestamp(item.timestamp),
+      temperature: item.temperature?.value || 0,
+      efficiency: item.energy?.value ? (item.energy.value * 100) : 0, // Convert to efficiency percentage
+      humidity: item.humidity?.value || 0
+    }));
+  }, [chartData, timePeriod]);
   
   return (
     <div className="flex flex-col h-full">
       {/* Chart container - take up remaining space */}
       <div className="flex-grow w-full min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={envEfficiencyData} margin={{ top: 5, right: 25, left: 25, bottom: 5 }}>
+          <LineChart data={transformedData} margin={{ top: 5, right: 25, left: 25, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
             <XAxis 
               dataKey="month" 
@@ -46,7 +64,7 @@ const EfficiencyEnvironment: React.FC<EfficiencyEnvironmentProps> = ({ timePerio
               yAxisId="left"
               axisLine={false} 
               tickLine={false}
-              domain={[-25, 30]}
+              domain={[0, 50]}
               tick={{ fontSize: 12, fill: '#6B7280' }}
               label={{ value: 'Temperature (°C)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#6B7280', fontSize: 12 } }}
             />
@@ -55,11 +73,11 @@ const EfficiencyEnvironment: React.FC<EfficiencyEnvironmentProps> = ({ timePerio
               orientation="right"
               axisLine={false} 
               tickLine={false}
-              domain={[50, 100]}
+              domain={[0, 100]}
               tick={{ fontSize: 12, fill: '#6B7280' }}
               label={{ value: 'Efficiency (%)', angle: 90, position: 'insideRight', style: { textAnchor: 'middle', fill: '#6B7280', fontSize: 12 } }}
             />
-            <Tooltip />
+            <Tooltip formatter={(value) => [value, '']} />
             <Line 
               yAxisId="left"
               type="monotone" 
@@ -80,6 +98,16 @@ const EfficiencyEnvironment: React.FC<EfficiencyEnvironmentProps> = ({ timePerio
               activeDot={{ r: 6 }}
               name="Efficiency (%)"
             />
+            <Line 
+              yAxisId="right"
+              type="monotone" 
+              dataKey="humidity" 
+              stroke="#81C784" 
+              strokeWidth={2}
+              dot={{ r: 4 }}
+              activeDot={{ r: 6 }}
+              name="Humidity (%)"
+            />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -92,6 +120,10 @@ const EfficiencyEnvironment: React.FC<EfficiencyEnvironmentProps> = ({ timePerio
         <div className="flex items-center">
           <div className="w-3 h-3 rounded-full bg-blue-400 mr-1"></div>
           <span>Efficiency (%)</span>
+        </div>
+        <div className="flex items-center">
+          <div className="w-3 h-3 rounded-full bg-green-400 mr-1"></div>
+          <span>Humidity (%)</span>
         </div>
       </div>
     </div>
