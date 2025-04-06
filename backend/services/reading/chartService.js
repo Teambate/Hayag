@@ -476,12 +476,10 @@ async function getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray
         deviceId: 1,
         endTime: 1,
         hour: { $hour: "$endTime" },
+        day: { $dayOfMonth: "$endTime" },
+        month: { $month: "$endTime" },
+        year: { $year: "$endTime" },
         "readings.ina226": 1
-      }
-    },
-    {
-      $match: {
-        hour: { $gte: 4, $lte: 19 } // 4am to 7pm
       }
     }
   ];
@@ -493,6 +491,9 @@ async function getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray
         deviceId: 1,
         endTime: 1,
         hour: 1,
+        day: 1,
+        month: 1,
+        year: 1,
         "readings.ina226": {
           $filter: {
             input: "$readings.ina226",
@@ -504,7 +505,7 @@ async function getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray
     });
   }
   
-  // Sort by timestamp
+  // Sort by timestamp to ensure proper energy calculation
   pipeline.push({ $sort: { endTime: 1 } });
   
   // Execute the pipeline
@@ -512,24 +513,39 @@ async function getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray
   
   // Process hourly data
   const hourlyData = [];
-  const hourlyAggregation = {};
   
-  // Initialize hourly buckets (4am to 7pm)
-  for (let hour = 4; hour <= 19; hour++) {
-    hourlyAggregation[hour] = {
-      hour,
-      samples: 0,
-      totalEnergy: 0,
-      panels: {}
-    };
-  }
+  // Create a nested map: date -> hour -> panel data
+  const dailyHourlyData = {};
   
-  // Process readings to calculate energy per hour
+  // Process readings to calculate energy per hour for each day
   let previousReadings = {};
+  let previousDay = null;
   
   for (const reading of readings) {
     const hour = reading.hour;
     const readingTime = new Date(reading.endTime);
+    const dateKey = `${reading.year}-${reading.month}-${reading.day}`;
+    
+    // Reset previous readings when moving to a new day to avoid day boundary issues
+    if (previousDay !== null && previousDay !== dateKey) {
+      previousReadings = {};
+    }
+    previousDay = dateKey;
+    
+    // Initialize data structure for this day and hour if needed
+    if (!dailyHourlyData[dateKey]) {
+      dailyHourlyData[dateKey] = {};
+    }
+    
+    if (!dailyHourlyData[dateKey][hour]) {
+      dailyHourlyData[dateKey][hour] = {
+        hour,
+        date: new Date(reading.year, reading.month - 1, reading.day, hour, 0, 0, 0),
+        samples: 0,
+        totalEnergy: 0,
+        panels: {}
+      };
+    }
     
     if (reading.readings.ina226 && reading.readings.ina226.length > 0) {
       for (const sensor of reading.readings.ina226) {
@@ -540,19 +556,30 @@ async function getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray
         const prevReading = previousReadings[panelId];
         
         if (prevReading) {
-          // Calculate energy accumulation (kWh) between readings
-          const hoursDiff = (readingTime - new Date(prevReading.timestamp)) / (1000 * 60 * 60);
-          const avgPower = (currentPower + prevReading.power) / 2; // W
-          const energyKWh = avgPower * hoursDiff / 1000; // kWh
+          // Only calculate energy if readings are from the same day
+          // to avoid attributing overnight gaps to morning hours
+          const prevTime = new Date(prevReading.timestamp);
+          const isSameDay = prevTime.getDate() === readingTime.getDate() && 
+                            prevTime.getMonth() === readingTime.getMonth() && 
+                            prevTime.getFullYear() === readingTime.getFullYear();
           
-          // Add to hourly aggregation
-          if (!hourlyAggregation[hour].panels[panelId]) {
-            hourlyAggregation[hour].panels[panelId] = 0;
+          if (isSameDay) {
+            // Calculate energy accumulation (kWh) between readings
+            const hoursDiff = (readingTime - prevTime) / (1000 * 60 * 60);
+            const avgPower = (currentPower + prevReading.power) / 2; // W
+            const energyKWh = avgPower * hoursDiff / 1000; // kWh
+            
+            // Add to hourly aggregation
+            if (!dailyHourlyData[dateKey][hour].panels[panelId]) {
+              dailyHourlyData[dateKey][hour].panels[panelId] = 0;
+            }
+            
+            if (energyKWh > 0) { // Only add positive energy production
+              dailyHourlyData[dateKey][hour].panels[panelId] += energyKWh;
+              dailyHourlyData[dateKey][hour].totalEnergy += energyKWh;
+              dailyHourlyData[dateKey][hour].samples++;
+            }
           }
-          
-          hourlyAggregation[hour].panels[panelId] += energyKWh > 0 ? energyKWh : 0;
-          hourlyAggregation[hour].totalEnergy += energyKWh > 0 ? energyKWh : 0;
-          hourlyAggregation[hour].samples++;
         }
         
         // Update previous reading
@@ -564,12 +591,63 @@ async function getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray
     }
   }
   
-  // Format the result
-  for (let hour = 4; hour <= 19; hour++) {
+  // Convert daily hourly data to array format grouped by hour
+  // Calculate averages across all days for each hour
+  const hourlyAggregation = {};
+  
+  // Initialize hourly buckets for all 24 hours
+  for (let hour = 0; hour < 24; hour++) {
+    hourlyAggregation[hour] = {
+      hour,
+      days: 0,
+      totalEnergy: 0,
+      panels: {}
+    };
+  }
+  
+  // Aggregate data across all days
+  Object.values(dailyHourlyData).forEach(dayData => {
+    Object.entries(dayData).forEach(([hour, hourData]) => {
+      hour = parseInt(hour);
+      
+      // Count this day for this hour
+      hourlyAggregation[hour].days++;
+      
+      // Add energy data for each panel
+      Object.entries(hourData.panels).forEach(([panelId, energy]) => {
+        if (!hourlyAggregation[hour].panels[panelId]) {
+          hourlyAggregation[hour].panels[panelId] = 0;
+        }
+        hourlyAggregation[hour].panels[panelId] += energy;
+      });
+      
+      // Add to total energy
+      hourlyAggregation[hour].totalEnergy += hourData.totalEnergy;
+    });
+  });
+  
+  // Format the result and calculate averages across days
+  for (let hour = 0; hour < 24; hour++) {
     const hourData = hourlyAggregation[hour];
+    
+    // Skip hours with no data
+    if (hourData.days === 0) {
+      hourlyData.push({
+        hour,
+        timestamp: new Date(startDate).setHours(hour, 0, 0, 0),
+        panels: [],
+        average: {
+          value: 0,
+          unit: 'kWh'
+        }
+      });
+      continue;
+    }
+    
+    // Calculate average across days for each panel
     const panelData = Object.entries(hourData.panels).map(([panelId, energy]) => ({
       panelId,
-      energy,
+      energy: energy / hourData.days, // Average per day
       unit: 'kWh'
     }));
     
@@ -578,7 +656,8 @@ async function getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray
       timestamp: new Date(startDate).setHours(hour, 0, 0, 0),
       panels: panelData,
       average: {
-        value: hourData.samples > 0 ? hourData.totalEnergy / Object.keys(hourData.panels).length : 0,
+        value: hourData.days > 0 ? 
+          hourData.totalEnergy / (hourData.days * Object.keys(hourData.panels).length) : 0,
         unit: 'kWh'
       }
     });
