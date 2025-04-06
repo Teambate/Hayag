@@ -47,17 +47,15 @@ export const determineTimeFormat = (timestamps: (string | number)[]) => {
   // Force daily format if timestamps span multiple days
   if (isDailyOrLonger) {
     // Calculate total date range in days
-    const totalDaysRange = (dates[dates.length - 1].getTime() - dates[0].getTime()) / (1000 * 60 * 60 * 24);
     
-    // If spanning a few days (<=7), show date with time
-    if (totalDaysRange <= 7) {
+    // If the interval is less than 24 hours but spans multiple days, show both date and time
+    if (hourInterval < 24) {
       return {
-        type: 'dayTime',
+        type: 'dateTime',
         format: (timestamp: string | number) => {
           const date = new Date(timestamp);
-          const dateStr = date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
-          const timeStr = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
-          return `${dateStr} ${timeStr}`;
+          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + 
+                 date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
         }
       };
     }

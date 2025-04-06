@@ -68,11 +68,34 @@ export default function Banner({
   // State for interval - UI representation (Hourly, Daily, Monthly)
   const [interval, setInterval] = useState<string>(selectedInterval || "10min");
 
+  // Get the default date range (last 7 days)
+  const getDefaultDateRange = (): DateRange => {
+    // Create end date at the very end of today in local time
+    const endDate = new Date();
+    // Set to end of day in UTC
+    endDate.setUTCHours(23, 59, 59, 999);
+    
+    // Create start date 7 days ago at the very beginning of the day in local time
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 7);
+    // Set to beginning of day in UTC
+    startDate.setUTCHours(0, 0, 0, 0);
+    
+    return {
+      from: startDate,
+      to: endDate,
+    };
+  };
+
   // State for date range - only used for Analytics and Sensors tabs
-  const [dateRange, setDateRange] = useState<DateRange>({
-    from: new Date(),
-    to: new Date(),
-  })
+  const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
+
+  // Trigger onDateRangeChange on initial render to provide default to parent
+  useEffect(() => {
+    if (onDateRangeChange && (activeTab === "Analytics" || activeTab === "Sensors")) {
+      onDateRangeChange(dateRange);
+    }
+  }, []);
 
   // Get device ID from props, context, user context, or localStorage
   const getDeviceId = () => {
@@ -183,9 +206,27 @@ export default function Banner({
 
   // Handle date range change - only relevant for Analytics and Sensors tabs
   const handleDateRangeChange = (newRange: DateRange) => {
-    setDateRange(newRange);
+    if (!newRange.from || !newRange.to) {
+      setDateRange(newRange);
+      if (onDateRangeChange) {
+        onDateRangeChange(newRange);
+      }
+      return;
+    }
+    
+    // Set start date to beginning of day in UTC (00:00:00)
+    const startDate = new Date(newRange.from);
+    startDate.setUTCHours(0, 0, 0, 0);
+    
+    // Set end date to end of day in UTC (23:59:59)
+    const endDate = new Date(newRange.to);
+    endDate.setUTCHours(23, 59, 59, 999);
+    
+    const formattedRange = { from: startDate, to: endDate };
+    setDateRange(formattedRange);
+    
     if (onDateRangeChange) {
-      onDateRangeChange(newRange);
+      onDateRangeChange(formattedRange);
     }
   }
 

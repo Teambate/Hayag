@@ -85,10 +85,9 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
   // State for selections from Banner
   const [selectedPanel, setSelectedPanel] = useState<string>("All Panels");
   const [selectedTimePeriod, setSelectedTimePeriod] = useState<TimePeriod>("24h");
-  const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({
-    from: new Date(new Date().setDate(new Date().getDate() - 7)), // Default to last 7 days
-    to: new Date(),
-  });
+  
+  // Remove default initialization and keep unset until Banner provides it
+  const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>(undefined);
 
   // Update navbar active tab when component mounts
   useEffect(() => {
@@ -100,7 +99,7 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
   // Fetch analytics data
   useEffect(() => {
     const fetchAnalyticsData = async () => {
-      if (!deviceId) return;
+      if (!deviceId || !selectedDateRange) return;
 
       setIsLoading(true);
       setError(null);
@@ -160,9 +159,22 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
     setSelectedTimePeriod(period);
   };
 
-  // Handle date range change
+  // Handle date range change with time adjustment
   const handleDateRangeChange = (range: DateRange) => {
-    setSelectedDateRange(range);
+    if (!range.from || !range.to) {
+      setSelectedDateRange(range);
+      return;
+    }
+    
+    // Set start date to beginning of day in UTC (00:00:00)
+    const startDate = new Date(range.from);
+    startDate.setUTCHours(0, 0, 0, 0);
+    
+    // Set end date to end of day in UTC (23:59:59)
+    const endDate = new Date(range.to);
+    endDate.setUTCHours(23, 59, 59, 999);
+    
+    setSelectedDateRange({ from: startDate, to: endDate });
   };
 
   // Mock data for insights with updated structure to match design
@@ -254,8 +266,8 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
     alert("Note added successfully!");
   };
 
-  // Loading state
-  if (isLoading && !analyticsData) {
+  // Loading state - now also check if selectedDateRange is undefined
+  if ((isLoading && !analyticsData) || !selectedDateRange) {
     return (
       <>
         <Banner 
