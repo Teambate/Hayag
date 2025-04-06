@@ -245,8 +245,8 @@ export default function Banner({
             options={getPanelOptions()}
           />
 
-          {/* Interval Dropdown - hide on Sensors page */}
-          {activeTab !== "Sensors" && (
+          {/* Interval Dropdown - hide on Sensors and Analytics pages */}
+          {activeTab !== "Sensors" && activeTab !== "Analytics" && (
             <IntervalSelector 
               value={interval} 
               onChange={handleIntervalChange} 
