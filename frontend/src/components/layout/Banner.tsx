@@ -263,6 +263,16 @@ export default function Banner({
 
   // Get interval options - now always showing user-friendly labels
   const getIntervalOptions = () => {
+    // For Dashboard tab, only show intervals up to hourly
+    if (activeTab === "Dashboard") {
+      return [
+        { value: "10min", label: "10 min" },
+        { value: "30min", label: "30 min" },
+        { value: "hourly", label: "Hourly" }
+      ];
+    }
+    
+    // For other tabs, show all interval options
     return [
       { value: "10min", label: "10 min" },
       { value: "30min", label: "30 min" },

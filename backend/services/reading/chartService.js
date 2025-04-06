@@ -137,9 +137,10 @@ export const getDashboardChartDataService = async (params) => {
     throw new Error("deviceId is required");
   }
   
-  // Validate time interval
-  if (!['5min', '10min', '15min', '30min', 'hourly', 'daily', 'weekly', 'monthly'].includes(timeInterval)) {
-    throw new Error("Invalid timeInterval. Must be one of: 5min, 10min, 15min, 30min, hourly, daily, weekly, monthly");
+  // Validate time interval - restrict to only up to hourly for dashboard
+  const validIntervals = ['5min', '10min', '15min', '30min', 'hourly'];
+  if (!validIntervals.includes(timeInterval)) {
+    throw new Error("Invalid timeInterval for dashboard. Must be one of: 5min, 10min, 15min, 30min, hourly");
   }
   
   // Convert chart types to array if provided

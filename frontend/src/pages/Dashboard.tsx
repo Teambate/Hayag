@@ -26,7 +26,13 @@ export default function Dashboard() {
   // Handle interval change via Banner's onPanelChange prop
   // Note: We're reusing the existing prop for a different purpose
   const handleIntervalChange = (interval: string) => {
-    setTimeInterval(interval);
+    // Only allow intervals up to hourly for dashboard
+    if (['5min', '10min', '15min', '30min', 'hourly'].includes(interval)) {
+      setTimeInterval(interval);
+    } else {
+      // Default to hourly if an invalid interval is somehow passed
+      setTimeInterval('hourly');
+    }
   };
   
   // Use our combined hook for all device, panel and chart data
