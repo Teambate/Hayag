@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { ArrowUp, ArrowDown } from 'lucide-react';
+import React, { useMemo, useRef } from 'react';
+import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TimePeriod } from './EnergyProduction';
 import { formatTimestamp, determineTimeFormat } from '../../utils/dateUtils';
 
@@ -37,6 +37,22 @@ const formatHour = (hour: number): string => {
 };
 
 const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ timePeriod = '24h', chartData = [] }) => {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Function to scroll left
+  const scrollLeft = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -200, behavior: 'smooth' });
+    }
+  };
+  
+  // Function to scroll right
+  const scrollRight = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+    }
+  };
+
   // Extract all timestamps for interval determination
   const allTimestamps = useMemo(() => {
     return chartData.map(item => {
@@ -122,35 +138,56 @@ const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ timePeriod = '24h', cha
   
   return (
     <div className="flex flex-col h-full">
-      <div className="grid grid-cols-7 flex-grow">
-        {transformedData.map((day, index) => (
-          <div key={index} className="text-center flex flex-col border-r last:border-r-0 border-gray-200 relative">
-            {/* Day header */}
-            <div className={`text-lg font-medium py-3 flex items-center justify-center gap-1 ${day.highlight ? 'text-amber-500' : 'text-gray-600'}`}>
-              {day.day}
-              {day.trend === 'up' ? (
-                <ArrowUp className={`h-4 w-4 ${day.highlight ? 'text-amber-500' : 'text-gray-400'}`} />
-              ) : (
-                <ArrowDown className={`h-4 w-4 text-gray-400`} />
-              )}
-            </div>
-            
-            {/* Value section with integrated highlight */}
-            <div className="flex-grow flex flex-col items-center">
-              <div className="flex-1 flex items-center justify-center flex-col">
-                <div className={`text-2xl font-bold ${day.highlight ? 'text-amber-500' : 'text-gray-700'}`}>
-                  {day.value}
+      <div className="relative flex-grow flex flex-col justify-between">
+        {/* Arrow navigation buttons */}
+        <button 
+          onClick={scrollLeft} 
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white shadow-md rounded-r-full p-1"
+          aria-label="Scroll left"
+        >
+          <ChevronLeft className="h-6 w-6 text-gray-700" />
+        </button>
+        
+        <div className="overflow-x-auto pb-1 flex-grow flex flex-col" ref={scrollContainerRef}>
+          <div className="flex flex-nowrap min-w-full h-full">
+            {transformedData.map((day, index) => (
+              <div key={index} className="text-center flex flex-col border-r last:border-r-0 border-gray-200 relative min-w-[100px] flex-grow">
+                {/* Day header */}
+                <div className={`text-lg font-medium py-3 flex items-center justify-center gap-1 ${day.highlight ? 'text-amber-500' : 'text-gray-600'}`}>
+                  {day.day}
+                  {day.trend === 'up' ? (
+                    <ArrowUp className={`h-4 w-4 ${day.highlight ? 'text-amber-500' : 'text-gray-400'}`} />
+                  ) : (
+                    <ArrowDown className={`h-4 w-4 text-gray-400`} />
+                  )}
                 </div>
-                <div className={`text-sm pb-1 ${day.highlight ? 'text-amber-500' : 'text-gray-500'}`}>
-                  {day.label}
+                
+                {/* Value section with integrated highlight */}
+                <div className="flex-grow flex flex-col items-center justify-between">
+                  <div className="flex-1 flex items-center justify-center flex-col">
+                    <div className={`text-2xl font-bold ${day.highlight ? 'text-amber-500' : 'text-gray-700'}`}>
+                      {day.value}
+                    </div>
+                    <div className={`text-sm pb-1 ${day.highlight ? 'text-amber-500' : 'text-gray-500'}`}>
+                      {day.label}
+                    </div>
+                  </div>
+                  
+                  {/* Bottom highlight bar connected to the label */}
+                  <div className={`w-full h-[30px] ${day.highlight ? 'bg-amber-200' : 'bg-gray-200'}`}></div>
                 </div>
               </div>
-              
-              {/* Bottom highlight bar connected to the label */}
-              <div className={`w-full h-[30px] ${day.highlight ? 'bg-amber-200' : 'bg-gray-200'}`}></div>
-            </div>
+            ))}
           </div>
-        ))}
+        </div>
+        
+        <button 
+          onClick={scrollRight} 
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white shadow-md rounded-l-full p-1"
+          aria-label="Scroll right"
+        >
+          <ChevronRight className="h-6 w-6 text-gray-700" />
+        </button>
       </div>
       
       {/* Legend */}
