@@ -6,9 +6,13 @@ import io
 import sys
 import os
 import signal
+import pytz  # For timezone handling
 
 # Handle pipe errors gracefully
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
+# Define Manila timezone
+MANILA_TZ = pytz.timezone('Asia/Manila')
 
 def aggregate_solar_data(csv_filepath, device_id="SOLAR_01"):
     # Read the CSV data
@@ -19,6 +23,9 @@ def aggregate_solar_data(csv_filepath, device_id="SOLAR_01"):
     
     # Convert Date and Time columns to a datetime column
     df['datetime'] = pd.to_datetime(df['Date'] + ' ' + df['Time(12-hrformat)'], format='%m/%d/%y %I:%M:%S %p')
+    
+    # Apply Manila timezone
+    df['datetime'] = df['datetime'].dt.tz_localize(MANILA_TZ)
     
     # Create a new column for 5-minute groups
     df['5min_group'] = df['datetime'].dt.floor('5min')
@@ -44,7 +51,8 @@ def aggregate_solar_data(csv_filepath, device_id="SOLAR_01"):
             "endTime": end_time.isoformat(),
             "metadata": {
                 "aggregationType": "5min",
-                "sampleCount": sample_count
+                "sampleCount": sample_count,
+                "timezone": "Asia/Manila"
             },
             "readings": {
                 "rain": [],
