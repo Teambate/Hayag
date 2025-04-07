@@ -3,31 +3,13 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tool
 import { TimePeriod } from './EnergyProduction';
 import { formatTimestamp } from '../../utils/dateUtils';
 
-// Mock data for environment vs efficiency
-const envEfficiencyDataDaily = [
-  { month: 'Jan', temperature: -20, efficiency: 60 },
-  { month: 'Feb', temperature: -15, efficiency: 65 },
-  { month: 'Mar', temperature: -5, efficiency: 70 },
-  { month: 'Apr', temperature: 10, efficiency: 80 },
-  { month: 'May', temperature: 20, efficiency: 85 },
-  { month: 'Jun', temperature: 25, efficiency: 75 },
-];
-
-// Different data sets for different time periods
-const envEfficiencyDataSets = {
-  '24h': envEfficiencyDataDaily.map(item => ({ ...item, month: ['6am', '8am', '10am', '12pm', '2pm', '4pm'][envEfficiencyDataDaily.indexOf(item) % 6] })),
-  '7d': envEfficiencyDataDaily.map(item => ({ ...item, month: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][envEfficiencyDataDaily.indexOf(item) % 6] })),
-  '30d': envEfficiencyDataDaily,
-  '90d': envEfficiencyDataDaily.map(item => ({ ...item, month: ['Q1', 'Q2', 'Q3', 'Q4', 'Q1', 'Q2'][envEfficiencyDataDaily.indexOf(item) % 6] })),
-};
-
 // Component props interface
 interface EfficiencyEnvironmentProps {
   timePeriod?: TimePeriod;
   chartData?: any[];
 }
 
-const EfficiencyEnvironment: React.FC<EfficiencyEnvironmentProps> = ({ timePeriod = '24h', chartData = [] }) => {
+const EfficiencyEnvironment: React.FC<EfficiencyEnvironmentProps> = ({ chartData = [] }) => {
   // Extract all timestamps for interval determination
   const allTimestamps = useMemo(() => {
     return chartData.map(item => {
@@ -39,7 +21,7 @@ const EfficiencyEnvironment: React.FC<EfficiencyEnvironmentProps> = ({ timePerio
   // Transform API data format to chart format
   const transformedData = useMemo(() => {
     if (chartData.length === 0) {
-      return envEfficiencyDataSets[timePeriod];
+      return [];
     }
     
     return chartData.map(item => {
@@ -51,7 +33,16 @@ const EfficiencyEnvironment: React.FC<EfficiencyEnvironmentProps> = ({ timePerio
         humidity: item.humidity?.value || 0
       };
     });
-  }, [chartData, timePeriod, allTimestamps]);
+  }, [chartData, allTimestamps]);
+  
+  // If no data is available, display a message
+  if (transformedData.length === 0) {
+    return (
+      <div className="flex justify-center items-center h-full w-full">
+        <p className="text-gray-500">No efficiency vs environment data available</p>
+      </div>
+    );
+  }
   
   return (
     <div className="flex flex-col h-full">

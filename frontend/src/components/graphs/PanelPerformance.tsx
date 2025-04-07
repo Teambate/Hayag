@@ -3,32 +3,13 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tool
 import { TimePeriod } from './EnergyProduction';
 import { formatTimestamp } from '../../utils/dateUtils';
 
-// Mock data for panel performance comparison
-const performanceData = [
-  { time: '6am', panel1: 5, panel2: 4, anomaly: null },
-  { time: '8am', panel1: 12, panel2: 11, anomaly: null },
-  { time: '10am', panel1: 25, panel2: 23, anomaly: null },
-  { time: '12pm', panel1: 35, panel2: 34, anomaly: 32 },
-  { time: '2pm', panel1: 30, panel2: 31, anomaly: null },
-  { time: '4pm', panel1: 20, panel2: 19, anomaly: 15 },
-  { time: '6pm', panel1: 10, panel2: 9, anomaly: null },
-];
-
-// Different data sets for different time periods
-const performanceDataSets = {
-  '24h': performanceData,
-  '7d': performanceData, // Use the same data for now, would be different in production
-  '30d': performanceData, // Use the same data for now, would be different in production
-  '90d': performanceData, // Use the same data for now, would be different in production
-};
-
 // Component props interface
 interface PanelPerformanceProps {
   timePeriod?: TimePeriod;
   chartData?: any[];
 }
 
-const PanelPerformance: React.FC<PanelPerformanceProps> = ({ timePeriod = '24h', chartData = [] }) => {
+const PanelPerformance: React.FC<PanelPerformanceProps> = ({ chartData = [] }) => {
   // Extract all timestamps for interval determination
   const allTimestamps = useMemo(() => {
     return chartData.map(item => {
@@ -40,7 +21,7 @@ const PanelPerformance: React.FC<PanelPerformanceProps> = ({ timePeriod = '24h',
   // Transform API data format to chart format
   const transformedData = useMemo(() => {
     if (chartData.length === 0) {
-      return performanceDataSets[timePeriod];
+      return [];
     }
     
     // Transform the data from the API to a format that Recharts can handle
@@ -72,11 +53,11 @@ const PanelPerformance: React.FC<PanelPerformanceProps> = ({ timePeriod = '24h',
       
       return result;
     });
-  }, [chartData, timePeriod, allTimestamps]);
+  }, [chartData, allTimestamps]);
   
   // Dynamically determine which panel lines to show based on data
   const panelKeys = useMemo(() => {
-    if (transformedData.length === 0) return ['panel1', 'panel2'];
+    if (transformedData.length === 0) return [];
     
     // Get all keys that start with 'panel'
     const allKeys = Object.keys(transformedData[0]);
@@ -85,6 +66,15 @@ const PanelPerformance: React.FC<PanelPerformanceProps> = ({ timePeriod = '24h',
   
   // Define panel colors
   const panelColors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336', '#3F51B5'];
+
+  // If no data is available, display a message
+  if (transformedData.length === 0) {
+    return (
+      <div className="flex justify-center items-center h-full w-full">
+        <p className="text-gray-500">No panel performance data available</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">

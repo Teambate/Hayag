@@ -3,25 +3,6 @@ import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TimePeriod } from './EnergyProduction';
 import { formatTimestamp, determineTimeFormat } from '../../utils/dateUtils';
 
-// Mock data for peak solar hours with trend indicators
-const peakSolarDataDaily = [
-  { day: 'Mon', value: 276, label: 'kWh', trend: 'up' },
-  { day: 'Tue', value: 282, label: 'kWh', trend: 'up' },
-  { day: 'Wed', value: 297, label: 'kWh', highlight: true, trend: 'up' },
-  { day: 'Thu', value: 269, label: 'kWh', trend: 'down' },
-  { day: 'Fri', value: 274, label: 'kWh', trend: 'up' },
-  { day: 'Sat', value: 175, label: 'kWh', trend: 'down' },
-  { day: 'Sun', value: 138, label: 'kWh', trend: 'down' },
-];
-
-// Different data sets for different time periods
-const peakSolarDataSets = {
-  '24h': peakSolarDataDaily.map(item => ({ ...item, label: 'Wh' })), // Smaller scale for hourly
-  '7d': peakSolarDataDaily,
-  '30d': peakSolarDataDaily.map(item => ({ ...item, value: item.value * 4, label: 'kWh' })), // Scaled up for weekly
-  '90d': peakSolarDataDaily.map(item => ({ ...item, day: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'][peakSolarDataDaily.indexOf(item)], value: item.value * 15, label: 'kWh' })), // Different labels and scale for monthly
-};
-
 // Component props interface
 interface PeakSolarHoursProps {
   timePeriod?: TimePeriod;
@@ -36,7 +17,7 @@ const formatHour = (hour: number): string => {
          `${hour - 12}pm`;
 };
 
-const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ timePeriod = '24h', chartData = [] }) => {
+const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ chartData = [] }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   // Function to scroll left
@@ -90,7 +71,7 @@ const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ timePeriod = '24h', cha
   // Transform API data format to chart format
   const transformedData = useMemo(() => {
     if (chartData.length === 0) {
-      return peakSolarDataSets[timePeriod];
+      return [];
     }
     
     // Find the highest energy value to highlight it
@@ -134,7 +115,16 @@ const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ timePeriod = '24h', cha
         highlight: index === maxIndex
       };
     });
-  }, [chartData, timePeriod, allTimestamps, timeFormatInfo, isDailyData]);
+  }, [chartData, allTimestamps, timeFormatInfo, isDailyData]);
+  
+  // If no data is available, display a message
+  if (transformedData.length === 0) {
+    return (
+      <div className="flex justify-center items-center h-full w-full">
+        <p className="text-gray-500">No peak solar hours data available</p>
+      </div>
+    );
+  }
   
   return (
     <div className="flex flex-col h-full">
