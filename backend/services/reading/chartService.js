@@ -872,7 +872,7 @@ async function getIrradiancePowerCorrelation(readings, timeIntervalMs, timezone)
   let currentBucket = {
     timestamp: new Date(startTime),
     values: {
-      energy: [],
+      power: [],
       irradiance: []
     }
   };
@@ -880,16 +880,13 @@ async function getIrradiancePowerCorrelation(readings, timeIntervalMs, timezone)
   // Initialize the first bucket
   let nextBucketTime = startTime + timeIntervalMs;
   
-  // Track previous readings for energy calculation
-  let previousReadings = {};
-  
   for (const reading of readings) {
     const readingTime = new Date(reading.endTime).getTime();
     
     // If this reading belongs to the next time bucket, finalize the current bucket and create a new one
     if (readingTime >= nextBucketTime) {
       // Finalize the current bucket
-      if (currentBucket.values.energy.length > 0 || currentBucket.values.irradiance.length > 0) {
+      if (currentBucket.values.power.length > 0 || currentBucket.values.irradiance.length > 0) {
         finalizeIrradiancePowerBucket(currentBucket);
         result.push(currentBucket);
       }
@@ -902,7 +899,7 @@ async function getIrradiancePowerCorrelation(readings, timeIntervalMs, timezone)
       currentBucket = {
         timestamp: bucketStartTime,
         values: {
-          energy: [],
+          power: [],
           irradiance: []
         }
       };
@@ -910,37 +907,15 @@ async function getIrradiancePowerCorrelation(readings, timeIntervalMs, timezone)
       nextBucketTime = bucketStartTime.getTime() + timeIntervalMs;
     }
     
-    // Process energy data (from ina226)
+    // Process power data (from ina226)
     if (reading.readings.ina226 && reading.readings.ina226.length > 0) {
       for (const sensor of reading.readings.ina226) {
         const currentPower = sensor.voltage.average * sensor.current.average / 1000; // W
-        const prevReading = previousReadings[sensor.panelId];
         
-        if (prevReading) {
-          // Calculate energy accumulation (kWh) between readings
-          const hoursDiff = (new Date(reading.endTime) - new Date(prevReading.timestamp)) / (1000 * 60 * 60);
-          const avgPower = (currentPower + prevReading.power) / 2; // W
-          const energyKWh = avgPower * hoursDiff / 1000; // kWh
-          
-          currentBucket.values.energy.push({
-            panelId: sensor.panelId,
-            energy: energyKWh > 0 ? energyKWh : 0,
-            power: currentPower
-          });
-        } else {
-          // For first reading, we still want to capture power
-          currentBucket.values.energy.push({
-            panelId: sensor.panelId,
-            energy: 0,
-            power: currentPower
-          });
-        }
-        
-        // Update previous reading
-        previousReadings[sensor.panelId] = {
-          timestamp: reading.endTime,
+        currentBucket.values.power.push({
+          panelId: sensor.panelId,
           power: currentPower
-        };
+        });
       }
     }
     
@@ -957,7 +932,7 @@ async function getIrradiancePowerCorrelation(readings, timeIntervalMs, timezone)
   }
   
   // Finalize the last bucket
-  if (currentBucket.values.energy.length > 0 || currentBucket.values.irradiance.length > 0) {
+  if (currentBucket.values.power.length > 0 || currentBucket.values.irradiance.length > 0) {
     finalizeIrradiancePowerBucket(currentBucket);
     result.push(currentBucket);
   }
@@ -967,17 +942,11 @@ async function getIrradiancePowerCorrelation(readings, timeIntervalMs, timezone)
 
 // Helper function to finalize irradiance vs power bucket
 function finalizeIrradiancePowerBucket(bucket) {
-  // Calculate energy average
-  if (bucket.values.energy.length > 0) {
-    const totalEnergy = bucket.values.energy.reduce((sum, item) => sum + item.energy, 0);
-    const totalPower = bucket.values.energy.reduce((sum, item) => sum + item.power, 0);
-    const avgEnergy = totalEnergy / bucket.values.energy.length;
-    const avgPower = totalPower / bucket.values.energy.length;
+  // Calculate power average
+  if (bucket.values.power.length > 0) {
+    const totalPower = bucket.values.power.reduce((sum, item) => sum + item.power, 0);
+    const avgPower = totalPower / bucket.values.power.length;
     
-    bucket.energy = {
-      value: avgEnergy,
-      unit: 'kWh'
-    };
     bucket.power = {
       value: avgPower,
       unit: 'W'
@@ -985,29 +954,14 @@ function finalizeIrradiancePowerBucket(bucket) {
     
     // Store panel-specific power data
     bucket.panels = {};
-    for (const item of bucket.values.energy) {
-      if (!bucket.panels[item.panelId]) {
-        bucket.panels[item.panelId] = {
-          energy: 0,
-          power: 0
-        };
-      }
-      bucket.panels[item.panelId].energy += item.energy;
-      bucket.panels[item.panelId].power = item.power; // Latest power value
+    for (const item of bucket.values.power) {
+      bucket.panels[item.panelId] = {
+        power: item.power
+      };
     }
-    
-    // Convert panels object to array
-    bucket.panels = Object.entries(bucket.panels).map(([panelId, data]) => ({
-      panelId,
-      energy: data.energy,
-      power: data.power,
-      energyUnit: 'kWh',
-      powerUnit: 'W'
-    }));
   } else {
-    bucket.energy = { value: 0, unit: 'kWh' };
     bucket.power = { value: 0, unit: 'W' };
-    bucket.panels = [];
+    bucket.panels = {};
   }
   
   // Calculate irradiance average
@@ -1021,26 +975,25 @@ function finalizeIrradiancePowerBucket(bucket) {
     };
     
     // Store panel-specific irradiance data
-    const irradiancePanels = {};
     for (const item of bucket.values.irradiance) {
-      irradiancePanels[item.panelId] = {
-        value: item.value,
-        unit: item.unit
-      };
+      if (!bucket.panels[item.panelId]) {
+        bucket.panels[item.panelId] = {};
+      }
+      bucket.panels[item.panelId].irradiance = item.value;
+      bucket.panels[item.panelId].irradianceUnit = item.unit;
     }
-    
-    // Add irradiance data to panels
-    bucket.panels = bucket.panels.map(panel => {
-      const irradianceData = irradiancePanels[panel.panelId];
-      return {
-        ...panel,
-        irradiance: irradianceData ? irradianceData.value : 0,
-        irradianceUnit: irradianceData ? irradianceData.unit : 'W/m2'
-      };
-    });
   } else {
     bucket.irradiance = { value: 0, unit: 'W/m2' };
   }
+  
+  // Convert panels object to array
+  bucket.panels = Object.entries(bucket.panels).map(([panelId, data]) => ({
+    panelId,
+    power: data.power || 0,
+    powerUnit: 'W',
+    irradiance: data.irradiance || 0,
+    irradianceUnit: data.irradianceUnit || 'W/m2'
+  }));
   
   // Remove the values array
   delete bucket.values;
