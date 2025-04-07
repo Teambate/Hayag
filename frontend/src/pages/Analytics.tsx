@@ -166,13 +166,13 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
       return;
     }
     
-    // Set start date to beginning of day in UTC (00:00:00)
+    // Set start date to beginning of day in local timezone (00:00:00)
     const startDate = new Date(range.from);
-    startDate.setUTCHours(0, 0, 0, 0);
+    startDate.setHours(0, 0, 0, 0);
     
-    // Set end date to end of day in UTC (23:59:59)
+    // Set end date to end of day in local timezone (23:59:59)
     const endDate = new Date(range.to);
-    endDate.setUTCHours(23, 59, 59, 999);
+    endDate.setHours(23, 59, 59, 999);
     
     setSelectedDateRange({ from: startDate, to: endDate });
   };

@@ -23,16 +23,21 @@ export const determineTimeFormat = (timestamps: (string | number)[]) => {
     .map(ts => new Date(ts))
     .sort((a, b) => a.getTime() - b.getTime());
 
-  // Calculate average interval between timestamps in milliseconds
-  let totalInterval = 0;
+  // Calculate intervals between timestamps in hours
+  const intervals = [];
   for (let i = 1; i < dates.length; i++) {
-    totalInterval += dates[i].getTime() - dates[i - 1].getTime();
+    const intervalMs = dates[i].getTime() - dates[i - 1].getTime();
+    const intervalHours = intervalMs / (1000 * 60 * 60);
+    intervals.push(intervalHours);
   }
-  const avgInterval = totalInterval / (dates.length - 1);
-
-  // Convert to hours
-  const hourInterval = avgInterval / (1000 * 60 * 60);
-
+  
+  // Count how many intervals are 24 hours (with small tolerance)
+  const dailyIntervals = intervals.filter(interval => Math.abs(interval - 24) <= 0.01);
+  const mostlyDaily = dailyIntervals.length >= Math.floor(intervals.length / 2);
+  
+  // Calculate average interval
+  const avgInterval = intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length;
+  
   // Check if timestamps represent different days
   const isDailyOrLonger = dates.some((date, i) => {
     if (i === 0) return false;
@@ -46,33 +51,8 @@ export const determineTimeFormat = (timestamps: (string | number)[]) => {
 
   // Force daily format if timestamps span multiple days
   if (isDailyOrLonger) {
-    // Calculate total date range in days
-    
-    // If the interval is less than 24 hours but spans multiple days, show both date and time
-    if (hourInterval < 24) {
-      return {
-        type: 'dateTime',
-        format: (timestamp: string | number) => {
-          const date = new Date(timestamp);
-          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + 
-                 date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-        }
-      };
-    }
-    
-    // If spanning more than a month, show month/year format
-    if (hourInterval > 24 * 30) {
-      return {
-        type: 'month',
-        format: (timestamp: string | number) => {
-          const date = new Date(timestamp);
-          return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-        }
-      };
-    }
-    
-    // If spanning more than a week but less than a month, show month/day
-    if (hourInterval > 24 * 7) {
+    // If the intervals are mostly 24 hours, show only date without time
+    if (mostlyDaily) {
       return {
         type: 'day',
         format: (timestamp: string | number) => {
@@ -82,18 +62,19 @@ export const determineTimeFormat = (timestamps: (string | number)[]) => {
       };
     }
     
-    // If spanning multiple days but less than a week, show day of week
+    // If the intervals are not 24 hours but span multiple days, show both date and time
     return {
-      type: 'day',
+      type: 'dateTime',
       format: (timestamp: string | number) => {
         const date = new Date(timestamp);
-        return date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + 
+               date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
       }
     };
   }
 
   // For timestamps within the same day
-  if (hourInterval < 1) {
+  if (avgInterval < 1) {
     // Less than 1 hour interval - show hours and minutes
     return {
       type: 'minute',
@@ -102,7 +83,7 @@ export const determineTimeFormat = (timestamps: (string | number)[]) => {
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
       }
     };
-  } else if (hourInterval < 24) {
+  } else if (avgInterval < 24) {
     // Less than 24 hours interval - show hours only
     return {
       type: 'hour',

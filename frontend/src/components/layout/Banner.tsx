@@ -72,14 +72,14 @@ export default function Banner({
   const getDefaultDateRange = (): DateRange => {
     // Create end date at the very end of today in local time
     const endDate = new Date();
-    // Set to end of day in UTC
-    endDate.setUTCHours(23, 59, 59, 999);
+    // Set to end of day in local timezone
+    endDate.setHours(23, 59, 59, 999);
     
     // Create start date 7 days ago at the very beginning of the day in local time
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 7);
-    // Set to beginning of day in UTC
-    startDate.setUTCHours(0, 0, 0, 0);
+    // Set to beginning of day in local timezone
+    startDate.setHours(0, 0, 0, 0);
     
     return {
       from: startDate,
@@ -214,13 +214,13 @@ export default function Banner({
       return;
     }
     
-    // Set start date to beginning of day in UTC (00:00:00)
+    // Set start date to beginning of day in local timezone (00:00:00)
     const startDate = new Date(newRange.from);
-    startDate.setUTCHours(0, 0, 0, 0);
+    startDate.setHours(0, 0, 0, 0);
     
-    // Set end date to end of day in UTC (23:59:59)
+    // Set end date to end of day in local timezone (23:59:59)
     const endDate = new Date(newRange.to);
-    endDate.setUTCHours(23, 59, 59, 999);
+    endDate.setHours(23, 59, 59, 999);
     
     const formattedRange = { from: startDate, to: endDate };
     setDateRange(formattedRange);
