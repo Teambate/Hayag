@@ -1,11 +1,9 @@
 import React, { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
-import { TimePeriod } from './EnergyProduction';
 import { formatTimestamp } from '../../utils/dateUtils';
 
 // Component props interface
 interface EfficiencyEnvironmentProps {
-  timePeriod?: TimePeriod;
   chartData?: any[];
 }
 

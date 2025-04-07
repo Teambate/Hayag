@@ -403,7 +403,6 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <p className="text-sm text-gray-500 mb-4">Comparing power output between panels and identifying anomalies</p>
                 <div className="h-72 sm:h-80">
                   <PanelPerformance 
-                    timePeriod={selectedTimePeriod} 
                     chartData={analyticsData?.data.panelPerformance || []}
                   />
                 </div>
@@ -462,7 +461,6 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <p className="text-sm text-gray-500 mb-4">Impact of temperature and humidity on efficiency</p>
                 <div className="h-64">
                   <EfficiencyEnvironment 
-                    timePeriod={selectedTimePeriod}
                     chartData={analyticsData?.data.efficiencyEnvironment || []}
                   />
                 </div>
@@ -492,7 +490,6 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <p className="text-sm text-gray-500 mb-4">Solar energy generation trends throughout the week</p>
                 <div className="h-64">
                   <PeakSolarHours 
-                    timePeriod={selectedTimePeriod}
                     chartData={analyticsData?.data.peakSolarHours || []}
                   />
                 </div>

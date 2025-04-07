@@ -118,10 +118,10 @@ const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ chartData = [] }) => {
   }, [chartData, allTimestamps, timeFormatInfo, isDailyData]);
   
   // If no data is available, display a message
-  if (transformedData.length === 0) {
+  if (transformedData.length === 0 || transformedData.every(item => item.value === 0)) {
     return (
       <div className="flex justify-center items-center h-full w-full">
-        <p className="text-gray-500">No peak solar hours data available</p>
+        <p className="text-gray-500">No peak hour data available</p>
       </div>
     );
   }
