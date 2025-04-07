@@ -120,7 +120,6 @@ export default function Notes({ setActiveTab }: NotesProps) {
     
     // Otherwise, create a new note
     const now = new Date();
-    const today = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     
     const note: NoteItem = {

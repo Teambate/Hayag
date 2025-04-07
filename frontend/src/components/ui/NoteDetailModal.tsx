@@ -1,4 +1,4 @@
-import { AlertTriangle, CircleCheck, CircleOff, Battery, FileText, Pencil, Trash2, X } from "lucide-react";
+import { AlertTriangle, CircleCheck, CircleOff, Battery, FileText, Pencil, Trash2 } from "lucide-react";
 import { NoteType, NoteItem } from "../../pages/Notes";
 import { 
   Dialog, 

@@ -1,4 +1,4 @@
-import { AlertTriangle, CircleCheck, CircleOff, Battery, FileText, MoreHorizontal } from "lucide-react";
+import { AlertTriangle, CircleCheck, CircleOff, Battery, FileText } from "lucide-react";
 import { NoteType, NoteItem } from "../../context/NotesContext";
 
 interface NoteCardProps {
@@ -9,7 +9,7 @@ interface NoteCardProps {
   onEdit?: (note: NoteItem) => void;
 }
 
-const NoteCard = ({ note, onMarkAsRead, onDelete, onViewDetails, onEdit }: NoteCardProps) => {
+const NoteCard = ({ note, onMarkAsRead, onViewDetails }: NoteCardProps) => {
   // Helper to get icon based on note type
   const getInsightIcon = (type: NoteType) => {
     switch (type) {
@@ -29,7 +29,7 @@ const NoteCard = ({ note, onMarkAsRead, onDelete, onViewDetails, onEdit }: NoteC
   };
 
   // Get shadow and border styling based on read status
-  const getCardStyle = (type: NoteType, read: boolean) => {
+  const getCardStyle = (_type: NoteType, read: boolean) => {
     if (!read) {
       return "border-amber-200 shadow-md";
     }

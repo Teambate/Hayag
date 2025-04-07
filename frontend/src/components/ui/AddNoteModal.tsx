@@ -3,7 +3,6 @@ import { AlertTriangle, Battery, FileText, CircleCheck, CircleOff, Plus } from "
 import { NoteType, NoteItem } from "../../pages/Notes";
 import { 
   Dialog, 
-  DialogTrigger, 
   DialogContentWithoutCloseButton, 
   DialogHeader, 
   DialogTitle, 

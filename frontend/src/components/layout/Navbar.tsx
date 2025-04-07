@@ -13,7 +13,7 @@ interface NavbarProps {
 
 export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  useAuth()
   const { unreadCount, navigateToNotes } = useNotes()
 
   // Get current date
