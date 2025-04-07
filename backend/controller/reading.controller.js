@@ -15,7 +15,13 @@ export const getReadings = async (req, res) => {
 
 export const getFilteredReadings = async (req, res) => {
   try {
-    const result = await getFilteredReadingsService(req.query);
+    // Get client timezone from headers or query parameters
+    const timezone = req.headers['timezone'] || req.query.timezone;
+    
+    // Add timezone to query params
+    const queryParams = { ...req.query, timezone };
+    
+    const result = await getFilteredReadingsService(queryParams);
     res.status(200).json({ 
       success: true, 
       count: result.count,
@@ -53,7 +59,13 @@ export const createReading = async (req, res) => {
 
 export const getCurrentSensorValues = async (req, res) => {
   try {
-    const result = await getCurrentSensorValuesService(req.query);
+    // Get client timezone from headers or query parameters
+    const timezone = req.headers['timezone'] || req.query.timezone;
+    
+    // Add timezone to query params
+    const queryParams = { ...req.query, timezone };
+    
+    const result = await getCurrentSensorValuesService(queryParams);
     
     res.status(200).json({
       success: true,
@@ -75,7 +87,13 @@ export const getCurrentSensorValues = async (req, res) => {
 
 export const getChartData = async (req, res) => {
   try {
-    const result = await getChartDataService(req.query);
+    // Get client timezone from headers or query parameters
+    const timezone = req.headers['timezone'] || req.query.timezone;
+    
+    // Add timezone to query params
+    const queryParams = { ...req.query, timezone };
+    
+    const result = await getChartDataService(queryParams);
     
     res.status(200).json({
       success: true,
@@ -96,7 +114,13 @@ export const getChartData = async (req, res) => {
 
 export const getDashboardChartData = async (req, res) => {
   try {
-    const result = await getDashboardChartDataService(req.query);
+    // Get client timezone from headers or query parameters
+    const timezone = req.headers['timezone'] || req.query.timezone;
+    
+    // Add timezone to query params
+    const queryParams = { ...req.query, timezone };
+    
+    const result = await getDashboardChartDataService(queryParams);
     
     res.status(200).json({
       success: true,
@@ -138,7 +162,13 @@ export const getPanelIdsForDevice = async (req, res) => {
 
 export const getAnalyticsData = async (req, res) => {
   try {
-    const result = await getAnalyticsDataService(req.query);
+    // Get client timezone from headers or query parameters
+    const timezone = req.headers['timezone'] || req.query.timezone;
+    
+    // Add timezone to query params
+    const queryParams = { ...req.query, timezone };
+    
+    const result = await getAnalyticsDataService(queryParams);
     
     res.status(200).json({
       success: true,

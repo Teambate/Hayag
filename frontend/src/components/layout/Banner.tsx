@@ -123,7 +123,11 @@ export default function Banner({
       
       try {
         setLoadingPanels(true);
-        const response = await fetch(`/api/readings/device/${currentDeviceId}/panels`);
+        // Add timezone as query parameter
+        const params = new URLSearchParams();
+        params.append('timezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
+        
+        const response = await fetch(`/api/readings/device/${currentDeviceId}/panels?${params.toString()}`);
         
         if (!response.ok) {
           throw new Error(`Failed to fetch panel IDs: ${response.statusText}`);

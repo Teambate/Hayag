@@ -5,6 +5,9 @@ export const fetchSensorData = async (deviceId: string) => {
     const params = new URLSearchParams();
     params.append('deviceId', deviceId);
     
+    // Add timezone information
+    params.append('timezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
+    
     const response = await fetch(`/api/readings/current?${params.toString()}`);
     if (!response.ok) {
       throw new Error('Failed to fetch sensor data');
@@ -34,6 +37,14 @@ export const fetchSensorData = async (deviceId: string) => {
 
 import api from '../utils/api'; // Import the configured axios instance
 
+/**
+ * Get client's timezone
+ * @returns {string} IANA timezone identifier
+ */
+export const getClientTimezone = (): string => {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+};
+
 // Fetch dashboard chart data for all graphs
 export const fetchDashboardChartData = async (deviceId: string, timeInterval: string = '10min') => {
   try {
@@ -41,6 +52,9 @@ export const fetchDashboardChartData = async (deviceId: string, timeInterval: st
     const params = new URLSearchParams();
     params.append('deviceId', deviceId);
     params.append('timeInterval', timeInterval);
+    
+    // Add timezone information
+    params.append('timezone', getClientTimezone());
     
     // Use the axios instance which includes auth cookies
     const response = await api.get(`/readings/dashboard/chart?${params.toString()}`);
@@ -62,6 +76,44 @@ export const fetchDashboardChartData = async (deviceId: string, timeInterval: st
       panel_temp: [],
       irradiance: []
     };
+  }
+};
+
+// Fetch analytics data with date range and timezone
+export const fetchAnalyticsData = async (
+  deviceId: string, 
+  startDateTime: string, 
+  endDateTime: string, 
+  panelIds?: string[]
+) => {
+  try {
+    // Build the query parameters
+    const params = new URLSearchParams();
+    params.append('deviceId', deviceId);
+    params.append('startDateTime', startDateTime);
+    params.append('endDateTime', endDateTime);
+    
+    // Add timezone information
+    params.append('timezone', getClientTimezone());
+    
+    // Add panel IDs if provided
+    if (panelIds && panelIds.length > 0) {
+      params.append('panelIds', panelIds.join(','));
+    }
+    
+    // Use the axios instance which includes auth cookies
+    const response = await api.get(`/readings/analytics?${params.toString()}`);
+    
+    // Check success flag
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to fetch analytics data');
+    }
+    
+    // Return the API response data
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching analytics data:", error);
+    throw error;
   }
 };
 

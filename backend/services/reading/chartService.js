@@ -1,5 +1,6 @@
 import SensorReading from "../../model/reading.model.js";
 import { getTimeIntervalInMs, aggregateDataByTimeInterval } from "../../utils/chartUtils.js";
+import { getStartOfDay, getEndOfDay, toUTC } from "../../utils/timeUtils.js";
 
 export const getChartDataService = async (params) => {
   const { 
@@ -8,7 +9,8 @@ export const getChartDataService = async (params) => {
     startDateTime, 
     endDateTime, 
     timeInterval,
-    chartType 
+    chartType,
+    timezone 
   } = params;
   
   if (!deviceId) {
@@ -47,6 +49,10 @@ export const getChartDataService = async (params) => {
       throw new Error("Invalid chartType. Must be one of: energy, battery, panel_temp, irradiance");
   }
   
+  // Convert dates to UTC considering client timezone
+  const startDate = timezone ? toUTC(new Date(startDateTime), timezone) : new Date(startDateTime);
+  const endDate = timezone ? toUTC(new Date(endDateTime), timezone) : new Date(endDateTime);
+  
   // Build the aggregation pipeline
   const pipeline = [];
   
@@ -55,8 +61,8 @@ export const getChartDataService = async (params) => {
     $match: {
       deviceId: deviceId,
       endTime: {
-        $gte: new Date(startDateTime),
-        $lte: new Date(endDateTime)
+        $gte: startDate,
+        $lte: endDate
       }
     }
   });
@@ -130,7 +136,8 @@ export const getDashboardChartDataService = async (params) => {
     deviceId, 
     panelIds, 
     timeInterval = '10min',
-    chartTypes 
+    chartTypes,
+    timezone
   } = params;
   
   if (!deviceId) {
@@ -193,8 +200,8 @@ export const getDashboardChartDataService = async (params) => {
     throw new Error(`No readings found for device ${deviceId}`);
   }
   
-  // Get the reference date based on the latest reading (in UTC)
-  const latestDate = new Date(latestReading.endTime);
+  // Get the reference date based on the latest reading (adjusted for client timezone if provided)
+  const latestDate = timezone ? toUTC(latestReading.endTime, timezone) : new Date(latestReading.endTime);
   
   // Determine the date range based on the time interval
   let startDate, endDate;
@@ -203,32 +210,29 @@ export const getDashboardChartDataService = async (params) => {
     case 'daily':
       // For daily interval, return current month data
       startDate = new Date(latestDate);
-      startDate.setUTCDate(1); // First day of the month
-      startDate.setUTCHours(0, 0, 0, 0);
+      startDate.setDate(1); // First day of the month
+      startDate.setHours(0, 0, 0, 0);
       
       endDate = new Date(latestDate);
-      endDate.setUTCHours(23, 59, 59, 999);
+      endDate.setHours(23, 59, 59, 999);
       break;
       
     case 'weekly':
     case 'monthly':
       // For weekly and monthly intervals, return whole year data
       startDate = new Date(latestDate);
-      startDate.setUTCMonth(0, 1); // January 1st
-      startDate.setUTCHours(0, 0, 0, 0);
+      startDate.setMonth(0, 1); // January 1st
+      startDate.setHours(0, 0, 0, 0);
       
       endDate = new Date(latestDate);
-      endDate.setUTCHours(23, 59, 59, 999);
+      endDate.setHours(23, 59, 59, 999);
       break;
       
     default:
       // Default behavior for 5min, 10min, 15min, 30min, hourly
       // Return current day data
-      startDate = new Date(latestDate);
-      startDate.setUTCHours(0, 0, 0, 0);
-      
-      endDate = new Date(latestDate);
-      endDate.setUTCHours(23, 59, 59, 999);
+      startDate = getStartOfDay(latestDate, timezone);
+      endDate = getEndOfDay(latestDate, timezone);
       break;
   }
   
@@ -322,7 +326,8 @@ export const getAnalyticsDataService = async (params) => {
     deviceId, 
     panelIds, 
     startDateTime, 
-    endDateTime
+    endDateTime,
+    timezone
   } = params;
   
   if (!deviceId) {
@@ -338,9 +343,11 @@ export const getAnalyticsDataService = async (params) => {
     (Array.isArray(panelIds) ? panelIds : panelIds.split(',')) : 
     null;
   
+  // Convert dates to UTC considering client timezone
+  const startDate = timezone ? toUTC(new Date(startDateTime), timezone) : new Date(startDateTime);
+  const endDate = timezone ? toUTC(new Date(endDateTime), timezone) : new Date(endDateTime);
+  
   // Determine appropriate time interval based on date range
-  const startDate = new Date(startDateTime);
-  const endDate = new Date(endDateTime);
   const daysDiff = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
   
   let timeInterval;
@@ -438,17 +445,17 @@ export const getAnalyticsDataService = async (params) => {
   };
   
   // Process data for hourly energy production (peak solar hours - 4am to 7pm)
-  const peakSolarHoursData = await getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray);
+  const peakSolarHoursData = await getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray, timezone);
   result.peakSolarHours = peakSolarHoursData;
   
   // Process data for efficiency vs environment (energy vs humidity and temperature)
-  result.efficiencyEnvironment = await getEfficiencyEnvironmentData(readings, timeIntervalMs);
+  result.efficiencyEnvironment = await getEfficiencyEnvironmentData(readings, timeIntervalMs, timezone);
   
   // Process data for irradiance vs power output correlation
-  result.irradiancePower = await getIrradiancePowerCorrelation(readings, timeIntervalMs);
+  result.irradiancePower = await getIrradiancePowerCorrelation(readings, timeIntervalMs, timezone);
   
   // Calculate summary values
-  const summaryValues = calculateSummaryValues(readings, result);
+  const summaryValues = calculateSummaryValues(readings, result, timezone);
   
   return {
     timeInterval: timeInterval,
@@ -460,7 +467,7 @@ export const getAnalyticsDataService = async (params) => {
 };
 
 // Helper function to get peak solar hours data (average kWh per hour from 4am-7pm)
-async function getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray) {
+async function getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray, timezone) {
   // Create an aggregation pipeline specifically for hourly energy data
   const pipeline = [
     {
@@ -476,10 +483,10 @@ async function getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray
       $project: {
         deviceId: 1,
         endTime: 1,
-        hour: { $hour: "$endTime" },
-        day: { $dayOfMonth: "$endTime" },
-        month: { $month: "$endTime" },
-        year: { $year: "$endTime" },
+        hour: { $hour: { date: "$endTime", timezone: timezone || "UTC" } },
+        day: { $dayOfMonth: { date: "$endTime", timezone: timezone || "UTC" } },
+        month: { $month: { date: "$endTime", timezone: timezone || "UTC" } },
+        year: { $year: { date: "$endTime", timezone: timezone || "UTC" } },
         "readings.ina226": 1
       }
     }
@@ -539,9 +546,18 @@ async function getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray
     }
     
     if (!dailyHourlyData[dateKey][hour]) {
+      // Create a date in the client's timezone
+      let clientDate;
+      if (timezone) {
+        clientDate = new Date(reading.year, reading.month - 1, reading.day, hour, 0, 0, 0);
+      } else {
+        // Fallback to UTC if no timezone provided
+        clientDate = new Date(Date.UTC(reading.year, reading.month - 1, reading.day, hour, 0, 0, 0));
+      }
+      
       dailyHourlyData[dateKey][hour] = {
         hour,
-        date: new Date(reading.year, reading.month - 1, reading.day, hour, 0, 0, 0),
+        date: clientDate,
         samples: 0,
         totalEnergy: 0,
         panels: {}
@@ -633,9 +649,21 @@ async function getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray
     
     // Skip hours with no data
     if (hourData.days === 0) {
+      // Create a timestamp in the client's timezone
+      let timestamp;
+      if (timezone) {
+        // Create a date object and adjust for timezone
+        const clientDate = new Date(startDate);
+        clientDate.setHours(hour, 0, 0, 0);
+        timestamp = clientDate.getTime();
+      } else {
+        // Fallback to UTC
+        timestamp = new Date(startDate).setUTCHours(hour, 0, 0, 0);
+      }
+      
       hourlyData.push({
         hour,
-        timestamp: new Date(startDate).setHours(hour, 0, 0, 0),
+        timestamp,
         panels: [],
         average: {
           value: 0,
@@ -652,9 +680,21 @@ async function getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray
       unit: 'kWh'
     }));
     
+    // Create a timestamp in the client's timezone
+    let timestamp;
+    if (timezone) {
+      // Create a date object and adjust for timezone
+      const clientDate = new Date(startDate);
+      clientDate.setHours(hour, 0, 0, 0);
+      timestamp = clientDate.getTime();
+    } else {
+      // Fallback to UTC
+      timestamp = new Date(startDate).setUTCHours(hour, 0, 0, 0);
+    }
+    
     hourlyData.push({
       hour,
-      timestamp: new Date(startDate).setHours(hour, 0, 0, 0),
+      timestamp,
       panels: panelData,
       average: {
         value: hourData.days > 0 ? 
@@ -668,7 +708,7 @@ async function getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray
 }
 
 // Helper function to get efficiency vs environment data
-async function getEfficiencyEnvironmentData(readings, timeIntervalMs) {
+async function getEfficiencyEnvironmentData(readings, timeIntervalMs, timezone) {
   const result = [];
   const startTime = readings.length > 0 ? new Date(readings[0].endTime).getTime() : null;
   
@@ -823,7 +863,7 @@ function finalizeEfficiencyEnvironmentBucket(bucket) {
 }
 
 // Helper function to correlate irradiance with power output
-async function getIrradiancePowerCorrelation(readings, timeIntervalMs) {
+async function getIrradiancePowerCorrelation(readings, timeIntervalMs, timezone) {
   const result = [];
   const startTime = readings.length > 0 ? new Date(readings[0].endTime).getTime() : null;
   
@@ -1007,7 +1047,7 @@ function finalizeIrradiancePowerBucket(bucket) {
 }
 
 // Helper function to calculate summary values for analytics page
-function calculateSummaryValues(readings, chartData) {
+function calculateSummaryValues(readings, chartData, timezone) {
   // 1. Mock Efficiency (to be replaced with real calculation later)
   const efficiency = {
     value: 85, // Mock value - implement real calculation later
@@ -1037,8 +1077,27 @@ function calculateSummaryValues(readings, chartData) {
     );
     
     if (sortedHours.length > 0 && sortedHours[0].average?.value > 0) {
-      // Get the best hour
-      bestTime = `${sortedHours[0].hour}:00`;
+      // Get the best hour - format with proper timezone consideration
+      const bestHour = sortedHours[0].hour;
+      
+      // Format the time strings with proper localization if timezone is provided
+      if (timezone) {
+        const formatHourWithTimezone = (hour) => {
+          const date = new Date();
+          date.setHours(hour, 0, 0, 0);
+          return date.toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            hour12: false,
+            timeZone: timezone 
+          }).replace(/:00$/, ':00');
+        };
+        
+        bestTime = formatHourWithTimezone(bestHour);
+      } else {
+        // Fallback to simple format if no timezone
+        bestTime = `${bestHour}:00`;
+      }
       
       // Find contiguous range of good production hours (above 50% of peak)
       const threshold = sortedHours[0].average.value * 0.5;
@@ -1048,8 +1107,26 @@ function calculateSummaryValues(readings, chartData) {
         .sort((a, b) => a - b);
       
       if (productiveHours.length > 0) {
-        peakHourStart = `${productiveHours[0]}:00`;
-        peakHourEnd = `${productiveHours[productiveHours.length - 1]}:00`;
+        // Format the time with proper localization if timezone is provided
+        if (timezone) {
+          const formatHourWithTimezone = (hour) => {
+            const date = new Date();
+            date.setHours(hour, 0, 0, 0);
+            return date.toLocaleTimeString([], { 
+              hour: '2-digit', 
+              minute: '2-digit', 
+              hour12: false,
+              timeZone: timezone 
+            }).replace(/:00$/, ':00');
+          };
+          
+          peakHourStart = formatHourWithTimezone(productiveHours[0]);
+          peakHourEnd = formatHourWithTimezone(productiveHours[productiveHours.length - 1]);
+        } else {
+          // Fallback to simple format if no timezone
+          peakHourStart = `${productiveHours[0]}:00`;
+          peakHourEnd = `${productiveHours[productiveHours.length - 1]}:00`;
+        }
       }
     }
   }

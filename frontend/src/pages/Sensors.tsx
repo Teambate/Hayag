@@ -141,6 +141,9 @@ export default function Sensors() {
         params.append('endDateTime', dateRange.to.toISOString());
       }
       
+      // Add timezone information
+      params.append('timezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
+      
       // Map UI sensor types to backend sensor types
       const backendSensorTypes = selectedSensors
         .map(sensor => sensorTypeMapping[sensor])
@@ -359,7 +362,20 @@ export default function Sensors() {
   }
   
   const handleDateRangeChange = (range: DateRange) => {
-    setDateRange(range);
+    if (!range.from || !range.to) {
+      setDateRange(range);
+      return;
+    }
+    
+    // Set start date to beginning of day in local timezone (00:00:00)
+    const startDate = new Date(range.from);
+    startDate.setHours(0, 0, 0, 0);
+    
+    // Set end date to end of day in local timezone (23:59:59)
+    const endDate = new Date(range.to);
+    endDate.setHours(23, 59, 59, 999);
+    
+    setDateRange({ from: startDate, to: endDate });
   }
 
   return (

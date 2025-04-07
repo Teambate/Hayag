@@ -124,6 +124,9 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
         if (selectedDateRange.to) {
           params.append('endDateTime', selectedDateRange.to.toISOString());
         }
+        
+        // Add timezone information
+        params.append('timezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
 
         const response = await fetch(`/api/readings/analytics?${params.toString()}`);
         

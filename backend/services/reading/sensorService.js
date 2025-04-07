@@ -1,5 +1,6 @@
 import SensorReading from "../../model/reading.model.js";
 import { processReadingForCurrentValues } from "../../utils/sensorUtils.js";
+import { getStartOfDay } from "../../utils/timeUtils.js";
 
 export const getCurrentSensorValuesService = async (params) => {
   const { deviceId } = params;
@@ -352,8 +353,8 @@ export const bulkInsertReadingsService = async (readingsData, options = {}, io =
 
 async function calculatePowerAccumulation(result, deviceId, latestReading) {
   // Get start of today in device's timezone (or UTC if not available)
-  const today = new Date(latestReading.endTime);
-  today.setHours(0, 0, 0, 0); // Set to beginning of the day
+  const timezone = result.timezone || null;
+  const today = getStartOfDay(latestReading.endTime, timezone);
   
   // Use enhanced aggregation pipeline with more specific filters
   const pipeline = [
