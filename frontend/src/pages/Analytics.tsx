@@ -535,6 +535,8 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <div className="h-64">
                   <IrradianceGraph 
                     chartData={analyticsData?.data.irradiance || []}
+                    showAverageOnly={true}
+                    irradiancePowerData={analyticsData?.data.irradiancePower || []}
                   />
                 </div>
               </div>

@@ -6,9 +6,15 @@ import { formatTimestamp } from '../../utils/dateUtils';
 // Component props interface
 interface IrradianceGraphProps {
   chartData: ChartDataPoint[]; // Make chartData required
+  showAverageOnly?: boolean; // New prop to control display mode
+  irradiancePowerData?: any[]; // Optional irradiancePower data for Analytics view
 }
 
-const IrradianceGraph: React.FC<IrradianceGraphProps> = ({ chartData }) => {
+const IrradianceGraph: React.FC<IrradianceGraphProps> = ({ 
+  chartData, 
+  showAverageOnly = false,
+  irradiancePowerData
+}) => {
   // Extract all timestamps for interval determination
   const allTimestamps = useMemo(() => {
     return chartData.map(point => {
@@ -19,6 +25,24 @@ const IrradianceGraph: React.FC<IrradianceGraphProps> = ({ chartData }) => {
 
   // Process real data
   const irradianceData = useMemo(() => {
+    // If we have irradiancePower data and showAverageOnly is true, use that instead
+    if (irradiancePowerData && showAverageOnly) {
+      return irradiancePowerData.map((point) => {
+        // Format time based on timestamp intervals
+        const timestamp = point.timestamp?.toString() || '';
+        const time = formatTimestamp(timestamp, allTimestamps);
+        
+        return {
+          time,
+          averageIrradiance: point.irradiance?.value || 0,
+          averagePower: point.power?.value || 0,
+          irradianceUnit: point.irradiance?.unit || 'W/m²',
+          powerUnit: point.power?.unit || 'W'
+        };
+      });
+    }
+    
+    // Standard processing for Dashboard view (unchanged)
     return chartData.map((point) => {
       // Format time based on timestamp intervals
       const timestamp = point.timestamp?.toString() || '';
@@ -38,21 +62,29 @@ const IrradianceGraph: React.FC<IrradianceGraphProps> = ({ chartData }) => {
       
       return dataPoint;
     });
-  }, [chartData, allTimestamps]);
+  }, [chartData, allTimestamps, irradiancePowerData, showAverageOnly]);
 
   // Get panel IDs from the first data point (if available)
-  const panelIds = chartData.length > 0 && chartData[0].panels 
+  const panelIds = !showAverageOnly && chartData.length > 0 && chartData[0].panels 
     ? chartData[0].panels.map(panel => panel.panelId.replace('Panel_', '')) 
     : [];
 
-  // Determine unit from data or use default
-
-  // Bar colors for each panel
+  // Colors for bars
   const panelColors = ['#FFCA28', '#FFA726', '#FF7043', '#FFD54F', '#FFAB40', '#FFB300'];
+  const averageColors = {
+    irradiance: '#F59E0B', // Amber color for irradiance
+    power: '#3B82F6'       // Blue color for power
+  };
   
-  // Render nothing or a placeholder if there's no data or no panels
-  if (!chartData || chartData.length === 0 || panelIds.length === 0) {
+  // Render nothing or a placeholder if there's no data
+  if ((!chartData || chartData.length === 0) && 
+      (!irradiancePowerData || irradiancePowerData.length === 0)) {
     return <div className="flex items-center justify-center h-full text-gray-400 text-sm">No irradiance data available</div>;
+  }
+
+  // If showing individual panels and no panels exist, show message
+  if (!showAverageOnly && panelIds.length === 0) {
+    return <div className="flex items-center justify-center h-full text-gray-400 text-sm">No panel data available</div>;
   }
   
   return (
@@ -71,30 +103,80 @@ const IrradianceGraph: React.FC<IrradianceGraphProps> = ({ chartData }) => {
               tickLine={false} 
               tick={{ fontSize: 12 }}
             />
-            <YAxis 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fontSize: 12 }} 
-              // Dynamically set domain based on data, with padding
-              domain={[
-                0, // Always start Y-axis at 0 for irradiance
-                (dataMax: number) => Math.ceil(dataMax / 100) * 100 + 100 // Round up to next 100, add padding
-              ]}
-              tickCount={5}
-            />
-            <Tooltip />
-            {/* Render a Bar for each panel */}
-            {panelIds.map((panelId, index) => (
-              <Bar 
-                key={panelId}
-                dataKey={`panel${panelId}`} 
-                fill={panelColors[index % panelColors.length]} 
-                name={`Panel ${panelId}`}
-                radius={[4, 4, 0, 0]} 
-                // Adjust bar size based on number of panels
-                barSize={Math.max(5, 15 / panelIds.length)} 
-              />
-            ))}
+            
+            {showAverageOnly ? (
+              // Analytics view with dual Y-axes
+              <>
+                {/* Left Y-axis for irradiance */}
+                <YAxis 
+                  yAxisId="left"
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 12 }} 
+                  domain={[0, (dataMax: number) => Math.ceil(dataMax / 100) * 100 + 100]}
+                  tickCount={5}
+                />
+                {/* Right Y-axis for power */}
+                <YAxis 
+                  yAxisId="right"
+                  orientation="right"
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 12 }} 
+                  domain={[0, (dataMax: number) => Math.ceil(dataMax / 5) * 5 + 5]}
+                  tickCount={5}
+                />
+                <Tooltip 
+                  formatter={(value: number, name: string) => {
+                    if (name === 'averageIrradiance') {
+                      return [`${value.toFixed(2)} W/m²`, 'Solar Irradiance'];
+                    }
+                    return [`${value.toFixed(2)} W`, 'Power Output'];
+                  }}
+                />
+                {/* Bars for average values */}
+                <Bar 
+                  yAxisId="left"
+                  dataKey="averageIrradiance" 
+                  fill={averageColors.irradiance} 
+                  name="Solar Irradiance"
+                  radius={[4, 4, 0, 0]}
+                  barSize={20}
+                />
+                <Bar 
+                  yAxisId="right"
+                  dataKey="averagePower" 
+                  fill={averageColors.power} 
+                  name="Power Output"
+                  radius={[4, 4, 0, 0]}
+                  barSize={20}
+                />
+              </>
+            ) : (
+              // Dashboard view (unchanged)
+              <>
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 12 }} 
+                  domain={[0, (dataMax: number) => Math.ceil(dataMax / 100) * 100 + 100]}
+                  tickCount={5}
+                />
+                <Tooltip />
+                {/* Render a Bar for each panel */}
+                {panelIds.map((panelId, index) => (
+                  <Bar 
+                    key={panelId}
+                    dataKey={`panel${panelId}`} 
+                    fill={panelColors[index % panelColors.length]} 
+                    name={`Panel ${panelId}`}
+                    radius={[4, 4, 0, 0]} 
+                    // Adjust bar size based on number of panels
+                    barSize={Math.max(5, 15 / panelIds.length)} 
+                  />
+                ))}
+              </>
+            )}
             <Legend />
           </BarChart>
         </ResponsiveContainer>
