@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { 
   Save, 
-  Clock, 
   RefreshCw, 
   User,
   MapPin,
@@ -11,12 +10,12 @@ import {
   ChevronDown
 } from "lucide-react";
 import Banner from "../components/layout/Banner";
-import { TimePeriod } from "../components/graphs/EnergyProduction";
 import { Button } from "../components/ui/button";
 import { useAuth } from "../context/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
 import AddDeviceModal from "../components/ui/AddDeviceModal";
+import { useDevice } from "../context/DeviceContext";
 
 // Define types for our components
 interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
@@ -315,12 +314,13 @@ interface SettingsProps {
 
 export default function Settings({ setActiveTab }: SettingsProps) {
   const { user, updateUser } = useAuth();
+  const { deviceId: contextDeviceId, setDeviceId: setContextDeviceId } = useDevice();
   
   // Profile settings state
   const [name, setName] = useState(user?.name || "");
   const [location, setLocation] = useState(user?.devices?.[0]?.location || "");
   const [, setCurrentDevice] = useState(user?.devices?.[0]?.name || "");
-  const [deviceId, setDeviceId] = useState(user?.devices?.[0]?.deviceId || "");
+  const [deviceId, setDeviceId] = useState(contextDeviceId || user?.devices?.[0]?.deviceId || "");
   const [availableDevices, setAvailableDevices] = useState(
     user?.devices?.map(device => ({
       deviceId: device.deviceId,
@@ -328,10 +328,6 @@ export default function Settings({ setActiveTab }: SettingsProps) {
       location: device.location
     })) || []
   );
-  
-  // Preferences state
-  const [defaultTimePeriod, setDefaultTimePeriod] = useState<TimePeriod>("24h");
-  const [refreshRate, setRefreshRate] = useState("5");
   
   // Notification preferences
   const [systemNotifications, setSystemNotifications] = useState(true);
@@ -357,9 +353,10 @@ export default function Settings({ setActiveTab }: SettingsProps) {
       setName(user.name || "");
       
       if (user.devices && user.devices.length > 0) {
-        setLocation(user.devices[0].location || "");
-        setCurrentDevice(user.devices[0].name || "");
-        setDeviceId(user.devices[0].deviceId || "");
+        const selectedDevice = user.devices.find(device => device.deviceId === contextDeviceId) || user.devices[0];
+        setLocation(selectedDevice.location || "");
+        setCurrentDevice(selectedDevice.name || "");
+        setDeviceId(selectedDevice.deviceId || "");
         setAvailableDevices(
           user.devices.map(device => ({
             deviceId: device.deviceId,
@@ -369,11 +366,14 @@ export default function Settings({ setActiveTab }: SettingsProps) {
         );
       }
     }
-  }, [user]);
+  }, [user, contextDeviceId]);
   
   // Handle device change
   const handleDeviceChange = (newDeviceId: string) => {
     setDeviceId(newDeviceId);
+    
+    // Update the global device context
+    setContextDeviceId(newDeviceId);
     
     const selectedDevice = availableDevices.find(
       device => device.deviceId === newDeviceId
@@ -417,8 +417,6 @@ export default function Settings({ setActiveTab }: SettingsProps) {
         name,
         location,
         deviceId,
-        defaultTimePeriod,
-        refreshRate,
         systemNotifications,
         reportFrequency
       });
@@ -442,6 +440,11 @@ export default function Settings({ setActiveTab }: SettingsProps) {
         
         // Update user in context
         updateUser(updatedUser);
+      }
+      
+      // Make sure device context is updated with the current selection
+      if (deviceId !== contextDeviceId) {
+        setContextDeviceId(deviceId);
       }
       
       // Show success message
@@ -615,63 +618,6 @@ export default function Settings({ setActiveTab }: SettingsProps) {
                       { value: "daily", label: "Daily" },
                       { value: "weekly", label: "Weekly" },
                       { value: "monthly", label: "Monthly" }
-                    ]}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Preferences Section */}
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-gray-100 flex items-center">
-              <Clock className="h-5 w-5 mr-2 text-[#65B08F]" />
-              <h2 className="text-lg font-medium text-gray-800">Data Preferences</h2>
-            </div>
-            
-            <div className="p-5 space-y-5">
-              {/* Default time period */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4">
-                <div className="flex items-center">
-                  <Clock className="h-5 w-5 mr-2 text-gray-500" />
-                  <div>
-                    <Label htmlFor="defaultTimePeriod" className="block text-base">Default Time Period</Label>
-                    <p className="text-sm text-gray-500 mt-1">Set default time range for data display</p>
-                  </div>
-                </div>
-                <div className="md:w-1/2">
-                  <Select 
-                    value={defaultTimePeriod} 
-                    onChange={(value) => setDefaultTimePeriod(value as TimePeriod)}
-                    options={[
-                      { value: "24h", label: "24 Hours (Hourly)" },
-                      { value: "7d", label: "7 Days (Daily)" },
-                      { value: "30d", label: "30 Days (Weekly)" },
-                      { value: "90d", label: "90 Days (Monthly)" }
-                    ]}
-                  />
-                </div>
-              </div>
-              
-              {/* Data refresh rate */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4">
-                <div className="flex items-center">
-                  <RefreshCw className="h-5 w-5 mr-2 text-gray-500" />
-                  <div>
-                    <Label htmlFor="refreshRate" className="block text-base">Data Refresh Rate</Label>
-                    <p className="text-sm text-gray-500 mt-1">How often should data be refreshed</p>
-                  </div>
-                </div>
-                <div className="md:w-1/2">
-                  <Select 
-                    value={refreshRate} 
-                    onChange={setRefreshRate}
-                    options={[
-                      { value: "1", label: "Every 1 minute" },
-                      { value: "5", label: "Every 5 minutes" },
-                      { value: "15", label: "Every 15 minutes" },
-                      { value: "30", label: "Every 30 minutes" },
-                      { value: "60", label: "Every hour" }
                     ]}
                   />
                 </div>
