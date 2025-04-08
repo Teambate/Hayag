@@ -8,7 +8,7 @@ import Banner from "../components/layout/Banner";
 import { useAuth } from "../context/AuthContext";
 import { useDeviceData } from "../hooks/useDeviceData";
 import { useDevice } from "../context/DeviceContext";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useMemo } from "react";
 import { DashboardChartData, ChartDataPoint } from "../hooks/useDashboardCharts";
 import { TimePeriod } from "../components/graphs/EnergyProduction";
 
@@ -44,6 +44,45 @@ export default function Dashboard() {
     chartError
   } = useDeviceData(timeInterval);
   
+  // Filter chart data based on selected panel
+  const getFilteredChartData = useCallback((data: ChartDataPoint[] | undefined, panelSelection: string) => {
+    if (!data || data.length === 0) return [];
+    
+    // If "All Panels" is selected, return all data unchanged
+    if (panelSelection === "All Panels") {
+      return data;
+    }
+    
+    // Use the panel selection directly as ID - no need to extract it from "Panel X" format
+    const selectedPanelId = panelSelection;
+    const panelIdToMatch = `Panel_${selectedPanelId}`;
+    
+    // Filter each data point to only include the selected panel
+    return data.map(dataPoint => {
+      // Find the panel that matches the selected panel ID
+      const selectedPanelData = dataPoint.panels.find(panel => 
+        panel.panelId === panelIdToMatch || panel.panelId === selectedPanelId
+      );
+      
+      // Create a new data point with only the selected panel
+      return {
+        ...dataPoint,
+        panels: selectedPanelData ? [selectedPanelData] : []
+      };
+    });
+  }, []);
+  
+  // Memoized filtered chart data for each chart type
+  const filteredChartData = useMemo(() => {
+    if (!chartData) return {};
+    
+    return {
+      energy: getFilteredChartData(chartData.energy, selectedPanel),
+      battery: getFilteredChartData(chartData.battery, selectedPanel),
+      panel_temp: getFilteredChartData(chartData.panel_temp, selectedPanel),
+      irradiance: getFilteredChartData(chartData.irradiance, selectedPanel)
+    };
+  }, [chartData, selectedPanel, getFilteredChartData]);
   
   // Helper to create a unique key for chart components based on their data
   // This ensures React will re-render when data changes
@@ -55,8 +94,8 @@ export default function Dashboard() {
     if (dataLength === 0) return `${chartType}-empty`;
     
     const latestTimestamp = (chartData[chartType][dataLength-1] as ChartDataPoint).timestamp;
-    return `${chartType}-${dataLength}-${latestTimestamp}`;
-  }, [chartData]);
+    return `${chartType}-${dataLength}-${latestTimestamp}-${selectedPanel}`;
+  }, [chartData, selectedPanel]);
   
   // Loading state when no devices are available
   if (!user?.devices || user.devices.length === 0) {
@@ -124,8 +163,10 @@ export default function Dashboard() {
         activeTab="Dashboard" 
         onTimePeriodChange={handleTimePeriodChange}
         onIntervalChange={handleIntervalChange}
+        onPanelChange={(panel) => {/* This is handled by DeviceContext */}}
         selectedTimePeriod={timePeriod}
         selectedInterval={timeInterval}
+        selectedPanel={selectedPanel}
       />
       
       {/* Row 1: Sensor Overview - Minimalist, Line-based Layout */}
@@ -144,10 +185,10 @@ export default function Dashboard() {
             {/* Display panels using only sensorData.power_accumulation.panels */}
             {sensorData?.power_accumulation?.panels
               .filter(panel => 
-                // Filter based on selectedPanel
+                // Filter based on selectedPanel - using simplified panel IDs
                 selectedPanel === "All Panels" || 
-                panel.panelId === `Panel_${selectedPanel.split(" ")[1]}` || 
-                panel.panelId === selectedPanel.split(" ")[1]
+                panel.panelId === `Panel_${selectedPanel}` || 
+                panel.panelId === selectedPanel
               )
               .map(panel => {
                 // Extract panel ID from panelId string
@@ -214,7 +255,7 @@ export default function Dashboard() {
                 ) : (
                   <EnergyProduction 
                     key={getChartKey('energy')} 
-                    chartData={chartData?.energy || []} 
+                    chartData={filteredChartData.energy || []} 
                   />
                 )}
               </div>
@@ -252,7 +293,7 @@ export default function Dashboard() {
                 ) : (
                   <BatteryChargeDischarge 
                     key={getChartKey('battery')} 
-                    chartData={chartData?.battery || []} 
+                    chartData={filteredChartData.battery || []} 
                   />
                 )}
               </div>
@@ -273,7 +314,7 @@ export default function Dashboard() {
                 ) : (
                   <PanelTemperatureOverheating 
                     key={getChartKey('panel_temp')} 
-                    chartData={chartData?.panel_temp || []} 
+                    chartData={filteredChartData.panel_temp || []} 
                   />
                 )}
               </div>
@@ -294,7 +335,7 @@ export default function Dashboard() {
                 ) : (
                   <IrradianceGraph 
                     key={getChartKey('irradiance')}
-                    chartData={chartData?.irradiance || []} 
+                    chartData={filteredChartData.irradiance || []} 
                   />
                 )}
               </div>

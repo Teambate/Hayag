@@ -56,7 +56,7 @@ export default function Banner({
   const { deviceId: contextDeviceId, selectedPanel: contextSelectedPanel, setSelectedPanel } = useDevice();
 
   // State for panel selection - use context value or prop as default
-  const [panel, setPanel] = useState(selectedPanel || contextSelectedPanel);
+  const [panel, setPanel] = useState(selectedPanel || contextSelectedPanel || 'All Panels');
   // State for available panel IDs
   const [panelIds, setPanelIds] = useState<string[]>([])
   // State for loading panel IDs
@@ -164,6 +164,9 @@ export default function Banner({
     const newPanel = selectedPanel || contextSelectedPanel;
     if (newPanel) {
       setPanel(newPanel);
+    } else {
+      // Default to 'All Panels' if no panel is selected
+      setPanel('All Panels');
     }
   }, [selectedPanel, contextSelectedPanel]);
 
@@ -254,8 +257,8 @@ export default function Banner({
       return ["Loading..."];
     }
     
-    // Convert panel IDs to strings and format them as "Panel X"
-    const panelOptions = panelIds.map(id => `Panel ${id.toString()}`);
+    // Convert panel IDs to strings without adding "Panel " prefix
+    const panelOptions = panelIds.map(id => id.toString());
     
     // Always include "All Panels" option
     if (!panelOptions.includes("All Panels")) {

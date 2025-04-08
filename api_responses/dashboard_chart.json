@@ -1,0 +1,1610 @@
+{
+    "success": true,
+    "timeInterval": "hourly",
+    "data": {
+        "energy": [
+            {
+                "timestamp": "2025-03-28T16:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T17:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T18:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T19:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T20:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T21:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0.0000416677,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0.00000278953,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0.0000444572,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T22:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0.0027784,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0.00153636,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0.00431476,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T23:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0.00961507,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0.0046923,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0.01,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T00:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0.02,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0.01,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0.03,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T01:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0.03,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0.01,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0.05,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T02:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0.07,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0.03,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0.1,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T03:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0.07,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0.04,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0.11,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T04:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0.06,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0.05,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0.1,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T05:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0.04,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0.04,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0.08,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T06:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0.03,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0.01,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0.04,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T07:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0.02,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0.01,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0.03,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T08:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0.01,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0.00584009,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0.02,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T09:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0.00297255,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0.00168979,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0.00466234,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T10:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T11:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T12:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "energy": 0,
+                        "unit": "kWh"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "energy": 0,
+                        "unit": "kWh"
+                    }
+                ],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            }
+        ],
+        "battery": [
+            {
+                "timestamp": "2025-03-28T16:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 11.95,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 12.06,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 12,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T17:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 11.91,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 12,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 11.95,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T18:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 11.63,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 11.94,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 11.79,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T19:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 10.66,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 11.82,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 11.24,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T20:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 10.27,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 11.56,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 10.92,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T21:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 10.32,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 10.99,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 10.65,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T22:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 11.84,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 12.13,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 11.98,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T23:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 12.83,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 13.12,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 12.98,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T00:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 13.27,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 13.46,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 13.37,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T01:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 13.28,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 13.31,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 13.3,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T02:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 13.65,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 13.43,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 13.54,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T03:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 13.3,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 13.32,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 13.31,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T04:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 13.42,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 13.29,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 13.36,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T05:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 13.26,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 13.04,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 13.15,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T06:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 13.24,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 13.2,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 13.22,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T07:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 13.06,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 13.07,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 13.07,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T08:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 12.91,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 13.15,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 13.03,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T09:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 12.55,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 12.72,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 12.64,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T10:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 12.09,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 12.31,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 12.2,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T11:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 12.04,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 12.19,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 12.12,
+                    "unit": "V"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T12:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 12.03,
+                        "unit": "V"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 12.14,
+                        "unit": "V"
+                    }
+                ],
+                "average": {
+                    "value": 12.09,
+                    "unit": "V"
+                }
+            }
+        ],
+        "panel_temp": [
+            {
+                "timestamp": "2025-03-28T16:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 26.07,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 25.82,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 25.95,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T17:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 25.8,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 25.6,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 25.7,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T18:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 25.91,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 25.65,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 25.78,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T19:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 25.73,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 25.47,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 25.6,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T20:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 25.33,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 25.1,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 25.21,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T21:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 25.63,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 25.36,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 25.5,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T22:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 26.45,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 26.04,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 26.24,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T23:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 28.3,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 27.4,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 27.85,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T00:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 31.6,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 28.92,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 30.26,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T01:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 37.15,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 32.3,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 34.72,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T02:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 45.72,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 38.86,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 42.29,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T03:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 45.99,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 41.78,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 43.88,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T04:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 46.22,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 43.99,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 45.1,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T05:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 44.43,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 43.3,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 43.87,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T06:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 45.02,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 45.46,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 45.24,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T07:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 37.31,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 35.74,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 36.53,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T08:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 33.9,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 32.56,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 33.23,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T09:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 30.22,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 29.63,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 29.93,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T10:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 28.16,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 27.92,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 28.04,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T11:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 27.98,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 27.81,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 27.89,
+                    "unit": "°C"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T12:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 27.34,
+                        "unit": "°C"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 27.23,
+                        "unit": "°C"
+                    }
+                ],
+                "average": {
+                    "value": 27.29,
+                    "unit": "°C"
+                }
+            }
+        ],
+        "irradiance": [
+            {
+                "timestamp": "2025-03-28T16:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 740.67,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 231.28,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 485.97,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T17:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 390.23,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 151.12,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 270.67,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T18:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 346.64,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 0.16,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 173.4,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T19:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 610.84,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 118.49,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 364.67,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T20:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 492.94,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 320.49,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 406.71,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T21:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 914.74,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 49.85,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 482.29,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T22:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 614.98,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 431.46,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 523.22,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-28T23:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 747.13,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 657.97,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 702.55,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T00:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 1451.44,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 1140.4,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 1295.92,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T01:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 1842.58,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 799.08,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 1320.83,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T02:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 1605.64,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 962.24,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 1283.94,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T03:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 1884,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 925.35,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 1404.68,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T04:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 2108.98,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 1141.2,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 1625.09,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T05:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 1458.76,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 1220.66,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 1339.71,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T06:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 1544.16,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 1860.63,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 1702.4,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T07:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 784.96,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 658.23,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 721.59,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T08:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 1021.84,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 278.25,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 650.04,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T09:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 680.76,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 291.5,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 486.13,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T10:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 665.08,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 278.25,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 471.66,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T11:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 432.6,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 364.32,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 398.46,
+                    "unit": "W/m2"
+                }
+            },
+            {
+                "timestamp": "2025-03-29T12:00:00.000Z",
+                "panels": [
+                    {
+                        "panelId": "Panel_1",
+                        "value": 580.37,
+                        "unit": "W/m2"
+                    },
+                    {
+                        "panelId": "Panel_2",
+                        "value": 257,
+                        "unit": "W/m2"
+                    }
+                ],
+                "average": {
+                    "value": 418.68,
+                    "unit": "W/m2"
+                }
+            }
+        ]
+    }
+}

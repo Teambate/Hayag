@@ -110,7 +110,7 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
         params.append('deviceId', deviceId);
         
         // Add panel filter if specific panel is selected
-        if (selectedPanel !== 'All Panels') {
+        if (selectedPanel !== 'All') {
           const panelId = selectedPanel.includes('Panel_') 
             ? selectedPanel 
             : `Panel_${selectedPanel.split(' ')[1]}`;
