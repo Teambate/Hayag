@@ -401,9 +401,13 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <h3 className="text-lg font-medium mb-1">Panel Performance Comparison</h3>
                 <p className="text-sm text-gray-500 mb-4">Comparing power output between panels and identifying anomalies</p>
                 <div className="h-72 sm:h-80">
-                  <PanelPerformance 
-                    chartData={analyticsData?.data.panelPerformance || []}
-                  />
+                  {isLoading ? (
+                    <div className="flex items-center justify-center h-full text-gray-500">Loading chart data...</div>
+                  ) : (
+                    <PanelPerformance 
+                      chartData={analyticsData?.data.panelPerformance || []}
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -459,9 +463,13 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <h3 className="text-lg font-medium mb-1">Efficiency vs Environment</h3>
                 <p className="text-sm text-gray-500 mb-4">Impact of temperature and humidity on efficiency</p>
                 <div className="h-64">
-                  <EfficiencyEnvironment 
-                    chartData={analyticsData?.data.efficiencyEnvironment || []}
-                  />
+                  {isLoading ? (
+                    <div className="flex items-center justify-center h-full text-gray-500">Loading chart data...</div>
+                  ) : (
+                    <EfficiencyEnvironment 
+                      chartData={analyticsData?.data.efficiencyEnvironment || []}
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -472,7 +480,11 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <h3 className="text-lg font-medium mb-1">Fault & Anomaly Detection</h3>
                 <p className="text-sm text-gray-500 mb-4">Identifying sensor deviations and system anomalies</p>
                 <div className="h-64">
-                  <AnomalyDetection timePeriod={selectedTimePeriod} />
+                  {isLoading ? (
+                    <div className="flex items-center justify-center h-full text-gray-500">Loading chart data...</div>
+                  ) : (
+                    <AnomalyDetection timePeriod={selectedTimePeriod} />
+                  )}
                 </div>
               </div>
             </div>
@@ -488,9 +500,13 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <h3 className="text-lg font-medium mb-1">Peak Solar Hours & Off-Peak Analysis</h3>
                 <p className="text-sm text-gray-500 mb-4">Solar energy generation trends throughout the week</p>
                 <div className="h-64">
-                  <PeakSolarHours 
-                    chartData={analyticsData?.data.peakSolarHours || []}
-                  />
+                  {isLoading ? (
+                    <div className="flex items-center justify-center h-full text-gray-500">Loading chart data...</div>
+                  ) : (
+                    <PeakSolarHours 
+                      chartData={analyticsData?.data.peakSolarHours || []}
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -501,9 +517,13 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <h3 className="text-lg font-medium mb-1">Battery Charge & Discharge</h3>
                 <p className="text-sm text-gray-500 mb-4">Tracking battery charge levels and energy consumption</p>
                 <div className="h-64">
-                  <BatteryChargeDischarge 
-                    chartData={analyticsData?.data.batteryCharge || []}
-                  />
+                  {isLoading ? (
+                    <div className="flex items-center justify-center h-full text-gray-500">Loading chart data...</div>
+                  ) : (
+                    <BatteryChargeDischarge 
+                      chartData={analyticsData?.data.batteryCharge || []}
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -519,9 +539,13 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <h3 className="text-lg font-medium mb-1">Panel Temperature & Overheating</h3>
                 <p className="text-sm text-gray-500 mb-4">Monitoring temperature fluctuations and overheating risks</p>
                 <div className="h-64">
-                  <PanelTemperatureOverheating 
-                    chartData={analyticsData?.data.panelTemperature || []}
-                  />
+                  {isLoading ? (
+                    <div className="flex items-center justify-center h-full text-gray-500">Loading chart data...</div>
+                  ) : (
+                    <PanelTemperatureOverheating 
+                      chartData={analyticsData?.data.panelTemperature || []}
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -532,11 +556,15 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 <h3 className="text-lg font-medium mb-1">Solar Irradiance vs Power Output</h3>
                 <p className="text-sm text-gray-500 mb-4">Comparing sunlight intensity with generated power</p>
                 <div className="h-64">
-                  <IrradianceGraph 
-                    chartData={analyticsData?.data.irradiance || []}
-                    showAverageOnly={true}
-                    irradiancePowerData={analyticsData?.data.irradiancePower || []}
-                  />
+                  {isLoading ? (
+                    <div className="flex items-center justify-center h-full text-gray-500">Loading chart data...</div>
+                  ) : (
+                    <IrradianceGraph 
+                      chartData={analyticsData?.data.irradiance || []}
+                      showAverageOnly={true}
+                      irradiancePowerData={analyticsData?.data.irradiancePower || []}
+                    />
+                  )}
                 </div>
               </div>
             </div>
