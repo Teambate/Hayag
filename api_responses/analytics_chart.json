@@ -1,0 +1,248 @@
+{
+    "success": true,
+    "timeInterval": "daily",
+    "startDate": "2025-04-13T16:00:00.000Z",
+    "endDate": "2025-04-16T15:59:59.000Z",
+    "summaryValues": {
+        "efficiency": {
+            "value": 85,
+            "trend": 2,
+            "unit": "%"
+        },
+        "dailyYield": {
+            "value": 0,
+            "unit": "kWh"
+        },
+        "peakSolarHours": {
+            "start": "N/A",
+            "end": "N/A",
+            "bestTime": "N/A"
+        }
+    },
+    "data": {
+        "panelPerformance": [],
+        "batteryCharge": [],
+        "panelTemperature": [],
+        "irradiance": [],
+        "peakSolarHours": [
+            {
+                "hour": 0,
+                "timestamp": 1744560000000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 1,
+                "timestamp": 1744563600000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 2,
+                "timestamp": 1744567200000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 3,
+                "timestamp": 1744570800000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 4,
+                "timestamp": 1744574400000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 5,
+                "timestamp": 1744578000000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 6,
+                "timestamp": 1744581600000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 7,
+                "timestamp": 1744585200000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 8,
+                "timestamp": 1744588800000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 9,
+                "timestamp": 1744592400000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 10,
+                "timestamp": 1744596000000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 11,
+                "timestamp": 1744599600000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 12,
+                "timestamp": 1744603200000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 13,
+                "timestamp": 1744606800000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 14,
+                "timestamp": 1744610400000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 15,
+                "timestamp": 1744614000000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 16,
+                "timestamp": 1744617600000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 17,
+                "timestamp": 1744621200000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 18,
+                "timestamp": 1744624800000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 19,
+                "timestamp": 1744628400000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 20,
+                "timestamp": 1744632000000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 21,
+                "timestamp": 1744635600000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 22,
+                "timestamp": 1744639200000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            },
+            {
+                "hour": 23,
+                "timestamp": 1744642800000,
+                "panels": [],
+                "average": {
+                    "value": 0,
+                    "unit": "kWh"
+                }
+            }
+        ],
+        "efficiencyEnvironment": [],
+        "irradiancePower": []
+    }
+}

@@ -110,11 +110,9 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
         params.append('deviceId', deviceId);
         
         // Add panel filter if specific panel is selected
-        if (selectedPanel !== 'All') {
-          const panelId = selectedPanel.includes('Panel_') 
-            ? selectedPanel 
-            : `Panel_${selectedPanel.split(' ')[1]}`;
-          params.append('panelIds', panelId);
+        if (selectedPanel !== 'All Panels') {
+          // Don't add "Panel_" prefix - use the panel ID as-is
+          params.append('panelIds', selectedPanel);
         }
         
         // Add date range
@@ -279,6 +277,7 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
           onTimePeriodChange={handleTimePeriodChange}
           onDateRangeChange={handleDateRangeChange}
           selectedTimePeriod={selectedTimePeriod}
+          selectedPanel={selectedPanel}
         />
         <div className="flex justify-center items-center h-64">
           <div className="text-gray-600">Loading analytics data...</div>
