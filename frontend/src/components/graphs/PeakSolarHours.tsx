@@ -34,15 +34,26 @@ const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ chartData = [] }) => {
     }
   };
 
+  // Filter data to only include hours between 4am and 7pm (4 to 19 in 24-hour format)
+  const filteredChartData = useMemo(() => {
+    return chartData.filter(item => {
+      // Check if hour property exists and is a number
+      if (typeof item.hour === 'number') {
+        return item.hour >= 4 && item.hour <= 19;
+      }
+      return true; // If hour is not available, include the data point
+    });
+  }, [chartData]);
+
   // Extract all timestamps for interval determination
   const allTimestamps = useMemo(() => {
-    return chartData.map(item => {
+    return filteredChartData.map(item => {
       // Use timestamp property if it exists, otherwise use the numeric timestamp
       return typeof item.timestamp === 'string' 
         ? item.timestamp 
         : item.timestamp || item.timestamp;
     });
-  }, [chartData]);
+  }, [filteredChartData]);
 
   // Determine the time format based on the interval between timestamps
   const timeFormatInfo = useMemo(() => {
@@ -51,11 +62,11 @@ const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ chartData = [] }) => {
 
   // Check if timestamps span multiple days
   const isDailyData = useMemo(() => {
-    if (chartData.length < 2) return false;
+    if (filteredChartData.length < 2) return false;
     
     // If we have hour field in data, check the timestamp dates
-    if (chartData[0].hour !== undefined) {
-      const dates = chartData.map(item => {
+    if (filteredChartData[0].hour !== undefined) {
+      const dates = filteredChartData.map(item => {
         const timestamp = item.timestamp?.toString() || '';
         return new Date(timestamp).toDateString();
       });
@@ -66,11 +77,11 @@ const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ chartData = [] }) => {
     }
     
     return timeFormatInfo.type === 'day' || timeFormatInfo.type === 'month';
-  }, [chartData, timeFormatInfo]);
+  }, [filteredChartData, timeFormatInfo]);
 
   // Transform API data format to chart format
   const transformedData = useMemo(() => {
-    if (chartData.length === 0) {
+    if (filteredChartData.length === 0) {
       return [];
     }
     
@@ -78,7 +89,7 @@ const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ chartData = [] }) => {
     let maxEnergy = 0;
     let maxIndex = -1;
     
-    chartData.forEach((item, index) => {
+    filteredChartData.forEach((item, index) => {
       if (item.average && item.average.value > maxEnergy) {
         maxEnergy = item.average.value;
         maxIndex = index;
@@ -86,7 +97,7 @@ const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ chartData = [] }) => {
     });
     
     // Transform the data to match expected format
-    return chartData.map((item, index) => {
+    return filteredChartData.map((item, index) => {
       const averageValue = item.average?.value || 0;
       const unit = item.average?.unit || 'kWh';
       
@@ -103,7 +114,7 @@ const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ chartData = [] }) => {
       }
       
       // Determine trend (simple logic: higher than previous is 'up')
-      const prevItem = index > 0 ? chartData[index - 1] : null;
+      const prevItem = index > 0 ? filteredChartData[index - 1] : null;
       const prevValue = prevItem?.average?.value || 0;
       const trend = averageValue >= prevValue ? 'up' : 'down';
       
@@ -115,7 +126,7 @@ const PeakSolarHours: React.FC<PeakSolarHoursProps> = ({ chartData = [] }) => {
         highlight: index === maxIndex
       };
     });
-  }, [chartData, allTimestamps, timeFormatInfo, isDailyData]);
+  }, [filteredChartData, allTimestamps, timeFormatInfo, isDailyData]);
   
   // If no data is available, display a message
   if (transformedData.length === 0 || transformedData.every(item => item.value === 0)) {
