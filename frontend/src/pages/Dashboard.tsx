@@ -163,7 +163,7 @@ export default function Dashboard() {
         activeTab="Dashboard" 
         onTimePeriodChange={handleTimePeriodChange}
         onIntervalChange={handleIntervalChange}
-        onPanelChange={(panel) => {/* This is handled by DeviceContext */}}
+        onPanelChange={() => {/* This is handled by DeviceContext */}}
         selectedTimePeriod={timePeriod}
         selectedInterval={timeInterval}
         selectedPanel={selectedPanel}

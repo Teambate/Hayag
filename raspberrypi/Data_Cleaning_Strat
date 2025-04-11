@@ -1,0 +1,36 @@
+Data Cleaning Strat
+
+Everything should be positive value. For any invalid value, convert to null.
+After cleaning, forward fill the null values based on previous valid value.
+For forward fill use valid value from csv
+
+
+1) Rain Readings -
+	a) Not above 100 percent and not below 0 percent 
+
+2) UV readings - 
+	a) Any readings beyond 15 mW/cm^2, and below zero are anomalous
+
+3) Lux -
+	a) Not exceeding 120k lux value reading, stil positive values
+
+4) DHT Temperature -
+	a) Not exceedindg 60 degrees not below 10 degrees
+
+5) DHT Humidity
+	a) Not above 100 percent and not below 0 percent
+
+6) Panel Temp
+	a) Not below 0 degree
+
+7) Panel Voltage
+	a) Not below 0 volts
+
+8) Panel Current
+	a) Not below 0 mA
+
+9) Irradiance
+	a) Not beyond 1800 not below zero
+
+10) Battery
+	a) Not below zero

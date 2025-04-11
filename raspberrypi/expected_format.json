@@ -1,0 +1,193 @@
+{
+  "deviceId": "SOLAR_01",
+  "startTime": "2025-03-14T10:05:00+08:00",
+  "endTime": "2025-03-14T10:10:00+08:00",
+  "metadata": {
+    "aggregationType": "5min",
+    "sampleCount": 59,
+    "timezone": "Asia/Manila"
+  },
+  "readings": {
+    "rain": [
+      {
+        "panelId": "Panel_1",
+        "average": 2.7197611710338987,
+        "min": 2.325757576,
+        "max": 2.954545455,
+        "unit": "%",
+        "health": 70
+      },
+      {
+        "panelId": "Panel_2",
+        "average": 2.6490112994406783,
+        "min": 2.257575758,
+        "max": 3.041666667,
+        "unit": "%",
+        "health": 70
+      }
+    ],
+    "uv": [
+      {
+        "panelId": "Panel_1",
+        "average": 1.6704513530847456,
+        "min": 1.470994475,
+        "max": 1.809737569,
+        "unit": "mW/cm2",
+        "health": 70
+      },
+      {
+        "panelId": "Panel_2",
+        "average": 0.9522836875762711,
+        "min": 0.893991713,
+        "max": 0.981008287,
+        "unit": "mW/cm2",
+        "health": 70
+      }
+    ],
+    "light": [
+      {
+        "panelId": "Panel_1",
+        "average": 17653.070969491528,
+        "min": 16225.8432,
+        "max": 18698.2656,
+        "unit": "lux",
+        "health": 70
+      },
+      {
+        "panelId": "Panel_2",
+        "average": 11252.195796610167,
+        "min": 10628.8896,
+        "max": 11683.1232,
+        "unit": "lux",
+        "health": 70
+      }
+    ],
+    "dht22": [
+      {
+        "panelId": "Panel_1",
+        "temperature": {
+          "average": 32.082142727857146,
+          "min": 27.10000038,
+          "max": 32.59999847,
+          "unit": "\u00b0C",
+          "health": 70
+        },
+        "humidity": {
+          "average": 99.90000152999998,
+          "min": 99.90000153,
+          "max": 99.90000153,
+          "unit": "%",
+          "health": 70
+        }
+      },
+      {
+        "panelId": "Panel_2",
+        "temperature": {
+          "average": 30.819642884285713,
+          "min": 30.39999962,
+          "max": 31.20000076,
+          "unit": "\u00b0C",
+          "health": 70
+        },
+        "humidity": {
+          "average": 99.90000152999998,
+          "min": 99.90000153,
+          "max": 99.90000153,
+          "unit": "%",
+          "health": 70
+        }
+      }
+    ],
+    "panel_temp": [
+      {
+        "panelId": "Panel_1",
+        "average": 31.93326271186441,
+        "min": 31.1875,
+        "max": 32.625,
+        "unit": "\u00b0C",
+        "health": 70
+      },
+      {
+        "panelId": "Panel_2",
+        "average": 29.657838983050848,
+        "min": 29.25,
+        "max": 30.0625,
+        "unit": "\u00b0C",
+        "health": 70
+      }
+    ],
+    "ina226": [
+      {
+        "panelId": "Panel_1",
+        "voltage": {
+          "average": 14.612563559322034,
+          "min": 14.04125,
+          "max": 14.79875,
+          "unit": "V",
+          "health": 70
+        },
+        "current": {
+          "average": 2684.3813559322034,
+          "min": 2450.0,
+          "max": 2866.0,
+          "unit": "mA",
+          "health": 70
+        }
+      },
+      {
+        "panelId": "Panel_2",
+        "voltage": {
+          "average": 13.205063559322033,
+          "min": 13.17875,
+          "max": 13.27875,
+          "unit": "V",
+          "health": 70
+        },
+        "current": {
+          "average": 1789.7796610169491,
+          "min": 1727.5,
+          "max": 1813.5,
+          "unit": "mA",
+          "health": 70
+        }
+      }
+    ],
+    "solar": [
+      {
+        "panelId": "Panel_1",
+        "average": 563.8571428571429,
+        "min": 520.0,
+        "max": 605.0,
+        "unit": "W/m2",
+        "health": 70
+      },
+      {
+        "panelId": "Panel_2",
+        "average": 436.69444444444446,
+        "min": 416.0,
+        "max": 443.0,
+        "unit": "W/m2",
+        "health": 70
+      }
+    ],
+    "battery": [
+      {
+        "panelId": "Panel_1",
+        "average": 12.732563559322033,
+        "min": 12.7,
+        "max": 12.808125,
+        "unit": "V",
+        "health": 70
+      },
+      {
+        "panelId": "Panel_2",
+        "average": 13.991260593220337,
+        "min": 13.008125,
+        "max": 14.174375,
+        "unit": "V",
+        "health": 70
+      }
+    ],
+    "battery_capacity": 12000
+  }
+}
