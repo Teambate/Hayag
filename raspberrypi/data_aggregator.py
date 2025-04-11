@@ -640,20 +640,23 @@ def read_new_data():
             reader = csv.reader(csvfile)
             headers = next(reader)  # Skip header row
             
+            # First scan to check if we have any data newer than last_processed
+            # This handles gaps in the data by finding the next available timestamp
+            all_future_rows = []
             for row in reader:
                 if len(row) < 22:  # Need at least the expected columns
                     continue
                 
                 try:
-                    # Parse date and time in MM/DD/YY format with 12-hour time
+                    # Parse date and time
                     date_str = row[0].strip()
                     time_str = row[1].strip()
                     
-                    # Convert MM/DD/YY to datetime object
+                    # Convert to datetime object
                     try:
                         row_time = datetime.strptime(f"{date_str} {time_str}", "%m/%d/%y %I:%M:%S %p")
                     except ValueError:
-                        # Try alternative formats (in case the format changes)
+                        # Try alternative formats
                         try:
                             row_time = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %I:%M:%S %p")
                         except ValueError:
@@ -669,18 +672,97 @@ def read_new_data():
                     else:
                         compare_last_processed = last_processed
                     
-                    # Include rows with timestamps >= the last processed timestamp
-                    # This way we capture all entries at a given timestamp, even duplicates
+                    # Collect all rows with timestamps >= the last processed timestamp
                     if row_time >= compare_last_processed:
-                        rows.append(row)
-                        
-                        # Keep track of the latest timestamp we've seen
-                        if row_time > latest_timestamp:
-                            latest_timestamp = row_time
+                        all_future_rows.append((row_time, row))
+                    
                 except ValueError as e:
                     # Skip rows with invalid date/time format
                     logger.debug(f"Skipping row with invalid date/time: {e}")
                     continue
+            
+            # If we found no data after last_processed, check if there's data much later
+            if not all_future_rows:
+                logger.info("No data found immediately after last processed timestamp. Checking for data after gaps...")
+                
+                # Reset file position and skip header
+                csvfile.seek(0)
+                next(reader)
+                
+                # Find the next available data point after our last processed timestamp
+                next_available_timestamp = None
+                next_available_row = None
+                
+                for row in reader:
+                    if len(row) < 22:
+                        continue
+                    
+                    try:
+                        date_str = row[0].strip()
+                        time_str = row[1].strip()
+                        
+                        # Convert to datetime
+                        try:
+                            row_time = datetime.strptime(f"{date_str} {time_str}", "%m/%d/%y %I:%M:%S %p")
+                        except ValueError:
+                            try:
+                                row_time = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %I:%M:%S %p")
+                            except ValueError:
+                                continue
+                        
+                        # Ensure both timestamps are naive
+                        if row_time.tzinfo is not None:
+                            row_time = row_time.replace(tzinfo=None)
+                        
+                        if last_processed.tzinfo is not None:
+                            compare_last_processed = last_processed.replace(tzinfo=None)
+                        else:
+                            compare_last_processed = last_processed
+                        
+                        # Find the earliest timestamp that's after our last processed time
+                        if row_time > compare_last_processed:
+                            if next_available_timestamp is None or row_time < next_available_timestamp:
+                                next_available_timestamp = row_time
+                                next_available_row = row
+                    except Exception:
+                        continue
+                
+                # If we found data after a gap, process it
+                if next_available_timestamp:
+                    logger.info(f"Found data after a gap at {next_available_timestamp.isoformat()}")
+                    rows.append(next_available_row)
+                    latest_timestamp = next_available_timestamp
+                    
+                    # Continue reading from this timestamp forward
+                    csvfile.seek(0)
+                    next(reader)  # Skip header
+                    for row in reader:
+                        if len(row) < 22:
+                            continue
+                        
+                        try:
+                            date_str = row[0].strip()
+                            time_str = row[1].strip()
+                            
+                            try:
+                                row_time = datetime.strptime(f"{date_str} {time_str}", "%m/%d/%y %I:%M:%S %p")
+                            except ValueError:
+                                try:
+                                    row_time = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %I:%M:%S %p")
+                                except ValueError:
+                                    continue
+                            
+                            # Include rows with timestamps >= next_available_timestamp
+                            if row_time >= next_available_timestamp:
+                                rows.append(row)
+                                if row_time > latest_timestamp:
+                                    latest_timestamp = row_time
+                        except Exception:
+                            continue
+            else:
+                # We have data after the last processed timestamp, process it normally
+                rows = [row for _, row in all_future_rows]
+                latest_timestamp = max([row_time for row_time, _ in all_future_rows])
     except Exception as e:
         logger.error(f"Error reading CSV file: {e}")
         
@@ -699,7 +781,9 @@ def read_new_data():
         # Add a small offset to avoid reprocessing rows with the exact same timestamp
         next_timestamp = latest_timestamp + timedelta(seconds=1)
         save_last_processed_timestamp(next_timestamp)
-        logger.info(f"Found {len(rows)} rows, including any with timestamp {latest_timestamp.isoformat()}")
+        logger.info(f"Found {len(rows)} rows, newest timestamp is {latest_timestamp.isoformat()}")
+    else:
+        logger.info("No new data found after considering potential gaps")
     
     return rows
 

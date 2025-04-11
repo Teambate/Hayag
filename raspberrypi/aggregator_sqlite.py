@@ -1,0 +1,894 @@
+import sqlite3
+import json
+import math
+import time
+import asyncio
+import aiohttp
+from datetime import datetime, timedelta, timezone
+import pytz
+import os
+import logging
+import dateutil.parser
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler()]
+)
+logger = logging.getLogger('data_aggregator_sqlite')
+
+# Constants
+DB_PATH = "sensordata.db"  # Path to the SQLite database
+DEVICE_ID = "SOLAR_01" # Should match sensor_main.py
+AGGREGATION_PERIOD_MINUTES = 5
+TIMEZONE = "Asia/Manila"
+BACKEND_URL = "http://192.168.1.66:3000"
+BACKEND_API_URL = f"{BACKEND_URL}/api/readings"
+AUTH_API_URL = f"{BACKEND_URL}/api/auth/login"
+# Auth credentials
+AUTH_EMAIL = "irahansdedicatoria@gmail.com"
+AUTH_PASSWORD = "12345678"
+# Auth token storage
+AUTH_TOKEN = None
+
+# --- Database Helper Functions ---
+
+def get_db_connection():
+    """Establish connection to the SQLite database."""
+    try:
+        conn = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
+        conn.row_factory = sqlite3.Row # Return rows as dictionary-like objects
+        return conn
+    except sqlite3.Error as e:
+        logger.error(f"Error connecting to database {DB_PATH}: {e}")
+        return None
+
+def get_latest_reading_timestamp():
+    """Get the timestamp of the most recent reading in the database."""
+    conn = get_db_connection()
+    if not conn:
+        return None
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT MAX(timestamp) as latest_ts FROM reading_sessions")
+        result = cursor.fetchone()
+        if result and result['latest_ts']:
+            # Parse the ISO string timestamp (stored as TEXT)
+            return dateutil.parser.isoparse(result['latest_ts'])
+        else:
+            return None # No readings yet
+    except Exception as e:
+        logger.error(f"Error getting latest reading timestamp: {e}")
+        return None
+    finally:
+        conn.close()
+
+def get_first_reading_timestamp():
+    """Get the timestamp of the first reading in the database."""
+    conn = get_db_connection()
+    if not conn:
+        return None
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT MIN(timestamp) as earliest_ts FROM reading_sessions")
+        result = cursor.fetchone()
+        if result and result['earliest_ts']:
+             # Parse the ISO string timestamp (stored as TEXT)
+            return dateutil.parser.isoparse(result['earliest_ts'])
+        else:
+            return None # No readings yet
+    except Exception as e:
+        logger.error(f"Error getting first reading timestamp: {e}")
+        return None
+    finally:
+        conn.close()
+
+def get_readings_for_window(start_time, end_time):
+    """Fetch sensor readings from the database within a specific time window."""
+    conn = get_db_connection()
+    if not conn:
+        return []
+
+    # Convert times to ISO strings for querying the TEXT column
+    start_time_iso = start_time.isoformat()
+    end_time_iso = end_time.isoformat()
+
+    readings = []
+    try:
+        cursor = conn.cursor()
+        # Join reading_sessions and sensor_readings to filter by time and retrieve data
+        query = """
+        SELECT
+            rs.timestamp,
+            sr.panel_id,
+            sr.sensor_type,
+            sr.sensor_name,
+            sr.value,
+            sr.unit
+        FROM reading_sessions rs
+        JOIN sensor_readings sr ON rs.id = sr.session_id
+        WHERE rs.timestamp >= ? AND rs.timestamp < ?
+        ORDER BY rs.timestamp, sr.panel_id, sr.sensor_type;
+        """
+        cursor.execute(query, (start_time_iso, end_time_iso))
+        
+        # Group readings by timestamp
+        rows_by_timestamp = {}
+        for row in cursor.fetchall():
+            ts_str = row['timestamp']
+            ts = dateutil.parser.isoparse(ts_str) # Parse back to datetime
+
+            if ts not in rows_by_timestamp:
+                rows_by_timestamp[ts] = {'timestamp': ts}
+
+            # Map db structure back to the expected flat structure for clean_data/aggregate_data
+            panel_id = row['panel_id'] # "Panel_1" or "Panel_2"
+            panel_num = panel_id.split('_')[-1] # "1" or "2"
+            sensor_type = row['sensor_type']
+            sensor_name = row['sensor_name']
+            value = row['value']
+
+            # Reconstruct the keys used in the original data_aggregator
+            key = None
+            if sensor_type == "rain": key = f"rain_{panel_num}"
+            elif sensor_type == "uv": key = f"uv_{panel_num}"
+            elif sensor_type == "light": key = f"lux_{panel_num}"
+            elif sensor_type == "temperature" and sensor_name == "dht22": key = f"dht_temp_{panel_num}"
+            elif sensor_type == "humidity" and sensor_name == "dht22": key = f"dht_humidity_{panel_num}"
+            elif sensor_type == "temperature" and sensor_name == "panel_temp": key = f"panel_temp_{panel_num}"
+            elif sensor_type == "voltage" and sensor_name == "ina226": key = f"panel_voltage_{panel_num}"
+            elif sensor_type == "current" and sensor_name == "ina226": key = f"panel_current_{panel_num}"
+            elif sensor_type == "irradiance" and sensor_name == "solar": key = f"solar_irrad_{panel_num}"
+            elif sensor_type == "voltage" and sensor_name == "battery": key = f"battery_voltage_{panel_num}"
+
+            if key:
+                rows_by_timestamp[ts][key] = value
+
+        # Convert the grouped dictionary back to a list of rows (dicts)
+        readings = list(rows_by_timestamp.values())
+        logger.debug(f"Fetched {len(readings)} reading sets for window {start_time_iso} to {end_time_iso}")
+        return readings
+
+    except sqlite3.Error as e:
+        logger.error(f"Error fetching readings for window {start_time_iso} - {end_time_iso}: {e}")
+        return []
+    finally:
+        conn.close()
+
+def get_or_create_aggregation_period(start_time, end_time, sample_count):
+    """Get existing or create a new aggregation period entry in the database."""
+    conn = get_db_connection()
+    if not conn:
+        return None
+
+    start_time_iso = start_time.isoformat()
+    end_time_iso = end_time.isoformat()
+    agg_type = f"{AGGREGATION_PERIOD_MINUTES}min"
+
+    try:
+        cursor = conn.cursor()
+        # Check if this period already exists
+        cursor.execute(
+            "SELECT id, sent_to_backend FROM aggregation_periods WHERE device_id = ? AND start_time = ? AND end_time = ? AND aggregation_type = ?",
+            (DEVICE_ID, start_time_iso, end_time_iso, agg_type)
+        )
+        result = cursor.fetchone()
+
+        if result:
+            logger.debug(f"Found existing aggregation period ID: {result['id']} for window {start_time_iso}")
+            return result['id'], bool(result['sent_to_backend']) # Return ID and sent status
+        else:
+            # Create a new entry
+            cursor.execute(
+                """INSERT INTO aggregation_periods
+                   (device_id, start_time, end_time, aggregation_type, sample_count, sent_to_backend)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (DEVICE_ID, start_time_iso, end_time_iso, agg_type, sample_count, 0)
+            )
+            conn.commit()
+            new_id = cursor.lastrowid
+            logger.info(f"Created new aggregation period ID: {new_id} for window {start_time_iso}")
+            return new_id, False # Return new ID and sent status (False)
+
+    except sqlite3.Error as e:
+        logger.error(f"Error getting/creating aggregation period for {start_time_iso}: {e}")
+        return None, False
+    finally:
+        conn.close()
+
+def mark_period_as_sent(period_id, payload_json):
+    """Update the aggregation period entry to mark it as sent."""
+    conn = get_db_connection()
+    if not conn:
+        return False
+
+    sent_timestamp_iso = datetime.now(timezone.utc).isoformat()
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """UPDATE aggregation_periods
+               SET sent_to_backend = 1, sent_timestamp = ?, payload = ?
+               WHERE id = ?""",
+            (sent_timestamp_iso, payload_json, period_id)
+        )
+        conn.commit()
+        logger.info(f"Marked aggregation period ID: {period_id} as sent at {sent_timestamp_iso}")
+        return True
+    except sqlite3.Error as e:
+        logger.error(f"Error marking aggregation period ID: {period_id} as sent: {e}")
+        return False
+    finally:
+        conn.close()
+
+def get_last_aggregated_timestamp():
+    """Get the end_time of the latest successfully processed aggregation period."""
+    conn = get_db_connection()
+    if not conn:
+        # Fallback if DB isn't available - start from scratch or a recent time
+        return get_first_reading_timestamp() or (datetime.now(timezone.utc) - timedelta(days=1))
+
+    try:
+        cursor = conn.cursor()
+        # Find the latest end_time from aggregation_periods table
+        cursor.execute(
+            "SELECT MAX(end_time) as last_agg_ts FROM aggregation_periods WHERE device_id = ?",
+             (DEVICE_ID,)
+        )
+        result = cursor.fetchone()
+        if result and result['last_agg_ts']:
+            # Parse the ISO string timestamp
+            last_ts = dateutil.parser.isoparse(result['last_agg_ts'])
+            # Ensure it's timezone-aware (UTC, as stored by send time)
+            if last_ts.tzinfo is None:
+                 last_ts = pytz.utc.localize(last_ts)
+            logger.info(f"Last successfully aggregated timestamp found: {last_ts.isoformat()}")
+            return last_ts
+        else:
+            # No aggregation periods found, start from the beginning
+            logger.info("No previous aggregation periods found. Starting from the first reading.")
+            return get_first_reading_timestamp() # Start from the very first reading
+
+    except Exception as e:
+        logger.error(f"Error getting last aggregated timestamp: {e}")
+        # Fallback to first reading timestamp if error occurs
+        return get_first_reading_timestamp()
+    finally:
+        conn.close()
+
+# --- Data Processing Functions (Mostly similar to CSV version, adapt input/output) ---
+
+def initialize_last_valid_values(start_time):
+    """
+    Query the database to find the most recent valid values for each sensor 
+    prior to the given start_time, to use for forward filling.
+    Similar to how the CSV version loads historical values.
+    """
+    last_valid_values = {
+        'rain_1': None, 'rain_2': None, 'uv_1': None, 'uv_2': None,
+        'lux_1': None, 'lux_2': None, 'dht_temp_1': None, 'dht_humidity_1': None,
+        'dht_temp_2': None, 'dht_humidity_2': None, 'panel_temp_1': None, 'panel_temp_2': None,
+        'panel_voltage_1': None, 'panel_current_1': None, 'panel_voltage_2': None, 'panel_current_2': None,
+        'solar_irrad_1': None, 'solar_irrad_2': None, 'battery_voltage_1': None, 'battery_voltage_2': None
+    }
+    
+    # Convert start_time to ISO format for database query
+    start_time_iso = start_time.isoformat()
+    
+    conn = get_db_connection()
+    if not conn:
+        logger.warning("Could not connect to database for initializing forward-fill values")
+        return last_valid_values
+    
+    try:
+        cursor = conn.cursor()
+        # Define the sensor mappings to look for
+        sensor_mappings = [
+            # Format: (key_in_result_dict, sensor_type, sensor_name, panel_id, min_val, max_val)
+            ('rain_1', 'rain', None, 'Panel_1', 0, 100),
+            ('rain_2', 'rain', None, 'Panel_2', 0, 100),
+            ('uv_1', 'uv', None, 'Panel_1', 0, 15),
+            ('uv_2', 'uv', None, 'Panel_2', 0, 15),
+            ('lux_1', 'light', None, 'Panel_1', 0, 120000),
+            ('lux_2', 'light', None, 'Panel_2', 0, 120000),
+            ('dht_temp_1', 'temperature', 'dht22', 'Panel_1', 10, 60),
+            ('dht_temp_2', 'temperature', 'dht22', 'Panel_2', 10, 60),
+            ('dht_humidity_1', 'humidity', 'dht22', 'Panel_1', 0, 100),
+            ('dht_humidity_2', 'humidity', 'dht22', 'Panel_2', 0, 100),
+            ('panel_temp_1', 'temperature', 'panel_temp', 'Panel_1', 0, None),
+            ('panel_temp_2', 'temperature', 'panel_temp', 'Panel_2', 0, None),
+            ('panel_voltage_1', 'voltage', 'ina226', 'Panel_1', 0, None),
+            ('panel_voltage_2', 'voltage', 'ina226', 'Panel_2', 0, None),
+            ('panel_current_1', 'current', 'ina226', 'Panel_1', 0, None),
+            ('panel_current_2', 'current', 'ina226', 'Panel_2', 0, None),
+            ('solar_irrad_1', 'irradiance', 'solar', 'Panel_1', 0, 1800),
+            ('solar_irrad_2', 'irradiance', 'solar', 'Panel_2', 0, 1800),
+            ('battery_voltage_1', 'voltage', 'battery', 'Panel_1', 0, None),
+            ('battery_voltage_2', 'voltage', 'battery', 'Panel_2', 0, None),
+        ]
+        
+        # For each sensor type, find the most recent valid reading before start_time
+        for key, sensor_type, sensor_name, panel_id, min_val, max_val in sensor_mappings:
+            # Create SQL query - build it conditionally based on whether sensor_name is None
+            sql = """
+            SELECT sr.value
+            FROM sensor_readings sr
+            JOIN reading_sessions rs ON rs.id = sr.session_id
+            WHERE rs.timestamp < ?
+              AND sr.sensor_type = ?
+              AND sr.panel_id = ?
+            """
+            
+            # Add sensor_name condition if applicable
+            params = [start_time_iso, sensor_type, panel_id]
+            if sensor_name is not None:
+                sql += " AND sr.sensor_name = ?"
+                params.append(sensor_name)
+            else:
+                sql += " AND sr.sensor_name IS NULL"
+                
+            # Order by most recent first and limit to 1
+            sql += " ORDER BY rs.timestamp DESC LIMIT 1"
+            
+            cursor.execute(sql, params)
+            result = cursor.fetchone()
+            
+            if result and result['value'] is not None:
+                # Validate the value using the same logic as during processing
+                try:
+                    float_val = float(result['value'])
+                    # Check if the value is within range
+                    if (min_val is None or float_val >= min_val) and (max_val is None or float_val <= max_val):
+                        # Store a valid value that passes all checks
+                        last_valid_values[key] = float_val
+                        logger.debug(f"Found historical value for {key}: {float_val}")
+                except (ValueError, TypeError):
+                    # Value can't be converted to float, ignore it
+                    pass
+        
+        # Log how many sensors we were able to find valid historical values for
+        filled_count = sum(1 for v in last_valid_values.values() if v is not None)
+        logger.info(f"Initialized {filled_count}/{len(last_valid_values)} sensors with historical values from database")
+        
+    except sqlite3.Error as e:
+        logger.error(f"Error retrieving historical values from database: {e}")
+    finally:
+        conn.close()
+    
+    return last_valid_values
+
+def clean_data(rows_from_db):
+    """
+    Clean the data fetched from the database.
+    Handles None values (SQLite NULLs) appropriately.
+    Applies forward fill based on historical values and values within the current batch.
+    """
+    if not rows_from_db:
+        return []
+        
+    cleaned_rows = []
+    
+    # Get the earliest timestamp in this batch to initialize historical values
+    earliest_timestamp = min(row['timestamp'] for row in rows_from_db)
+    
+    # Initialize last valid values from DB history (before this batch)
+    last_valid_values = initialize_last_valid_values(earliest_timestamp)
+    
+    # Now process each row in the current batch
+    for row_dict in rows_from_db:
+        cleaned_row = {'timestamp': row_dict['timestamp']} # Keep the datetime object
+
+        # Define sensor mappings and validation ranges (similar to CSV version)
+        # Use row_dict.get(key) to handle potentially missing keys in sparse rows
+        sensor_mappings = [
+            ('rain_1', row_dict.get('rain_1'), 0, 100),
+            ('rain_2', row_dict.get('rain_2'), 0, 100),
+            ('uv_1', row_dict.get('uv_1'), 0, 15),
+            ('uv_2', row_dict.get('uv_2'), 0, 15),
+            ('lux_1', row_dict.get('lux_1'), 0, 120000),
+            ('lux_2', row_dict.get('lux_2'), 0, 120000),
+            ('dht_temp_1', row_dict.get('dht_temp_1'), 10, 60),
+            ('dht_temp_2', row_dict.get('dht_temp_2'), 10, 60),
+            ('dht_humidity_1', row_dict.get('dht_humidity_1'), 0, 100),
+            ('dht_humidity_2', row_dict.get('dht_humidity_2'), 0, 100),
+            ('panel_temp_1', row_dict.get('panel_temp_1'), 0, None),
+            ('panel_temp_2', row_dict.get('panel_temp_2'), 0, None),
+            ('panel_voltage_1', row_dict.get('panel_voltage_1'), 0, None),
+            ('panel_voltage_2', row_dict.get('panel_voltage_2'), 0, None),
+            ('panel_current_1', row_dict.get('panel_current_1'), 0, None),
+            ('panel_current_2', row_dict.get('panel_current_2'), 0, None),
+            ('solar_irrad_1', row_dict.get('solar_irrad_1'), 0, 1800),
+            ('solar_irrad_2', row_dict.get('solar_irrad_2'), 0, 1800),
+            ('battery_voltage_1', row_dict.get('battery_voltage_1'), 0, None),
+            ('battery_voltage_2', row_dict.get('battery_voltage_2'), 0, None)
+        ]
+
+        # Validate, convert, and forward fill
+        for key, value, min_val, max_val in sensor_mappings:
+            validated_value = validate_and_convert_sqlite(value, min_val, max_val)
+
+            if validated_value is not None:
+                # Valid value, update the last valid value for this key
+                last_valid_values[key] = validated_value
+                cleaned_row[key] = validated_value
+            else:
+                # Invalid or missing value, use forward fill from the last known valid value
+                # (which might be from history or earlier in this batch)
+                if last_valid_values[key] is not None:
+                    cleaned_row[key] = last_valid_values[key]
+                    logger.debug(f"Forward filling {key} with value {last_valid_values[key]} at {row_dict['timestamp']}")
+                else:
+                    # If we still don't have a valid value, use 0.0 as a fallback
+                    # This ensures we always have a numeric value, not null
+                    cleaned_row[key] = 0.0
+                    logger.debug(f"No valid historical value for {key}, using 0.0 at {row_dict['timestamp']}")
+
+        cleaned_rows.append(cleaned_row)
+
+    return cleaned_rows
+
+def validate_and_convert_sqlite(value, min_val=None, max_val=None):
+    """
+    Validates and converts a value fetched from SQLite.
+    Handles None (NULL) by returning 0.0 (not None).
+    Returns 0.0 if the value is outside allowed range or invalid type.
+    Returns float if valid.
+    IMPORTANT: This matches the behavior of validate_and_convert in the CSV version.
+    """
+    # Handle None (NULL) from database - return 0.0 like CSV version does for empty values
+    if value is None:
+        return 0.0
+
+    try:
+        # Convert to float and validate range
+        float_val = float(value)
+
+        # Check for NaN or infinite values
+        if math.isnan(float_val) or math.isinf(float_val):
+            logger.warning(f"Encountered NaN/Inf value from DB: {value}")
+            return 0.0  # Return 0.0 instead of None
+
+        # Validate minimum if specified
+        if min_val is not None and float_val < min_val:
+            # logger.debug(f"Value {float_val} is below min {min_val}")
+            return 0.0  # Return 0.0 instead of None
+
+        # Validate maximum if specified
+        if max_val is not None and float_val > max_val:
+            # logger.debug(f"Value {float_val} is above max {max_val}")
+            return 0.0  # Return 0.0 instead of None
+
+        return float_val
+    except (ValueError, TypeError):
+        # logger.warning(f"Could not convert value '{value}' to float.")
+        return 0.0  # Return 0.0 instead of None
+
+
+def calculate_stat(values):
+    """
+    Calculate statistics (average, min, max) for a list of values.
+    Handles None values correctly. Calculates health based on non-None values.
+    IMPORTANT: Never returns null values for stats - uses 0 instead.
+    """
+    # Filter out None values for calculations
+    valid_values = [v for v in values if v is not None and isinstance(v, (int, float))]
+
+    # Calculate health based on the original list size (including Nones)
+    total_count = len(values)
+    valid_count = len(valid_values)
+    health = int((valid_count / total_count) * 100) if total_count > 0 else 0
+
+    if not valid_values:
+        # FIXED: Return 0 instead of null for required fields to pass backend validation
+        return {
+            "average": 0.0, 
+            "min": 0.0, 
+            "max": 0.0, 
+            "health": health
+        }
+
+    # Round the average to avoid excessive decimals
+    avg = round(sum(valid_values) / valid_count, 4)
+
+    return {
+        "average": avg,
+        "min": min(valid_values),
+        "max": max(valid_values),
+        "health": health
+    }
+
+
+def aggregate_data(cleaned_data):
+    """Aggregate the cleaned data into the required format. (Identical to CSV version)."""
+    # Extract values for each sensor, using .get() with default None
+    get_vals = lambda key: [row.get(key) for row in cleaned_data]
+
+    rain_1_values = get_vals('rain_1')
+    rain_2_values = get_vals('rain_2')
+    uv_1_values = get_vals('uv_1')
+    uv_2_values = get_vals('uv_2')
+    lux_1_values = get_vals('lux_1')
+    lux_2_values = get_vals('lux_2')
+    dht_temp_1_values = get_vals('dht_temp_1')
+    dht_humidity_1_values = get_vals('dht_humidity_1')
+    dht_temp_2_values = get_vals('dht_temp_2')
+    dht_humidity_2_values = get_vals('dht_humidity_2')
+    panel_temp_1_values = get_vals('panel_temp_1')
+    panel_temp_2_values = get_vals('panel_temp_2')
+    panel_voltage_1_values = get_vals('panel_voltage_1')
+    panel_current_1_values = get_vals('panel_current_1')
+    panel_voltage_2_values = get_vals('panel_voltage_2')
+    panel_current_2_values = get_vals('panel_current_2')
+    solar_irrad_1_values = get_vals('solar_irrad_1')
+    solar_irrad_2_values = get_vals('solar_irrad_2')
+    battery_voltage_1_values = get_vals('battery_voltage_1')
+    battery_voltage_2_values = get_vals('battery_voltage_2')
+
+    # Calculate statistics using the modified calculate_stat
+    rain_1_stats = calculate_stat(rain_1_values)
+    rain_2_stats = calculate_stat(rain_2_values)
+    uv_1_stats = calculate_stat(uv_1_values)
+    uv_2_stats = calculate_stat(uv_2_values)
+    lux_1_stats = calculate_stat(lux_1_values)
+    lux_2_stats = calculate_stat(lux_2_values)
+    dht_temp_1_stats = calculate_stat(dht_temp_1_values)
+    dht_humidity_1_stats = calculate_stat(dht_humidity_1_values)
+    dht_temp_2_stats = calculate_stat(dht_temp_2_values)
+    dht_humidity_2_stats = calculate_stat(dht_humidity_2_values)
+    panel_temp_1_stats = calculate_stat(panel_temp_1_values)
+    panel_temp_2_stats = calculate_stat(panel_temp_2_values)
+    panel_voltage_1_stats = calculate_stat(panel_voltage_1_values)
+    panel_current_1_stats = calculate_stat(panel_current_1_values)
+    panel_voltage_2_stats = calculate_stat(panel_voltage_2_values)
+    panel_current_2_stats = calculate_stat(panel_current_2_values)
+    solar_irrad_1_stats = calculate_stat(solar_irrad_1_values)
+    solar_irrad_2_stats = calculate_stat(solar_irrad_2_values)
+    battery_voltage_1_stats = calculate_stat(battery_voltage_1_values)
+    battery_voltage_2_stats = calculate_stat(battery_voltage_2_values)
+
+    # Create the aggregated data structure (identical structure to CSV version)
+    readings = {
+        "rain": [
+            {"panelId": "Panel_1", **rain_1_stats, "unit": "%"},
+            {"panelId": "Panel_2", **rain_2_stats, "unit": "%"}],
+        "uv": [
+            {"panelId": "Panel_1", **uv_1_stats, "unit": "mW/cm2"},
+            {"panelId": "Panel_2", **uv_2_stats, "unit": "mW/cm2"}],
+        "light": [
+            {"panelId": "Panel_1", **lux_1_stats, "unit": "lux"},
+            {"panelId": "Panel_2", **lux_2_stats, "unit": "lux"}],
+        "dht22": [
+            {"panelId": "Panel_1",
+             "temperature": {"average": dht_temp_1_stats["average"], "min": dht_temp_1_stats["min"], "max": dht_temp_1_stats["max"], "unit": "°C", "health": dht_temp_1_stats["health"]},
+             "humidity": {"average": dht_humidity_1_stats["average"], "min": dht_humidity_1_stats["min"], "max": dht_humidity_1_stats["max"], "unit": "%", "health": dht_humidity_1_stats["health"]}},
+            {"panelId": "Panel_2",
+             "temperature": {"average": dht_temp_2_stats["average"], "min": dht_temp_2_stats["min"], "max": dht_temp_2_stats["max"], "unit": "°C", "health": dht_temp_2_stats["health"]},
+             "humidity": {"average": dht_humidity_2_stats["average"], "min": dht_humidity_2_stats["min"], "max": dht_humidity_2_stats["max"], "unit": "%", "health": dht_humidity_2_stats["health"]}}],
+        "panel_temp": [
+            {"panelId": "Panel_1", **panel_temp_1_stats, "unit": "°C"},
+            {"panelId": "Panel_2", **panel_temp_2_stats, "unit": "°C"}],
+        "ina226": [
+            {"panelId": "Panel_1",
+             "voltage": {"average": panel_voltage_1_stats["average"], "min": panel_voltage_1_stats["min"], "max": panel_voltage_1_stats["max"], "unit": "V", "health": panel_voltage_1_stats["health"]},
+             "current": {"average": panel_current_1_stats["average"], "min": panel_current_1_stats["min"], "max": panel_current_1_stats["max"], "unit": "mA", "health": panel_current_1_stats["health"]}},
+            {"panelId": "Panel_2",
+             "voltage": {"average": panel_voltage_2_stats["average"], "min": panel_voltage_2_stats["min"], "max": panel_voltage_2_stats["max"], "unit": "V", "health": panel_voltage_2_stats["health"]},
+             "current": {"average": panel_current_2_stats["average"], "min": panel_current_2_stats["min"], "max": panel_current_2_stats["max"], "unit": "mA", "health": panel_current_2_stats["health"]}}],
+        "solar": [
+            {"panelId": "Panel_1", **solar_irrad_1_stats, "unit": "W/m2"},
+            {"panelId": "Panel_2", **solar_irrad_2_stats, "unit": "W/m2"}],
+        "battery": [
+            {"panelId": "Panel_1", **battery_voltage_1_stats, "unit": "V"},
+            {"panelId": "Panel_2", **battery_voltage_2_stats, "unit": "V"}],
+        "battery_capacity": 12000 # Static value
+    }
+    return readings
+
+# --- Backend Communication (Identical to CSV version) ---
+
+async def login():
+    """Login to get JWT token for authentication"""
+    global AUTH_TOKEN
+    # Clear previous token attempt if any
+    AUTH_TOKEN = None
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                AUTH_API_URL,
+                json={"email": AUTH_EMAIL, "password": AUTH_PASSWORD},
+                headers={'Content-Type': 'application/json'},
+                timeout=10 # Add a timeout
+            ) as response:
+                if response.status == 200:
+                    cookies = response.headers.getall('Set-Cookie', [])
+                    logger.debug(f"Auth response headers: {response.headers}")
+                    for cookie in cookies:
+                        if 'token=' in cookie:
+                            token_part = cookie.split('token=')[1].split(';')[0]
+                            AUTH_TOKEN = token_part
+                            logger.info("Authentication successful, token extracted.")
+                            return True
+                    # If token not found in Set-Cookie, check response body (less common)
+                    try:
+                        resp_json = await response.json()
+                        if 'token' in resp_json:
+                             AUTH_TOKEN = resp_json['token']
+                             logger.info("Authentication successful, token extracted from body.")
+                             return True
+                    except Exception:
+                        pass # Ignore if body isn't JSON or doesn't contain token
+
+                    logger.warning("Authentication successful but no token found in headers or body.")
+                    # Proceed cautiously - maybe backend uses session cookies implicitly?
+                    # Or maybe the endpoint changed. For now, we'll assume it works without explicit token.
+                    AUTH_TOKEN = "implicit_session" # Indicate we didn't get an explicit token
+                    return True
+                else:
+                    response_text = await response.text()
+                    logger.error(f"Authentication failed: {response.status} - {response_text}")
+                    return False
+    except aiohttp.ClientConnectorError as e:
+         logger.error(f"Connection error during authentication: {e}")
+         return False
+    except asyncio.TimeoutError:
+        logger.error("Timeout during authentication.")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error during authentication: {e}")
+        return False
+
+async def send_to_backend(period_id, data_payload):
+    """Send the aggregated data payload to the backend service asynchronously."""
+    global AUTH_TOKEN
+
+    if not AUTH_TOKEN:
+        logger.info("No auth token, attempting login first.")
+        auth_success = await login()
+        if not auth_success:
+            logger.error("Failed to authenticate, cannot send data for period {period_id}")
+            return False
+
+    headers = {'Content-Type': 'application/json'}
+    # Use the stored token if available and not the placeholder
+    cookies = {'token': AUTH_TOKEN} if AUTH_TOKEN and AUTH_TOKEN != "implicit_session" else None
+
+    try:
+        async with aiohttp.ClientSession(cookies=cookies) as session: # Pass cookies to session if we have them
+            async with session.post(
+                BACKEND_API_URL,
+                json=data_payload,
+                headers=headers,
+                timeout=30 # Add timeout for sending data
+                # Cookies automatically handled by session if passed during creation
+            ) as response:
+                if response.status == 200 or response.status == 201:
+                    logger.info(f"Data for period {period_id} successfully sent. Response: {response.status}")
+                    # Mark as sent in DB
+                    payload_str = json.dumps(data_payload) # Store the sent payload
+                    if mark_period_as_sent(period_id, payload_str):
+                        return True
+                    else:
+                        logger.error(f"Data sent for period {period_id}, but failed to mark as sent in DB!")
+                        return False # Treat as failure if DB update fails
+                elif response.status == 401: # Unauthorized
+                    logger.warning(f"Authentication failed for period {period_id} (401). Token might be invalid/expired.")
+                    AUTH_TOKEN = None # Clear token to force re-login on next attempt
+                    # Don't retry immediately within this function, let the main loop handle retry logic
+                    return False
+                else:
+                    response_text = await response.text()
+                    logger.error(f"Error response from backend for period {period_id}: {response.status} - {response_text}")
+                    return False
+    except aiohttp.ClientConnectorError as e:
+         logger.error(f"Connection error sending data for period {period_id}: {e}")
+         return False
+    except asyncio.TimeoutError:
+        logger.error(f"Timeout sending data for period {period_id}.")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error sending data for period {period_id}: {e}")
+        return False
+
+
+# --- Main Processing Logic ---
+
+def generate_window_payload(window_data, start_time, end_time):
+    """Generate the payload for a specific time window. (Identical to CSV version)."""
+    if not window_data:
+        logger.warning("No valid data to aggregate for this window")
+        return None
+
+    # Make sure timestamps are timezone-aware for ISO formatting
+    tz = pytz.timezone(TIMEZONE)
+    start_time_local = tz.localize(start_time) if start_time.tzinfo is None else start_time.astimezone(tz)
+    end_time_local = tz.localize(end_time) if end_time.tzinfo is None else end_time.astimezone(tz)
+
+    start_time_str = start_time_local.isoformat()
+    end_time_str = end_time_local.isoformat()
+
+    readings = aggregate_data(window_data)
+
+    payload = {
+        "deviceId": DEVICE_ID,
+        "startTime": start_time_str,
+        "endTime": end_time_str,
+        "metadata": {
+            "aggregationType": f"{AGGREGATION_PERIOD_MINUTES}min",
+            "sampleCount": len(window_data),
+            "timezone": TIMEZONE
+        },
+        "readings": readings
+    }
+    return payload
+
+async def process_pending_aggregations():
+    """Processes data for aggregation periods based on DB records."""
+    logger.info("Checking for data to aggregate and send...")
+
+    # Determine the timestamp to start processing from
+    last_processed_ts = get_last_aggregated_timestamp()
+    if last_processed_ts is None:
+        logger.info("No readings found in the database yet.")
+        return # Nothing to process if DB is empty
+
+    # Ensure last_processed_ts is naive UTC for comparison/calculation
+    # (pytz localize might make it specific, we want generic UTC)
+    if last_processed_ts.tzinfo is not None:
+        last_processed_ts = last_processed_ts.astimezone(pytz.utc).replace(tzinfo=None)
+    
+    logger.info(f"Starting aggregation process from: {last_processed_ts.isoformat()}Z")
+
+
+    # Find the latest reading timestamp available
+    latest_reading_ts = get_latest_reading_timestamp()
+    if latest_reading_ts is None or latest_reading_ts <= last_processed_ts:
+        logger.info("No new readings found since the last aggregation.")
+        return
+
+    # Ensure latest_reading_ts is naive UTC
+    if latest_reading_ts.tzinfo is not None:
+        latest_reading_ts = latest_reading_ts.astimezone(pytz.utc).replace(tzinfo=None)
+
+    # Calculate the time windows to process
+    current_window_start = last_processed_ts
+    # Align the start time to the beginning of its aggregation window
+    current_window_start = current_window_start.replace(
+        minute=(current_window_start.minute // AGGREGATION_PERIOD_MINUTES) * AGGREGATION_PERIOD_MINUTES,
+        second=0,
+        microsecond=0
+    )
+
+
+    windows_to_process = []
+    while True:
+        window_end = current_window_start + timedelta(minutes=AGGREGATION_PERIOD_MINUTES)
+        # Stop if the window end goes beyond the latest available data
+        if window_end > latest_reading_ts + timedelta(seconds=1): # Add a small buffer
+             break
+        windows_to_process.append((current_window_start, window_end))
+        current_window_start = window_end # Move to the next window
+
+    if not windows_to_process:
+        logger.info("No complete aggregation windows found with new data.")
+        return
+
+    logger.info(f"Identified {len(windows_to_process)} time windows to process.")
+
+    # Process each identified window
+    success_count = 0
+    total_windows = len(windows_to_process)
+
+    for start_time, end_time in windows_to_process:
+        logger.info(f"Processing window: {start_time.isoformat()}Z to {end_time.isoformat()}Z")
+
+        # Fetch raw data for this window
+        raw_data = get_readings_for_window(start_time, end_time)
+        if not raw_data:
+            logger.warning(f"No raw data found for window {start_time.isoformat()}Z. Skipping.")
+            # Consider creating an empty aggregation period entry? Maybe not.
+            continue
+
+        logger.info(f"Fetched {len(raw_data)} reading sets for this window.")
+
+        # Clean the data
+        cleaned_data = clean_data(raw_data)
+        if not cleaned_data:
+            logger.warning(f"No valid data after cleaning for window {start_time.isoformat()}Z. Skipping.")
+            continue
+
+        logger.info(f"Successfully cleaned {len(cleaned_data)} rows for this window.")
+
+        # Generate payload
+        payload = generate_window_payload(cleaned_data, start_time, end_time)
+        if not payload:
+            logger.error(f"Failed to generate payload for window {start_time.isoformat()}Z.")
+            continue
+
+        # Get or create the aggregation period entry in DB
+        period_id, already_sent = get_or_create_aggregation_period(start_time, end_time, len(cleaned_data))
+        if period_id is None:
+            logger.error(f"Failed to get or create aggregation period for window {start_time.isoformat()}Z. Cannot send.")
+            continue
+
+        # If it was already sent successfully, skip sending again
+        # (Could add logic here to resend if needed, e.g., based on error flags)
+        if already_sent:
+            logger.info(f"Window {start_time.isoformat()}Z (ID: {period_id}) was already sent. Skipping.")
+            success_count += 1 # Count it as success for progress tracking
+            continue
+
+        # Send to backend
+        send_success = await send_to_backend(period_id, payload)
+
+        if send_success:
+            success_count += 1
+            # Optional: Save payload locally for debugging
+            try:
+                with open(f'payload_{period_id}.json', 'w') as f:
+                    json.dump(payload, f, indent=2)
+                logger.info(f"Saved payload to payload_{period_id}.json")
+            except Exception as e:
+                logger.warning(f"Failed to save payload to file: {e}")
+        else:
+            logger.error(f"Failed to send data for window {start_time.isoformat()}Z (ID: {period_id}). Will retry later.")
+            # The period remains marked as unsent in the DB for the next run
+
+    if total_windows > 0:
+        logger.info(f"Processing complete. Successfully sent/confirmed {success_count} of {total_windows} identified windows.")
+    else:
+        logger.info("No windows required processing in this run.")
+
+
+async def run_periodic_aggregation():
+    """Run the aggregation process at regular intervals."""
+    # Initial check immediately on start
+    try:
+        await process_pending_aggregations()
+    except Exception as e:
+        logger.error(f"Error during initial aggregation check: {e}", exc_info=True)
+
+    while True:
+        # Calculate sleep time until the *next* minute boundary past the aggregation interval
+        # e.g., if interval is 5 min, run at :05, :10, :15, etc.
+        now = datetime.now(pytz.timezone(TIMEZONE)) # Use local timezone for scheduling
+        
+        # How many minutes past the last interval?
+        minutes_past_interval = now.minute % AGGREGATION_PERIOD_MINUTES
+        
+        # How many minutes until the next interval starts?
+        minutes_to_next_interval = AGGREGATION_PERIOD_MINUTES - minutes_past_interval
+        
+        # Calculate the exact time of the next run
+        next_run_time = now.replace(second=5, microsecond=0) + timedelta(minutes=minutes_to_next_interval)
+        # Add a small buffer (5 seconds) past the minute mark
+        
+        sleep_seconds = (next_run_time - now).total_seconds()
+
+        # Ensure sleep time is positive
+        if sleep_seconds <= 0:
+             sleep_seconds = (next_run_time + timedelta(minutes=AGGREGATION_PERIOD_MINUTES) - now).total_seconds()
+
+        logger.info(f"Next aggregation check scheduled for {next_run_time.isoformat()}. Sleeping for {sleep_seconds:.1f} seconds.")
+        await asyncio.sleep(sleep_seconds)
+
+        try:
+            await process_pending_aggregations()
+        except Exception as e:
+            logger.error(f"Error in periodic aggregation loop: {e}", exc_info=True)
+            # Add a short sleep after an error to prevent rapid failing loops
+            await asyncio.sleep(60)
+
+
+if __name__ == "__main__":
+    # Basic check for database existence
+    if not os.path.exists(DB_PATH):
+         logger.error(f"Database file not found at {DB_PATH}. Please ensure sensor_main.py has run and created the database.")
+         # Exit or wait? For now, log error and continue, maybe it gets created.
+    else:
+         logger.info(f"Using database: {DB_PATH}")
+
+    logger.info("Starting SQLite data aggregator service")
+    # Ensure login happens once at the start if needed later
+    # asyncio.run(login()) # Optional: Pre-authenticate at startup
+    asyncio.run(run_periodic_aggregation())
