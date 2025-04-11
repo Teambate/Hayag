@@ -22,7 +22,7 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
   const month = currentDate.toLocaleString("default", { month: "long" })
   const year = currentDate.getFullYear()
 
-  const navItems = ["Dashboard", "Analytics", "Sensors", "Notes", "Settings"]
+  const navItems = ["Dashboard", "Analytics", "Sensors", "Insights", "Settings"]
 
   const handleTabChange = (item: string) => {
     setActiveTab(item)
@@ -31,7 +31,7 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
 
   const handleNotificationClick = () => {
     navigateToNotes()
-    setActiveTab("Notes")
+    setActiveTab("Insights")
   }
 
   return (

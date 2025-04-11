@@ -8,7 +8,7 @@ import { DeviceProvider } from "./context/DeviceContext"
 import Dashboard from "./pages/Dashboard"
 import Analytics from "./pages/Analytics"
 import Sensors from "./pages/Sensors"
-import Notes from "./pages/Notes"
+import Insights from "./pages/Notes"
 import Settings from "./pages/Settings"
 import Login from "./pages/Login"
 
@@ -96,7 +96,7 @@ function AppRoutes() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/analytics" element={<Analytics setActiveTab={setActiveTab} />} />
               <Route path="/sensors" element={<Sensors />} />
-              <Route path="/notes" element={<Notes setActiveTab={setActiveTab} />} />
+              <Route path="/insights" element={<Insights setActiveTab={setActiveTab} />} />
               <Route path="/settings" element={<Settings />} />
               <Route 
                 path="/" 
@@ -127,10 +127,10 @@ function AppRoutes() {
                 } 
               />
               <Route 
-                path="/notes" 
+                path="/insights" 
                 element={
                   <ProtectedRoute>
-                    <Notes />
+                    <Insights />
                   </ProtectedRoute>
                 } 
               />
