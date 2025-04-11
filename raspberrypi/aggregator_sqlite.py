@@ -263,7 +263,9 @@ def initialize_last_valid_values(start_time):
     """
     Query the database to find the most recent valid values for each sensor 
     prior to the given start_time, to use for forward filling.
-    Similar to how the CSV version loads historical values.
+    
+    This ensures we have historical values to forward fill from, which prevents
+    null values in the output and provides data continuity across aggregation windows.
     """
     last_valid_values = {
         'rain_1': None, 'rain_2': None, 'uv_1': None, 'uv_2': None,
@@ -363,6 +365,7 @@ def clean_data(rows_from_db):
     Clean the data fetched from the database.
     Handles None values (SQLite NULLs) appropriately.
     Applies forward fill based on historical values and values within the current batch.
+    Preserves original validity status for health calculation.
     """
     if not rows_from_db:
         return []
@@ -378,6 +381,8 @@ def clean_data(rows_from_db):
     # Now process each row in the current batch
     for row_dict in rows_from_db:
         cleaned_row = {'timestamp': row_dict['timestamp']} # Keep the datetime object
+        # Also track which values were originally valid (for accurate health calculation)
+        validity_flags = {}
 
         # Define sensor mappings and validation ranges (similar to CSV version)
         # Use row_dict.get(key) to handle potentially missing keys in sparse rows
@@ -404,26 +409,29 @@ def clean_data(rows_from_db):
             ('battery_voltage_2', row_dict.get('battery_voltage_2'), 0, None)
         ]
 
-        # Validate, convert, and forward fill
+        # First pass: validate and track validity
         for key, value, min_val, max_val in sensor_mappings:
+            # Store original validity before any forward fill
             validated_value = validate_and_convert_sqlite(value, min_val, max_val)
-
+            # Track if this reading was originally valid (not null)
+            validity_flags[key] = validated_value is not None
+            
             if validated_value is not None:
                 # Valid value, update the last valid value for this key
                 last_valid_values[key] = validated_value
                 cleaned_row[key] = validated_value
             else:
                 # Invalid or missing value, use forward fill from the last known valid value
-                # (which might be from history or earlier in this batch)
                 if last_valid_values[key] is not None:
                     cleaned_row[key] = last_valid_values[key]
                     logger.debug(f"Forward filling {key} with value {last_valid_values[key]} at {row_dict['timestamp']}")
                 else:
-                    # If we still don't have a valid value, use 0.0 as a fallback
-                    # This ensures we always have a numeric value, not null
+                    # Edge case: no valid reading has ever been recorded for this sensor
                     cleaned_row[key] = 0.0
-                    logger.debug(f"No valid historical value for {key}, using 0.0 at {row_dict['timestamp']}")
-
+                    logger.debug(f"No historical data ever found for {key}, using 0.0 at {row_dict['timestamp']}")
+        
+        # Store validity flags for health calculation
+        cleaned_row['_validity_flags'] = validity_flags
         cleaned_rows.append(cleaned_row)
 
     return cleaned_rows
@@ -431,14 +439,12 @@ def clean_data(rows_from_db):
 def validate_and_convert_sqlite(value, min_val=None, max_val=None):
     """
     Validates and converts a value fetched from SQLite.
-    Handles None (NULL) by returning 0.0 (not None).
-    Returns 0.0 if the value is outside allowed range or invalid type.
-    Returns float if valid.
-    IMPORTANT: This matches the behavior of validate_and_convert in the CSV version.
+    Returns None for invalid values to track health accurately,
+    but these will be forward-filled later.
     """
-    # Handle None (NULL) from database - return 0.0 like CSV version does for empty values
+    # Retain NULL values from database for health tracking
     if value is None:
-        return 0.0
+        return None
 
     try:
         # Convert to float and validate range
@@ -447,40 +453,53 @@ def validate_and_convert_sqlite(value, min_val=None, max_val=None):
         # Check for NaN or infinite values
         if math.isnan(float_val) or math.isinf(float_val):
             logger.warning(f"Encountered NaN/Inf value from DB: {value}")
-            return 0.0  # Return 0.0 instead of None
+            return None  # Return None for health tracking
 
         # Validate minimum if specified
         if min_val is not None and float_val < min_val:
             # logger.debug(f"Value {float_val} is below min {min_val}")
-            return 0.0  # Return 0.0 instead of None
+            return None  # Return None for health tracking
 
         # Validate maximum if specified
         if max_val is not None and float_val > max_val:
             # logger.debug(f"Value {float_val} is above max {max_val}")
-            return 0.0  # Return 0.0 instead of None
+            return None  # Return None for health tracking
 
         return float_val
     except (ValueError, TypeError):
         # logger.warning(f"Could not convert value '{value}' to float.")
-        return 0.0  # Return 0.0 instead of None
+        return None  # Return None for health tracking
 
 
-def calculate_stat(values):
+def calculate_stat(rows, key):
     """
-    Calculate statistics (average, min, max) for a list of values.
-    Handles None values correctly. Calculates health based on non-None values.
-    IMPORTANT: Never returns null values for stats - uses 0 instead.
+    Calculate statistics (average, min, max) for a specific sensor across all rows.
+    Uses validity flags for accurate health calculation based on pre-forward-fill data.
+    
+    Args:
+        rows: List of data rows (dictionaries)
+        key: The sensor key to calculate stats for (e.g., 'rain_1')
+        
+    Returns:
+        Dictionary with average, min, max and health statistics
     """
-    # Filter out None values for calculations
-    valid_values = [v for v in values if v is not None and isinstance(v, (int, float))]
-
-    # Calculate health based on the original list size (including Nones)
+    # Extract values for this sensor
+    values = [row.get(key) for row in rows]
+    
+    # Get original validity flags (before forward filling)
+    validity = [row.get('_validity_flags', {}).get(key, False) for row in rows]
+    
+    # Calculate health based on original validity, not forward-filled values
     total_count = len(values)
-    valid_count = len(valid_values)
+    valid_count = sum(1 for v in validity if v)
     health = int((valid_count / total_count) * 100) if total_count > 0 else 0
-
+    
+    # For actual min/max/avg calculations, filter out any remaining None values
+    # (shouldn't happen with forward fill, but just in case)
+    valid_values = [v for v in values if v is not None and isinstance(v, (int, float))]
+    
     if not valid_values:
-        # FIXED: Return 0 instead of null for required fields to pass backend validation
+        # Always return zeros instead of nulls in final output
         return {
             "average": 0.0, 
             "min": 0.0, 
@@ -489,7 +508,7 @@ def calculate_stat(values):
         }
 
     # Round the average to avoid excessive decimals
-    avg = round(sum(valid_values) / valid_count, 4)
+    avg = round(sum(valid_values) / len(valid_values), 4)
 
     return {
         "average": avg,
@@ -500,52 +519,32 @@ def calculate_stat(values):
 
 
 def aggregate_data(cleaned_data):
-    """Aggregate the cleaned data into the required format. (Identical to CSV version)."""
-    # Extract values for each sensor, using .get() with default None
-    get_vals = lambda key: [row.get(key) for row in cleaned_data]
-
-    rain_1_values = get_vals('rain_1')
-    rain_2_values = get_vals('rain_2')
-    uv_1_values = get_vals('uv_1')
-    uv_2_values = get_vals('uv_2')
-    lux_1_values = get_vals('lux_1')
-    lux_2_values = get_vals('lux_2')
-    dht_temp_1_values = get_vals('dht_temp_1')
-    dht_humidity_1_values = get_vals('dht_humidity_1')
-    dht_temp_2_values = get_vals('dht_temp_2')
-    dht_humidity_2_values = get_vals('dht_humidity_2')
-    panel_temp_1_values = get_vals('panel_temp_1')
-    panel_temp_2_values = get_vals('panel_temp_2')
-    panel_voltage_1_values = get_vals('panel_voltage_1')
-    panel_current_1_values = get_vals('panel_current_1')
-    panel_voltage_2_values = get_vals('panel_voltage_2')
-    panel_current_2_values = get_vals('panel_current_2')
-    solar_irrad_1_values = get_vals('solar_irrad_1')
-    solar_irrad_2_values = get_vals('solar_irrad_2')
-    battery_voltage_1_values = get_vals('battery_voltage_1')
-    battery_voltage_2_values = get_vals('battery_voltage_2')
-
-    # Calculate statistics using the modified calculate_stat
-    rain_1_stats = calculate_stat(rain_1_values)
-    rain_2_stats = calculate_stat(rain_2_values)
-    uv_1_stats = calculate_stat(uv_1_values)
-    uv_2_stats = calculate_stat(uv_2_values)
-    lux_1_stats = calculate_stat(lux_1_values)
-    lux_2_stats = calculate_stat(lux_2_values)
-    dht_temp_1_stats = calculate_stat(dht_temp_1_values)
-    dht_humidity_1_stats = calculate_stat(dht_humidity_1_values)
-    dht_temp_2_stats = calculate_stat(dht_temp_2_values)
-    dht_humidity_2_stats = calculate_stat(dht_humidity_2_values)
-    panel_temp_1_stats = calculate_stat(panel_temp_1_values)
-    panel_temp_2_stats = calculate_stat(panel_temp_2_values)
-    panel_voltage_1_stats = calculate_stat(panel_voltage_1_values)
-    panel_current_1_stats = calculate_stat(panel_current_1_values)
-    panel_voltage_2_stats = calculate_stat(panel_voltage_2_values)
-    panel_current_2_stats = calculate_stat(panel_current_2_values)
-    solar_irrad_1_stats = calculate_stat(solar_irrad_1_values)
-    solar_irrad_2_stats = calculate_stat(solar_irrad_2_values)
-    battery_voltage_1_stats = calculate_stat(battery_voltage_1_values)
-    battery_voltage_2_stats = calculate_stat(battery_voltage_2_values)
+    """Aggregate the cleaned data into the required format."""
+    if not cleaned_data:
+        logger.warning("No cleaned data available for aggregation")
+        return {}
+    
+    # Calculate statistics using the modified calculate_stat directly on cleaned data
+    rain_1_stats = calculate_stat(cleaned_data, 'rain_1')
+    rain_2_stats = calculate_stat(cleaned_data, 'rain_2')
+    uv_1_stats = calculate_stat(cleaned_data, 'uv_1')
+    uv_2_stats = calculate_stat(cleaned_data, 'uv_2')
+    lux_1_stats = calculate_stat(cleaned_data, 'lux_1')
+    lux_2_stats = calculate_stat(cleaned_data, 'lux_2')
+    dht_temp_1_stats = calculate_stat(cleaned_data, 'dht_temp_1')
+    dht_humidity_1_stats = calculate_stat(cleaned_data, 'dht_humidity_1')
+    dht_temp_2_stats = calculate_stat(cleaned_data, 'dht_temp_2')
+    dht_humidity_2_stats = calculate_stat(cleaned_data, 'dht_humidity_2')
+    panel_temp_1_stats = calculate_stat(cleaned_data, 'panel_temp_1')
+    panel_temp_2_stats = calculate_stat(cleaned_data, 'panel_temp_2')
+    panel_voltage_1_stats = calculate_stat(cleaned_data, 'panel_voltage_1')
+    panel_current_1_stats = calculate_stat(cleaned_data, 'panel_current_1')
+    panel_voltage_2_stats = calculate_stat(cleaned_data, 'panel_voltage_2')
+    panel_current_2_stats = calculate_stat(cleaned_data, 'panel_current_2')
+    solar_irrad_1_stats = calculate_stat(cleaned_data, 'solar_irrad_1')
+    solar_irrad_2_stats = calculate_stat(cleaned_data, 'solar_irrad_2')
+    battery_voltage_1_stats = calculate_stat(cleaned_data, 'battery_voltage_1')
+    battery_voltage_2_stats = calculate_stat(cleaned_data, 'battery_voltage_2')
 
     # Create the aggregated data structure (identical structure to CSV version)
     readings = {
