@@ -207,62 +207,53 @@ export const getDashboardChartDataService = async (params) => {
   
   // Determine the date range based on the time interval
   let startDate, endDate;
+  let clientDate;
   
-  switch (timeInterval) {
-    case 'daily':
-      // For daily interval, return current month data
-      startDate = new Date(latestDateUTC);
-      startDate.setUTCDate(1); // First day of the month in UTC
-      startDate = timezone ? getStartOfDay(startDate, timezone) : new Date(startDate.setUTCHours(0, 0, 0, 0));
-      
-      endDate = new Date(latestDateUTC);
-      endDate = timezone ? getEndOfDay(endDate, timezone) : new Date(endDate.setUTCHours(23, 59, 59, 999));
-      break;
-      
-    case 'weekly':
-    case 'monthly':
-      // For weekly and monthly intervals, return whole year data
-      startDate = new Date(latestDateUTC);
-      startDate.setUTCMonth(0, 1); // January 1st in UTC
-      startDate = timezone ? getStartOfDay(startDate, timezone) : new Date(startDate.setUTCHours(0, 0, 0, 0));
-      
-      endDate = new Date(latestDateUTC);
-      endDate = timezone ? getEndOfDay(endDate, timezone) : new Date(endDate.setUTCHours(23, 59, 59, 999));
-      break;
-      
-    default:
-      // Default behavior for 5min, 10min, 15min, 30min, hourly
-      // Use the day of the latest reading, not necessarily today
-      startDate = new Date(latestDateUTC);
-      if (timezone) {
-        // Convert to client timezone's start of day, then back to UTC
-        startDate = getStartOfDay(startDate, timezone);
-        console.log(`Converted start date to timezone ${timezone}: ${startDate.toISOString()}`);
-      } else {
-        // Use UTC midnight
-        startDate = new Date(Date.UTC(
-          startDate.getUTCFullYear(),
-          startDate.getUTCMonth(),
-          startDate.getUTCDate(),
-          0, 0, 0, 0
-        ));
-      }
-      
-      endDate = new Date(latestDateUTC);
-      if (timezone) {
-        // Convert to client timezone's end of day, then back to UTC
-        endDate = getEndOfDay(endDate, timezone);
-        console.log(`Converted end date to timezone ${timezone}: ${endDate.toISOString()}`);
-      } else {
-        // Use UTC end of day
-        endDate = new Date(Date.UTC(
-          endDate.getUTCFullYear(),
-          endDate.getUTCMonth(),
-          endDate.getUTCDate(),
-          23, 59, 59, 999
-        ));
-      }
-      break;
+  // First convert latestDateUTC to client timezone to determine the reference date
+  if (timezone) {
+    try {
+      // Convert the UTC date to the client's local time representation
+      // This gives us the date as it appears in the client's timezone
+      clientDate = new Date(latestDateUTC.toLocaleString('en-US', { timeZone: timezone }));
+      console.log(`Date in client timezone (${timezone}): ${clientDate.toLocaleString()}`);
+    } catch (error) {
+      console.error(`Error converting to client timezone: ${error.message}`);
+      clientDate = new Date(latestDateUTC); // Fallback to UTC
+    }
+  } else {
+    clientDate = new Date(latestDateUTC); // No timezone specified, use UTC
+  }
+  
+  // Now determine the start and end of the day in the client's timezone
+  // We want the full day that contains the latest reading in the client's timezone
+  if (timezone) {
+    // Create a new Date object with only the year, month, and day from the client date
+    const referenceDate = new Date(Date.UTC(
+      clientDate.getFullYear(),
+      clientDate.getMonth(),
+      clientDate.getDate()
+    ));
+    
+    // Get the start and end of this day in the client's timezone, converted to UTC
+    startDate = getStartOfDay(referenceDate, timezone);
+    endDate = getEndOfDay(referenceDate, timezone);
+    
+    console.log(`Reference date in ${timezone}: ${referenceDate.toISOString()}`);
+  } else {
+    // Use UTC midnight
+    startDate = new Date(Date.UTC(
+      latestDateUTC.getUTCFullYear(),
+      latestDateUTC.getUTCMonth(),
+      latestDateUTC.getUTCDate(),
+      0, 0, 0, 0
+    ));
+    
+    endDate = new Date(Date.UTC(
+      latestDateUTC.getUTCFullYear(),
+      latestDateUTC.getUTCMonth(),
+      latestDateUTC.getUTCDate(),
+      23, 59, 59, 999
+    ));
   }
   
   console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()} with timezone: ${timezone || 'UTC'}`);
