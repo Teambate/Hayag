@@ -16,7 +16,7 @@ export const useSocketConnection = (
     if (!deviceId) return;
     
     // Initialize Socket.io connection with the server URL
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://hayag.onrender.com/';
     socketRef.current = io(BACKEND_URL, {
       withCredentials: true,
       transports: ['websocket', 'polling']
