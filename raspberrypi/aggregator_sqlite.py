@@ -23,7 +23,7 @@ DB_PATH = "sensordata.db"  # Path to the SQLite database
 DEVICE_ID = "SOLAR_01" # Should match sensor_main.py
 AGGREGATION_PERIOD_MINUTES = 5
 TIMEZONE = "Asia/Manila"
-BACKEND_URL = "http://192.168.1.66:3000"
+BACKEND_URL = "https://hayag.onrender.com"
 BACKEND_API_URL = f"{BACKEND_URL}/api/readings"
 AUTH_API_URL = f"{BACKEND_URL}/api/auth/login"
 # Auth credentials
@@ -823,12 +823,12 @@ async def process_pending_aggregations():
         if send_success:
             success_count += 1
             # Optional: Save payload locally for debugging
-            try:
-                with open(f'payload_{period_id}.json', 'w') as f:
-                    json.dump(payload, f, indent=2)
-                logger.info(f"Saved payload to payload_{period_id}.json")
-            except Exception as e:
-                logger.warning(f"Failed to save payload to file: {e}")
+            # try:
+            #     with open(f'payload_{period_id}.json', 'w') as f:
+            #         json.dump(payload, f, indent=2)
+            #     logger.info(f"Saved payload to payload_{period_id}.json")
+            # except Exception as e:
+            #     logger.warning(f"Failed to save payload to file: {e}")
         else:
             logger.error(f"Failed to send data for window {start_time.isoformat()}Z (ID: {period_id}). Will retry later.")
             # The period remains marked as unsent in the DB for the next run

@@ -101,5 +101,5 @@ project.readme.md
 
 .cursorignore
 
-raspberrypi/
+# raspberrypi/
 api_responses/

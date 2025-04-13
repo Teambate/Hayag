@@ -26,7 +26,7 @@ import json
 import traceback
 
 # SQLite database configuration
-DB_PATH = "sensordata.db"
+DB_PATH = "sensor_data_new.db"
 DEVICE_ID = "SOLAR_01"  # Match the device ID used in data_aggregator.py
 
 def init_database():
@@ -39,24 +39,18 @@ def init_database():
         cursor = conn.cursor()
         
         # Check if tables exist by querying sqlite_master
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='reading_sessions'")
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='sensor_readings2'")
         tables_exist = cursor.fetchone() is not None
         
         if not db_exists or not tables_exist:
             print(f"Creating tables in SQLite database at {DB_PATH}")
             
             # Read and execute the schema SQL file
-            with open('sqlite_schema.sql', 'r') as schema_file:
+            with open('new_schema.sql', 'r') as schema_file:
                 schema_sql = schema_file.read()
                 cursor.executescript(schema_sql)
                 
-            # Insert default panels
-            cursor.execute("INSERT OR IGNORE INTO panels (panel_id, installation_date, active) VALUES (?, ?, ?)", 
-                           ("Panel_1", datetime.now().strftime("%Y-%m-%d"), 1))
-            cursor.execute("INSERT OR IGNORE INTO panels (panel_id, installation_date, active) VALUES (?, ?, ?)", 
-                           ("Panel_2", datetime.now().strftime("%Y-%m-%d"), 1))
-            conn.commit()
-            print("Database schema initialized and default panels added")
+            print("Database schema initialized with new schema")
         else:
             print(f"Using existing database at {DB_PATH} with existing tables")
         
@@ -68,61 +62,34 @@ def init_database():
         return False
 
 def store_sensor_readings_in_db(timestamp, data):
-    """Store sensor readings in SQLite database"""
+    """Store sensor readings in SQLite database using the new schema"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # Create a reading session
+        # Insert data into the new flat table structure
         cursor.execute(
-            "INSERT INTO reading_sessions (timestamp, device_id) VALUES (?, ?)",
-            (timestamp.isoformat(), DEVICE_ID)
+            """
+            INSERT INTO sensor_readings2 (
+                timestamp, device_id,
+                panel1_rain, panel1_uv, panel1_lux, panel1_dht_temp, panel1_dht_humidity, 
+                panel1_panel_temp, panel1_voltage, panel1_current, panel1_solar_irrad, panel1_battery_voltage,
+                panel2_rain, panel2_uv, panel2_lux, panel2_dht_temp, panel2_dht_humidity, 
+                panel2_panel_temp, panel2_voltage, panel2_current, panel2_solar_irrad, panel2_battery_voltage
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                timestamp.isoformat(), DEVICE_ID,
+                data.get("rain1"), data.get("uv1"), data.get("lux1"), 
+                data.get("temp1"), data.get("hum1"), data.get("panel_temp_1"),
+                data.get("panel_voltage1"), data.get("panel_current1"), 
+                data.get("irrad1"), data.get("battery_voltage1"),
+                data.get("rain2"), data.get("uv2"), data.get("lux2"), 
+                data.get("temp2"), data.get("hum2"), data.get("panel_temp_2"),
+                data.get("panel_voltage2"), data.get("panel_current2"), 
+                data.get("irrad2"), data.get("battery_voltage2")
+            )
         )
-        session_id = cursor.lastrowid
-        
-        # Store Panel 1 readings
-        readings_panel1 = [
-            ("rain", None, data.get("rain1"), "%"),
-            ("uv", None, data.get("uv1"), "mW/cm2"),
-            ("light", None, data.get("lux1"), "lux"),
-            ("temperature", "dht22", data.get("temp1"), "°C"),
-            ("humidity", "dht22", data.get("hum1"), "%"),
-            ("temperature", "panel_temp", data.get("panel_temp_1"), "°C"),
-            ("voltage", "ina226", data.get("panel_voltage1"), "V"),
-            ("current", "ina226", data.get("panel_current1"), "mA"),
-            ("irradiance", "solar", data.get("irrad1"), "W/m2"),
-            ("voltage", "battery", data.get("battery_voltage1"), "V")
-        ]
-        
-        # Store Panel 2 readings
-        readings_panel2 = [
-            ("rain", None, data.get("rain2"), "%"),
-            ("uv", None, data.get("uv2"), "mW/cm2"),
-            ("light", None, data.get("lux2"), "lux"),
-            ("temperature", "dht22", data.get("temp2"), "°C"),
-            ("humidity", "dht22", data.get("hum2"), "%"),
-            ("temperature", "panel_temp", data.get("panel_temp_2"), "°C"),
-            ("voltage", "ina226", data.get("panel_voltage2"), "V"),
-            ("current", "ina226", data.get("panel_current2"), "mA"),
-            ("irradiance", "solar", data.get("irrad2"), "W/m2"),
-            ("voltage", "battery", data.get("battery_voltage2"), "V")
-        ]
-        
-        # Insert all Panel 1 readings
-        for sensor_type, sensor_name, value, unit in readings_panel1:
-            # Store all values including None and NaN, just like in CSV
-            cursor.execute(
-                "INSERT INTO sensor_readings (session_id, panel_id, sensor_type, sensor_name, value, unit) VALUES (?, ?, ?, ?, ?, ?)",
-                (session_id, "Panel_1", sensor_type, sensor_name, value, unit)
-            )
-        
-        # Insert all Panel 2 readings
-        for sensor_type, sensor_name, value, unit in readings_panel2:
-            # Store all values including None and NaN, just like in CSV
-            cursor.execute(
-                "INSERT INTO sensor_readings (session_id, panel_id, sensor_type, sensor_name, value, unit) VALUES (?, ?, ?, ?, ?, ?)",
-                (session_id, "Panel_2", sensor_type, sensor_name, value, unit)
-            )
         
         conn.commit()
         conn.close()
