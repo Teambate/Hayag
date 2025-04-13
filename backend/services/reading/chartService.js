@@ -342,10 +342,35 @@ export const getDashboardChartDataService = async (params) => {
     result[chartType] = aggregateDataByTimeInterval(readings, timeIntervalMs, chartType, panelIdsArray, timezone);
   }
   
+  // Format date strings consistently for the response
+  let formattedStartDate, formattedEndDate;
+  
+  if (timezone) {
+    // Format dates according to the client's timezone
+    formattedStartDate = new Date(startDate).toLocaleDateString('en-US', { timeZone: timezone });
+    formattedEndDate = new Date(endDate).toLocaleDateString('en-US', { timeZone: timezone });
+    
+    // Also include ISO format for the dates (this converts to local JS time)
+    const clientStartDate = new Date(new Date(startDate).toLocaleString('en-US', { timeZone: timezone }));
+    const clientEndDate = new Date(new Date(endDate).toLocaleString('en-US', { timeZone: timezone }));
+    
+    console.log(`Client timezone dates: ${clientStartDate.toISOString()} to ${clientEndDate.toISOString()}`);
+  } else {
+    // Use UTC format if no timezone specified
+    formattedStartDate = startDate.toISOString().split('T')[0];
+    formattedEndDate = endDate.toISOString().split('T')[0];
+  }
+  
+  // Add debugging information to help diagnose timezone issues
+  console.log(`Returning dates formatted as: ${formattedStartDate} to ${formattedEndDate}`);
+  console.log(`Original UTC dates: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+  
   return {
     timeInterval: timeInterval,
-    startDate: startDate.toISOString().split('T')[0],
-    endDate: endDate.toISOString().split('T')[0],
+    startDate: formattedStartDate,
+    endDate: formattedEndDate,
+    originalStartDate: startDate.toISOString(),  // Include the original ISO dates for debugging
+    originalEndDate: endDate.toISOString(),
     timezone: timezone || 'UTC',
     data: result
   };

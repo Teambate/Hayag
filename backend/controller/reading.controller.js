@@ -122,14 +122,26 @@ export const getDashboardChartData = async (req, res) => {
     
     const result = await getDashboardChartDataService(queryParams);
     
-    res.status(200).json({
+    // Extract the data from the service result
+    const responseData = {
       success: true,
       timeInterval: result.timeInterval,
       startDate: result.startDate,
       endDate: result.endDate,
       timezone: result.timezone,
       data: formatNumericValues(result.data)
-    });
+    };
+    
+    // Add debug information if needed
+    if (process.env.NODE_ENV === 'development') {
+      responseData.debug = {
+        originalStartDate: result.originalStartDate,
+        originalEndDate: result.originalEndDate,
+        serverTimestamp: new Date().toISOString()
+      };
+    }
+    
+    res.status(200).json(responseData);
     
   } catch (error) {
     console.error("Error fetching dashboard chart data:", error);

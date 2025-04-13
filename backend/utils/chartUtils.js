@@ -164,15 +164,24 @@ export function processReadingForChart(reading, bucket, chartType, panelIdsArray
 export function finalizeDataBucket(bucket, chartType, timezone) {
   if (bucket.values.length === 0) return;
   
-  // If timezone is provided, convert the timestamp to that timezone
+  // If timezone is provided, create a formatted timestamp for display
   if (timezone) {
     try {
-      // Create a new Date object for the timestamp that's timezone-aware
-      // Note: We keep the original timestamp which is in UTC, but format it according to 
-      // the client's timezone when it gets serialized to JSON
-      bucket.formattedTimestamp = bucket.timestamp.toLocaleString('en-US', { 
+      // Format the timestamp according to the client's timezone
+      bucket.formattedTimestamp = new Date(bucket.timestamp).toLocaleString('en-US', { 
         timeZone: timezone 
       });
+      
+      // For debugging purposes, also include the local date and time in the client's timezone
+      const clientDate = new Date(new Date(bucket.timestamp).toLocaleString('en-US', {
+        timeZone: timezone
+      }));
+      
+      // Add formatted date in the local timezone, not affecting the original UTC timestamp
+      bucket.localTimestamp = clientDate;
+      
+      // Add an ISO string for clearer debugging
+      bucket.clientTimezoneISO = clientDate.toISOString();
     } catch (error) {
       console.error(`Error converting timestamp to timezone ${timezone}:`, error);
     }
