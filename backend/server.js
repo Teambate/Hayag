@@ -7,6 +7,7 @@ import { connectDB } from "./config/db.js";
 import readingRoutes from "./routes/reading.route.js";
 import authRoutes from "./routes/auth.route.js";
 import cors from "cors";
+import path from "path";
 
 dotenv.config();
 
@@ -18,6 +19,8 @@ const io = new Server(httpServer, {
     credentials: true
   }
 });
+
+const __dirname = path.resolve();
 
 // Middleware
 app.use(express.json({ limit: '50mb' }));
@@ -79,6 +82,14 @@ app.get('/api/health', (req, res) => {
     time: new Date().toISOString()
   });
 });
+
+// Serve static files in production mode
+if(process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, "frontend/dist")));
+  app.get('*', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'frontend', 'dist', 'index.html'));
+  });
+}
 
 // Add this as a catch-all route handler at the bottom, but before app.listen
 app.use((req, res) => {
