@@ -172,18 +172,29 @@ export function finalizeDataBucket(bucket, chartType, timezone) {
         timeZone: timezone 
       });
       
-      // For debugging purposes, also include the local date and time in the client's timezone
-      const clientDate = new Date(new Date(bucket.timestamp).toLocaleString('en-US', {
+      // For debugging purposes, convert UTC timestamp to client's timezone
+      // First create a new date object with the UTC timestamp
+      const utcDate = new Date(bucket.timestamp);
+      
+      // Then create a date string in the client's timezone
+      const dateInClientTZ = utcDate.toLocaleString('en-US', {
         timeZone: timezone
-      }));
+      });
       
-      // Add formatted date in the local timezone, not affecting the original UTC timestamp
-      bucket.localTimestamp = clientDate;
+      // Parse this string back to a date object (which will be in local time)
+      const clientDate = new Date(dateInClientTZ);
       
-      // Add an ISO string for clearer debugging
+      // Store this as localTimestamp
+      bucket.localTimestamp = clientDate.toISOString();
+      
+      // Also store as clientTimezoneISO for consistent timezone representation
       bucket.clientTimezoneISO = clientDate.toISOString();
+      
+      // Add an informative note for debugging
+      bucket.timezoneInfo = `Original UTC: ${utcDate.toISOString()}, Converted to ${timezone}`;
     } catch (error) {
       console.error(`Error converting timestamp to timezone ${timezone}:`, error);
+      bucket.timezoneError = error.message;
     }
   }
   

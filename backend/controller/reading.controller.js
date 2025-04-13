@@ -120,6 +120,8 @@ export const getDashboardChartData = async (req, res) => {
     // Add timezone to query params
     const queryParams = { ...req.query, timezone };
     
+    console.log(`Received dashboard chart request with timezone: ${timezone}`);
+    
     const result = await getDashboardChartDataService(queryParams);
     
     // Extract the data from the service result
@@ -137,9 +139,17 @@ export const getDashboardChartData = async (req, res) => {
       responseData.debug = {
         originalStartDate: result.originalStartDate,
         originalEndDate: result.originalEndDate,
-        serverTimestamp: new Date().toISOString()
+        serverTimestamp: new Date().toISOString(),
+        serverTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        nodeTZEnv: process.env.TZ || 'not set'
       };
     }
+    
+    console.log(`Sending response with date range: ${result.startDate} to ${result.endDate} (UTC: ${result.originalStartDate} to ${result.originalEndDate})`);
+    
+    // Always include the original UTC dates even in production for monitoring this fix
+    responseData.originalStartDate = result.originalStartDate;
+    responseData.originalEndDate = result.originalEndDate;
     
     res.status(200).json(responseData);
     

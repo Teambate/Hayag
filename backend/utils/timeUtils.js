@@ -54,16 +54,24 @@ export function toUTC(dateInput, clientTimezone) {
   }
   
   try {
-    // Create date string with explicit timezone
-    const dateString = date.toLocaleString('en-US', { 
+    // Calculate the offset between client timezone and UTC
+    const clientOffset = new Date().getTimezoneOffset();
+    
+    // Create a new date using the client's timezone
+    const targetDate = new Date(date.toLocaleString('en-US', {
       timeZone: clientTimezone
-    });
+    }));
     
-    // Parse the date string back to a date with the client's timezone offset
-    const clientDate = new Date(dateString);
+    // Get the timezone offset for the target timezone
+    const targetOffset = new Date(date.toLocaleString('en-US', {
+      timeZone: clientTimezone
+    })).getTimezoneOffset();
     
-    // Return a date object that represents this time in UTC
-    return clientDate;
+    // Calculate the difference between the two timezones
+    const offsetDiff = targetOffset - clientOffset;
+    
+    // Create a UTC date representing the same local time in the target timezone
+    return new Date(date.getTime() - offsetDiff * 60 * 1000);
   } catch (error) {
     console.error(`Error converting timezone: ${error.message}`);
     return date; // Return original date if conversion fails
@@ -89,27 +97,20 @@ export function getStartOfDay(date, clientTimezone) {
   }
 
   try {
-    // Convert the date to the client's timezone
-    const dateInClientTZ = new Date(date.toLocaleString('en-US', {
-      timeZone: clientTimezone
-    }));
+    // First convert the date to the client's local time representation
+    const clientDate = new Date(date.toLocaleString('en-US', { timeZone: clientTimezone }));
     
     // Set to midnight in client's timezone
-    dateInClientTZ.setHours(0, 0, 0, 0);
+    clientDate.setHours(0, 0, 0, 0);
     
-    // Calculate the timezone offset between client time and UTC
-    const clientOffset = new Date().getTimezoneOffset();
-    const targetTZDate = new Date();
-    targetTZDate.setHours(0);
-    const targetOffset = new Date(targetTZDate.toLocaleString('en-US', {
-      timeZone: clientTimezone
-    })).getTimezoneOffset();
+    // Now we need to convert this local midnight back to the equivalent UTC time
+    // Calculate timezone offsets
+    const localOffset = new Date().getTimezoneOffset();
+    const targetOffset = new Date(new Date().toLocaleString('en-US', { timeZone: clientTimezone })).getTimezoneOffset();
+    const offsetDiff = targetOffset - localOffset;
     
-    // Apply the timezone difference to get the correct UTC time
-    const offsetDiff = targetOffset - clientOffset;
-    const correctedDate = new Date(dateInClientTZ.getTime() - offsetDiff * 60 * 1000);
-    
-    return correctedDate;
+    // Apply offset to get correct UTC time that represents midnight in client's timezone
+    return new Date(clientDate.getTime() - offsetDiff * 60 * 1000);
   } catch (error) {
     console.error(`Error in getStartOfDay: ${error.message}`);
     // Fallback to original date with UTC midnight
@@ -141,27 +142,20 @@ export function getEndOfDay(date, clientTimezone) {
   }
 
   try {
-    // Convert the date to the client's timezone
-    const dateInClientTZ = new Date(date.toLocaleString('en-US', {
-      timeZone: clientTimezone
-    }));
+    // First convert the date to the client's local time representation
+    const clientDate = new Date(date.toLocaleString('en-US', { timeZone: clientTimezone }));
     
     // Set to end of day in client's timezone
-    dateInClientTZ.setHours(23, 59, 59, 999);
+    clientDate.setHours(23, 59, 59, 999);
     
-    // Calculate the timezone offset between client time and UTC
-    const clientOffset = new Date().getTimezoneOffset();
-    const targetTZDate = new Date();
-    targetTZDate.setHours(0);
-    const targetOffset = new Date(targetTZDate.toLocaleString('en-US', {
-      timeZone: clientTimezone
-    })).getTimezoneOffset();
+    // Now we need to convert this local end of day back to the equivalent UTC time
+    // Calculate timezone offsets
+    const localOffset = new Date().getTimezoneOffset();
+    const targetOffset = new Date(new Date().toLocaleString('en-US', { timeZone: clientTimezone })).getTimezoneOffset();
+    const offsetDiff = targetOffset - localOffset;
     
-    // Apply the timezone difference to get the correct UTC time
-    const offsetDiff = targetOffset - clientOffset;
-    const correctedDate = new Date(dateInClientTZ.getTime() - offsetDiff * 60 * 1000);
-    
-    return correctedDate;
+    // Apply offset to get correct UTC time that represents end of day in client's timezone
+    return new Date(clientDate.getTime() - offsetDiff * 60 * 1000);
   } catch (error) {
     console.error(`Error in getEndOfDay: ${error.message}`);
     // Fallback to original date with UTC end of day

@@ -237,6 +237,7 @@ export const getDashboardChartDataService = async (params) => {
       if (timezone) {
         // Convert to client timezone's start of day, then back to UTC
         startDate = getStartOfDay(startDate, timezone);
+        console.log(`Converted start date to timezone ${timezone}: ${startDate.toISOString()}`);
       } else {
         // Use UTC midnight
         startDate = new Date(Date.UTC(
@@ -251,6 +252,7 @@ export const getDashboardChartDataService = async (params) => {
       if (timezone) {
         // Convert to client timezone's end of day, then back to UTC
         endDate = getEndOfDay(endDate, timezone);
+        console.log(`Converted end date to timezone ${timezone}: ${endDate.toISOString()}`);
       } else {
         // Use UTC end of day
         endDate = new Date(Date.UTC(
