@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { AlertTriangle, Battery, FileText, CircleCheck, CircleOff, Plus } from "lucide-react";
-import { NoteType, NoteItem } from "../../pages/Notes";
+import { NoteType, NoteItem } from "../../context/NotesContext";
 import { 
   Dialog, 
   DialogContentWithoutCloseButton, 

@@ -1,5 +1,5 @@
 import { AlertTriangle, CircleCheck, CircleOff, Battery, FileText, Pencil, Trash2 } from "lucide-react";
-import { NoteType, NoteItem } from "../../pages/Notes";
+import { NoteType, NoteItem } from "../../context/NotesContext";
 import { 
   Dialog, 
   DialogContent, 

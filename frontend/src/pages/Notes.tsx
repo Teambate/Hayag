@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CircleOff, AlertTriangle, Battery, FileText, CircleCheck } from "lucide-react";
+import { CircleOff, AlertTriangle, Battery, CircleCheck } from "lucide-react";
 import Banner from "../components/layout/Banner";
 import NoteCard from "../components/ui/NoteCard";
 import NoteDetailModal from "../components/ui/NoteDetailModal";
