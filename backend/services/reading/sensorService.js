@@ -253,6 +253,11 @@ export const createReadingService = async (sensorReadings, io) => {
       await calculatePowerAccumulation(currentValues, newSensorReading.deviceId, newSensorReading);
     }
     
+    // Add health data calculation
+    const healthData = await getSensorHealthForDay(newSensorReading.deviceId, currentValues.timezone);
+    currentValues.health = healthData.health;
+    currentValues.sensor_health = healthData.sensor_health;
+    
     // Enhanced debug logs
     console.log(`Socket.io is available. Device ID: ${newSensorReading.deviceId}`);
     console.log(`Room name: device:${newSensorReading.deviceId}`);

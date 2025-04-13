@@ -92,7 +92,7 @@ const SystemHealth: React.FC<SystemHealthProps> = ({ health = 0, sensor_health =
       status: "Critical", 
       count: healthCategories.Critical, 
       percentage: percentages.Critical,
-      description: "Sensors with less than 40% health",
+      description: "Sensors are not operating correctly",
       icon: AlertCircle,
       color: "red"
     },
@@ -100,7 +100,7 @@ const SystemHealth: React.FC<SystemHealthProps> = ({ health = 0, sensor_health =
       status: "Warning", 
       count: healthCategories.Warning,
       percentage: percentages.Warning,
-      description: "Sensors with 40-70% health",
+      description: "Sensors might require attention",
       icon: AlertTriangle,
       color: "amber"
     },
@@ -108,7 +108,7 @@ const SystemHealth: React.FC<SystemHealthProps> = ({ health = 0, sensor_health =
       status: "Good", 
       count: healthCategories.Good,
       percentage: percentages.Good,
-      description: "Sensors with 71-100% health",
+      description: "Sensors operating normally",
       icon: CheckCircle,
       color: "green"
     }
