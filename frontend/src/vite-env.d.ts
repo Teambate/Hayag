@@ -40,5 +40,5 @@ declare module 'vite' {
 }
 
 declare module '@vitejs/plugin-react' {
-  export default function react(options?: any): any;
+  export default function(options?: any): any;
 }

@@ -6,7 +6,7 @@
     "dev": "NODE_ENV=development nodemon backend/server.js",
     "dev:combined": "cd frontend && npm run build && cd .. && NODE_ENV=production nodemon backend/server.js",
     "test:email": "node backend/utils/emailTest.js",
-    "build": "npm run copy-env && npm install && npm install --prefix frontend && npm run build --prefix frontend",
+    "build": "npm run copy-env && npm install && npm install --prefix frontend && npm exec --prefix frontend -- tsc --showConfig && npm run build --prefix frontend",
     "start": "NODE_ENV=production node backend/server.js",
     "copy-env": "node scripts/copy-env.js"
   },
