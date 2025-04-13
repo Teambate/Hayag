@@ -200,10 +200,10 @@ export const getDashboardChartDataService = async (params) => {
     throw new Error(`No readings found for device ${deviceId}`);
   }
   
-  // Get the reference date based on the latest reading (but don't apply timezone conversion yet)
-  const latestDate = new Date(latestReading.endTime);
+  // Get the reference date based on the latest reading in UTC
+  const latestDateUTC = new Date(latestReading.endTime);
   
-  console.log(`Latest reading date: ${latestDate.toISOString()} for device ${deviceId}`);
+  console.log(`Latest reading date (UTC): ${latestDateUTC.toISOString()} for device ${deviceId}`);
   
   // Determine the date range based on the time interval
   let startDate, endDate;
@@ -211,37 +211,59 @@ export const getDashboardChartDataService = async (params) => {
   switch (timeInterval) {
     case 'daily':
       // For daily interval, return current month data
-      startDate = new Date(latestDate);
-      startDate.setDate(1); // First day of the month
-      startDate = timezone ? getStartOfDay(startDate, timezone) : startDate.setHours(0, 0, 0, 0) && startDate;
+      startDate = new Date(latestDateUTC);
+      startDate.setUTCDate(1); // First day of the month in UTC
+      startDate = timezone ? getStartOfDay(startDate, timezone) : new Date(startDate.setUTCHours(0, 0, 0, 0));
       
-      endDate = new Date(latestDate);
-      endDate = timezone ? getEndOfDay(endDate, timezone) : endDate.setHours(23, 59, 59, 999) && endDate;
+      endDate = new Date(latestDateUTC);
+      endDate = timezone ? getEndOfDay(endDate, timezone) : new Date(endDate.setUTCHours(23, 59, 59, 999));
       break;
       
     case 'weekly':
     case 'monthly':
       // For weekly and monthly intervals, return whole year data
-      startDate = new Date(latestDate);
-      startDate.setMonth(0, 1); // January 1st
-      startDate = timezone ? getStartOfDay(startDate, timezone) : startDate.setHours(0, 0, 0, 0) && startDate;
+      startDate = new Date(latestDateUTC);
+      startDate.setUTCMonth(0, 1); // January 1st in UTC
+      startDate = timezone ? getStartOfDay(startDate, timezone) : new Date(startDate.setUTCHours(0, 0, 0, 0));
       
-      endDate = new Date(latestDate);
-      endDate = timezone ? getEndOfDay(endDate, timezone) : endDate.setHours(23, 59, 59, 999) && endDate;
+      endDate = new Date(latestDateUTC);
+      endDate = timezone ? getEndOfDay(endDate, timezone) : new Date(endDate.setUTCHours(23, 59, 59, 999));
       break;
       
     default:
       // Default behavior for 5min, 10min, 15min, 30min, hourly
       // Use the day of the latest reading, not necessarily today
-      startDate = new Date(latestDate);
-      startDate = timezone ? getStartOfDay(startDate, timezone) : (startDate.setHours(0, 0, 0, 0), startDate);
+      startDate = new Date(latestDateUTC);
+      if (timezone) {
+        // Convert to client timezone's start of day, then back to UTC
+        startDate = getStartOfDay(startDate, timezone);
+      } else {
+        // Use UTC midnight
+        startDate = new Date(Date.UTC(
+          startDate.getUTCFullYear(),
+          startDate.getUTCMonth(),
+          startDate.getUTCDate(),
+          0, 0, 0, 0
+        ));
+      }
       
-      endDate = new Date(latestDate);
-      endDate = timezone ? getEndOfDay(endDate, timezone) : (endDate.setHours(23, 59, 59, 999), endDate);
+      endDate = new Date(latestDateUTC);
+      if (timezone) {
+        // Convert to client timezone's end of day, then back to UTC
+        endDate = getEndOfDay(endDate, timezone);
+      } else {
+        // Use UTC end of day
+        endDate = new Date(Date.UTC(
+          endDate.getUTCFullYear(),
+          endDate.getUTCMonth(),
+          endDate.getUTCDate(),
+          23, 59, 59, 999
+        ));
+      }
       break;
   }
   
-  console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()} with timezone: ${timezone || 'none'}`);
+  console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()} with timezone: ${timezone || 'UTC'}`);
   
   // Build the aggregation pipeline
   const pipeline = [];

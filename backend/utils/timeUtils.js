@@ -77,12 +77,49 @@ export function toUTC(dateInput, clientTimezone) {
  * @returns {Date} Start of day in UTC
  */
 export function getStartOfDay(date, clientTimezone) {
-  const clientDate = clientTimezone ? toUTC(date, clientTimezone) : new Date(date);
-  
-  // Set to start of day in client timezone
-  clientDate.setHours(0, 0, 0, 0);
-  
-  return clientDate;
+  if (!clientTimezone) {
+    // If no timezone specified, use UTC
+    const utcDate = new Date(date);
+    return new Date(Date.UTC(
+      utcDate.getUTCFullYear(),
+      utcDate.getUTCMonth(),
+      utcDate.getUTCDate(),
+      0, 0, 0, 0
+    ));
+  }
+
+  try {
+    // Convert the date to the client's timezone
+    const dateInClientTZ = new Date(date.toLocaleString('en-US', {
+      timeZone: clientTimezone
+    }));
+    
+    // Set to midnight in client's timezone
+    dateInClientTZ.setHours(0, 0, 0, 0);
+    
+    // Calculate the timezone offset between client time and UTC
+    const clientOffset = new Date().getTimezoneOffset();
+    const targetTZDate = new Date();
+    targetTZDate.setHours(0);
+    const targetOffset = new Date(targetTZDate.toLocaleString('en-US', {
+      timeZone: clientTimezone
+    })).getTimezoneOffset();
+    
+    // Apply the timezone difference to get the correct UTC time
+    const offsetDiff = targetOffset - clientOffset;
+    const correctedDate = new Date(dateInClientTZ.getTime() - offsetDiff * 60 * 1000);
+    
+    return correctedDate;
+  } catch (error) {
+    console.error(`Error in getStartOfDay: ${error.message}`);
+    // Fallback to original date with UTC midnight
+    return new Date(Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      0, 0, 0, 0
+    ));
+  }
 }
 
 /**
@@ -92,10 +129,47 @@ export function getStartOfDay(date, clientTimezone) {
  * @returns {Date} End of day in UTC
  */
 export function getEndOfDay(date, clientTimezone) {
-  const clientDate = clientTimezone ? toUTC(date, clientTimezone) : new Date(date);
-  
-  // Set to end of day in client timezone
-  clientDate.setHours(23, 59, 59, 999);
-  
-  return clientDate;
+  if (!clientTimezone) {
+    // If no timezone specified, use UTC
+    const utcDate = new Date(date);
+    return new Date(Date.UTC(
+      utcDate.getUTCFullYear(),
+      utcDate.getUTCMonth(),
+      utcDate.getUTCDate(),
+      23, 59, 59, 999
+    ));
+  }
+
+  try {
+    // Convert the date to the client's timezone
+    const dateInClientTZ = new Date(date.toLocaleString('en-US', {
+      timeZone: clientTimezone
+    }));
+    
+    // Set to end of day in client's timezone
+    dateInClientTZ.setHours(23, 59, 59, 999);
+    
+    // Calculate the timezone offset between client time and UTC
+    const clientOffset = new Date().getTimezoneOffset();
+    const targetTZDate = new Date();
+    targetTZDate.setHours(0);
+    const targetOffset = new Date(targetTZDate.toLocaleString('en-US', {
+      timeZone: clientTimezone
+    })).getTimezoneOffset();
+    
+    // Apply the timezone difference to get the correct UTC time
+    const offsetDiff = targetOffset - clientOffset;
+    const correctedDate = new Date(dateInClientTZ.getTime() - offsetDiff * 60 * 1000);
+    
+    return correctedDate;
+  } catch (error) {
+    console.error(`Error in getEndOfDay: ${error.message}`);
+    // Fallback to original date with UTC end of day
+    return new Date(Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      23, 59, 59, 999
+    ));
+  }
 } 
