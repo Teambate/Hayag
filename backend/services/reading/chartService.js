@@ -200,8 +200,10 @@ export const getDashboardChartDataService = async (params) => {
     throw new Error(`No readings found for device ${deviceId}`);
   }
   
-  // Get the reference date based on the latest reading (adjusted for client timezone if provided)
-  const latestDate = timezone ? toUTC(latestReading.endTime, timezone) : new Date(latestReading.endTime);
+  // Get the reference date based on the latest reading (but don't apply timezone conversion yet)
+  const latestDate = new Date(latestReading.endTime);
+  
+  console.log(`Latest reading date: ${latestDate.toISOString()} for device ${deviceId}`);
   
   // Determine the date range based on the time interval
   let startDate, endDate;
@@ -230,11 +232,16 @@ export const getDashboardChartDataService = async (params) => {
       
     default:
       // Default behavior for 5min, 10min, 15min, 30min, hourly
-      // Return current day data
-      startDate = getStartOfDay(latestDate, timezone);
-      endDate = getEndOfDay(latestDate, timezone);
+      // Use the day of the latest reading, not necessarily today
+      startDate = new Date(latestDate);
+      startDate.setHours(0, 0, 0, 0);
+      
+      endDate = new Date(latestDate);
+      endDate.setHours(23, 59, 59, 999);
       break;
   }
+  
+  console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()} with timezone: ${timezone || 'none'}`);
   
   // Build the aggregation pipeline
   const pipeline = [];

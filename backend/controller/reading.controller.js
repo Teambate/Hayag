@@ -125,7 +125,8 @@ export const getDashboardChartData = async (req, res) => {
     res.status(200).json({
       success: true,
       timeInterval: result.timeInterval,
-      date: result.date,
+      startDate: result.startDate,
+      endDate: result.endDate,
       data: formatNumericValues(result.data)
     });
     
