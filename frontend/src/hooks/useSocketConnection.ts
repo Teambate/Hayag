@@ -65,7 +65,9 @@ export const useSocketConnection = (
               light: { value: 0, unit: '' },
               humidity: { value: 0, unit: '' },
               temperature: { value: 0, unit: '' }
-            }
+            },
+            health: 0,
+            sensor_health: {}
           };
           
           // Process each sensor type

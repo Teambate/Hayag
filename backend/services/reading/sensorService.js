@@ -3,7 +3,7 @@ import { processReadingForCurrentValues } from "../../utils/sensorUtils.js";
 import { getStartOfDay } from "../../utils/timeUtils.js";
 
 export const getCurrentSensorValuesService = async (params) => {
-  const { deviceId } = params;
+  const { deviceId, timezone } = params;
   
   if (!deviceId) {
     throw new Error("deviceId is required");
@@ -28,6 +28,11 @@ export const getCurrentSensorValuesService = async (params) => {
     health: 0,
     sensor_health: {}
   };
+  
+  // Get health data for the entire day, passing timezone
+  const healthData = await getSensorHealthForDay(deviceId, timezone);
+  result.health = healthData.health;
+  result.sensor_health = healthData.sensor_health;
   
   // Process each sensor type
   const sensorTypes = [
@@ -593,4 +598,154 @@ function processReadingForCharts(reading) {
   });
   
   return chartData;
-} 
+}
+
+// Updated function to get only health data for a day
+export const getSensorHealthForDay = async (deviceId, timezone) => {
+  if (!deviceId) {
+    throw new Error("deviceId is required");
+  }
+  
+  // Get start of day in client's timezone
+  const startOfDay = getStartOfDay(new Date(), timezone);
+  
+  // Find all readings for the day
+  const dailyReadings = await SensorReading.find(
+    { 
+      deviceId: deviceId,
+      endTime: { $gte: startOfDay } 
+    },
+    {
+      // Select only the health fields to optimize the query
+      "readings.rain.health": 1,
+      "readings.uv.health": 1,
+      "readings.light.health": 1,
+      "readings.dht22.temperature.health": 1,
+      "readings.dht22.humidity.health": 1,
+      "readings.panel_temp.health": 1,
+      "readings.ina226.voltage.health": 1,
+      "readings.ina226.current.health": 1,
+      "readings.battery.health": 1,
+      "readings.solar.health": 1
+    },
+    { sort: { endTime: 1 } }
+  );
+  
+  if (!dailyReadings || dailyReadings.length === 0) {
+    // Fall back to the latest reading if no readings found for today
+    const latestReading = await SensorReading.findOne(
+      { deviceId: deviceId },
+      {
+        // Select only the health fields
+        "readings.rain.health": 1,
+        "readings.uv.health": 1,
+        "readings.light.health": 1,
+        "readings.dht22.temperature.health": 1,
+        "readings.dht22.humidity.health": 1,
+        "readings.panel_temp.health": 1,
+        "readings.ina226.voltage.health": 1,
+        "readings.ina226.current.health": 1,
+        "readings.battery.health": 1,
+        "readings.solar.health": 1
+      },
+      { sort: { endTime: -1 } }
+    );
+    
+    if (!latestReading) {
+      throw new Error(`No readings found for device ${deviceId}`);
+    }
+    
+    dailyReadings.push(latestReading);
+  }
+  
+  // Initialize health tracking
+  const sensorHealthSums = {};
+  const sensorHealthCounts = {};
+  let totalHealthSum = 0;
+  let totalHealthCount = 0;
+  
+  // Define sensor types to track
+  const sensorTypes = [
+    { key: 'solar', path: 'solar' },
+    { key: 'rain', path: 'rain' },
+    { key: 'uv', path: 'uv' },
+    { key: 'light', path: 'light' },
+    { key: 'humidity', path: 'dht22', valueField: 'humidity' },
+    { key: 'temperature', path: 'dht22', valueField: 'temperature' },
+    { key: 'current', path: 'ina226', valueField: 'current' },
+    { key: 'voltage', path: 'ina226', valueField: 'voltage' },
+    { key: 'battery', path: 'battery' },
+    { key: 'panel_temp', path: 'panel_temp' }
+  ];
+  
+  // Process each reading
+  for (const reading of dailyReadings) {
+    for (const sensorType of sensorTypes) {
+      const { key, path, valueField } = sensorType;
+      
+      // Skip if this sensor type doesn't exist in the reading
+      if (!reading.readings[path] || !reading.readings[path].length) {
+        continue;
+      }
+      
+      // Get all sensors of this type
+      const relevantSensors = reading.readings[path];
+      
+      // For nested values (humidity, temperature, current, voltage)
+      if (valueField) {
+        // Extract health values
+        const healthValues = relevantSensors.map(sensor => 
+          sensor[valueField] && sensor[valueField].health ? sensor[valueField].health : 0
+        );
+        
+        if (healthValues.length > 0) {
+          // Calculate average health for this sensor type in this reading
+          const healthSum = healthValues.reduce((acc, val) => acc + val, 0);
+          const healthAvg = healthSum / healthValues.length;
+          
+          // Add to sensor type sum
+          sensorHealthSums[key] = (sensorHealthSums[key] || 0) + healthAvg;
+          sensorHealthCounts[key] = (sensorHealthCounts[key] || 0) + 1;
+          
+          // Add to total health
+          totalHealthSum += healthAvg;
+          totalHealthCount++;
+        }
+      } 
+      // For direct values (solar, rain, uv, light, battery, panel_temp)
+      else {
+        // Extract health values
+        const healthValues = relevantSensors.map(sensor => 
+          sensor.health || 0
+        );
+        
+        if (healthValues.length > 0) {
+          // Calculate average health for this sensor type in this reading
+          const healthSum = healthValues.reduce((acc, val) => acc + val, 0);
+          const healthAvg = healthSum / healthValues.length;
+          
+          // Add to sensor type sum
+          sensorHealthSums[key] = (sensorHealthSums[key] || 0) + healthAvg;
+          sensorHealthCounts[key] = (sensorHealthCounts[key] || 0) + 1;
+          
+          // Add to total health
+          totalHealthSum += healthAvg;
+          totalHealthCount++;
+        }
+      }
+    }
+  }
+  
+  // Calculate daily average health for each sensor type
+  const sensor_health = {};
+  Object.keys(sensorHealthSums).forEach(key => {
+    if (sensorHealthCounts[key] > 0) {
+      sensor_health[key] = Math.round(sensorHealthSums[key] / sensorHealthCounts[key]);
+    }
+  });
+  
+  // Calculate overall health average
+  const health = totalHealthCount > 0 ? Math.round(totalHealthSum / totalHealthCount) : 0;
+  
+  return { health, sensor_health };
+}; 
