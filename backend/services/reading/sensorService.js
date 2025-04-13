@@ -24,7 +24,9 @@ export const getCurrentSensorValuesService = async (params) => {
   const result = {
     deviceId: latestReading.deviceId,
     timestamp: latestReading.endTime,
-    sensors: {}
+    sensors: {},
+    health: 0,
+    sensor_health: {}
   };
   
   // Process each sensor type
@@ -40,6 +42,10 @@ export const getCurrentSensorValuesService = async (params) => {
     { key: 'battery', path: 'battery' },
     { key: 'panel_temp', path: 'panel_temp' }
   ];
+  
+  // Keep track of total health for calculating average
+  let totalHealth = 0;
+  let healthCount = 0;
   
   for (const sensorType of sensorTypes) {
     const { key, path, valueField } = sensorType;
@@ -60,18 +66,32 @@ export const getCurrentSensorValuesService = async (params) => {
       const average = sum / values.length;
       const unit = relevantSensors[0][valueField].unit;
       
+      // Calculate average health for this sensor type
+      const healthValues = relevantSensors.map(sensor => sensor[valueField].health);
+      const healthSum = healthValues.reduce((acc, val) => acc + val, 0);
+      const healthAvg = healthSum / healthValues.length;
+      
+      // Add to total health calculation
+      totalHealth += healthAvg;
+      healthCount++;
+      
+      // Store sensor health in result
+      result.sensor_health[key] = Math.round(healthAvg);
+      
       // Include individual panel values
       const panels = relevantSensors.map(sensor => ({
         panelId: sensor.panelId,
         value: sensor[valueField].average,
-        unit: sensor[valueField].unit
+        unit: sensor[valueField].unit,
+        health: sensor[valueField].health
       }));
       
       result.sensors[key] = {
         value: average,
         unit: unit,
         panelCount: relevantSensors.length,
-        panels: panels
+        panels: panels,
+        health: Math.round(healthAvg)
       };
     } 
     // For direct values (solar, rain, uv, light, battery, panel_temp)
@@ -81,20 +101,39 @@ export const getCurrentSensorValuesService = async (params) => {
       const average = sum / values.length;
       const unit = relevantSensors[0].unit;
       
+      // Calculate average health for this sensor type
+      const healthValues = relevantSensors.map(sensor => sensor.health);
+      const healthSum = healthValues.reduce((acc, val) => acc + val, 0);
+      const healthAvg = healthSum / healthValues.length;
+      
+      // Add to total health calculation
+      totalHealth += healthAvg;
+      healthCount++;
+      
+      // Store sensor health in result
+      result.sensor_health[key] = Math.round(healthAvg);
+      
       // Include individual panel values
       const panels = relevantSensors.map(sensor => ({
         panelId: sensor.panelId,
         value: sensor.average,
-        unit: sensor.unit
+        unit: sensor.unit,
+        health: sensor.health
       }));
       
       result.sensors[key] = {
         value: average,
         unit: unit,
         panelCount: relevantSensors.length,
-        panels: panels
+        panels: panels,
+        health: Math.round(healthAvg)
       };
     }
+  }
+  
+  // Calculate overall health average
+  if (healthCount > 0) {
+    result.health = Math.round(totalHealth / healthCount);
   }
   
   // Add battery capacity if available

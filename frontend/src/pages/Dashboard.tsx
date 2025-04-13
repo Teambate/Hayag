@@ -270,7 +270,7 @@ export default function Dashboard() {
                   System Health Status
                 </h3>
               </div>
-              <SystemHealth />
+              <SystemHealth health={sensorData?.health} sensor_health={sensorData?.sensor_health} />
             </div>
           </div>
         </div>

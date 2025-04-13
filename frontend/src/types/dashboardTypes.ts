@@ -3,6 +3,7 @@ export interface SensorPanel {
   panelId: string;
   value: number;
   unit: string;
+  health?: number;
 }
 
 export interface SensorType {
@@ -10,6 +11,7 @@ export interface SensorType {
   unit: string;
   panelCount?: number;
   panels?: SensorPanel[];
+  health?: number;
 }
 
 export interface SensorDataType {
@@ -34,6 +36,10 @@ export interface SensorDataType {
     average: number;
     period: string;
     unit: string;
+  };
+  health: number;
+  sensor_health: {
+    [key: string]: number;
   };
 }
 
