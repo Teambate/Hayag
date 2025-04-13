@@ -34,3 +34,11 @@ declare module "*.css" {
   const classes: { [key: string]: string };
   export default classes;
 }
+
+declare module 'vite' {
+  export function defineConfig(config: any): any;
+}
+
+declare module '@vitejs/plugin-react' {
+  export default function react(options?: any): any;
+}
