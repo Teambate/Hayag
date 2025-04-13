@@ -8,7 +8,7 @@
     "test:email": "node backend/utils/emailTest.js",
     "build": "npm run copy-env && npm install && npm install --prefix frontend && npm run build --prefix frontend",
     "start": "NODE_ENV=production node backend/server.js",
-    "copy-env": "node -e \"require('fs').writeFileSync('./frontend/.env', Object.entries(process.env).filter(([key]) => key.startsWith('VITE_')).map(([key, val]) => `${key}=${val}`).join('\\n'))\""
+    "copy-env": "node scripts/copy-env.js"
   },
   "type": "module",
   "keywords": [],
