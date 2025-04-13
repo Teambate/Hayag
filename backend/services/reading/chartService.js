@@ -122,7 +122,7 @@ export const getChartDataService = async (params) => {
   
   // Process the data based on the time interval
   const timeIntervalMs = getTimeIntervalInMs(timeInterval || '15min');
-  const aggregatedData = aggregateDataByTimeInterval(readings, timeIntervalMs, chartType, panelIdsArray);
+  const aggregatedData = aggregateDataByTimeInterval(readings, timeIntervalMs, chartType, panelIdsArray, timezone);
   
   return {
     chartType: chartType,
@@ -213,10 +213,10 @@ export const getDashboardChartDataService = async (params) => {
       // For daily interval, return current month data
       startDate = new Date(latestDate);
       startDate.setDate(1); // First day of the month
-      startDate.setHours(0, 0, 0, 0);
+      startDate = timezone ? getStartOfDay(startDate, timezone) : startDate.setHours(0, 0, 0, 0) && startDate;
       
       endDate = new Date(latestDate);
-      endDate.setHours(23, 59, 59, 999);
+      endDate = timezone ? getEndOfDay(endDate, timezone) : endDate.setHours(23, 59, 59, 999) && endDate;
       break;
       
     case 'weekly':
@@ -224,20 +224,20 @@ export const getDashboardChartDataService = async (params) => {
       // For weekly and monthly intervals, return whole year data
       startDate = new Date(latestDate);
       startDate.setMonth(0, 1); // January 1st
-      startDate.setHours(0, 0, 0, 0);
+      startDate = timezone ? getStartOfDay(startDate, timezone) : startDate.setHours(0, 0, 0, 0) && startDate;
       
       endDate = new Date(latestDate);
-      endDate.setHours(23, 59, 59, 999);
+      endDate = timezone ? getEndOfDay(endDate, timezone) : endDate.setHours(23, 59, 59, 999) && endDate;
       break;
       
     default:
       // Default behavior for 5min, 10min, 15min, 30min, hourly
       // Use the day of the latest reading, not necessarily today
       startDate = new Date(latestDate);
-      startDate.setHours(0, 0, 0, 0);
+      startDate = timezone ? getStartOfDay(startDate, timezone) : (startDate.setHours(0, 0, 0, 0), startDate);
       
       endDate = new Date(latestDate);
-      endDate.setHours(23, 59, 59, 999);
+      endDate = timezone ? getEndOfDay(endDate, timezone) : (endDate.setHours(23, 59, 59, 999), endDate);
       break;
   }
   
@@ -317,13 +317,14 @@ export const getDashboardChartDataService = async (params) => {
   const result = {};
   
   for (const chartType of chartTypesArray) {
-    result[chartType] = aggregateDataByTimeInterval(readings, timeIntervalMs, chartType, panelIdsArray);
+    result[chartType] = aggregateDataByTimeInterval(readings, timeIntervalMs, chartType, panelIdsArray, timezone);
   }
   
   return {
     timeInterval: timeInterval,
     startDate: startDate.toISOString().split('T')[0],
     endDate: endDate.toISOString().split('T')[0],
+    timezone: timezone || 'UTC',
     data: result
   };
 };
@@ -445,10 +446,10 @@ export const getAnalyticsDataService = async (params) => {
   
   // Create result object for all analytics charts
   const result = {
-    panelPerformance: aggregateDataByTimeInterval(readings, timeIntervalMs, 'energy', panelIdsArray),
-    batteryCharge: aggregateDataByTimeInterval(readings, timeIntervalMs, 'battery', panelIdsArray),
-    panelTemperature: aggregateDataByTimeInterval(readings, timeIntervalMs, 'panel_temp', panelIdsArray),
-    irradiance: aggregateDataByTimeInterval(readings, timeIntervalMs, 'irradiance', panelIdsArray)
+    panelPerformance: aggregateDataByTimeInterval(readings, timeIntervalMs, 'energy', panelIdsArray, timezone),
+    batteryCharge: aggregateDataByTimeInterval(readings, timeIntervalMs, 'battery', panelIdsArray, timezone),
+    panelTemperature: aggregateDataByTimeInterval(readings, timeIntervalMs, 'panel_temp', panelIdsArray, timezone),
+    irradiance: aggregateDataByTimeInterval(readings, timeIntervalMs, 'irradiance', panelIdsArray, timezone)
   };
   
   // Process data for hourly energy production (peak solar hours - 4am to 7pm)

@@ -23,7 +23,7 @@ export function getTimeIntervalInMs(intervalString) {
 }
 
 // Helper function to aggregate data by time interval
-export function aggregateDataByTimeInterval(readings, timeIntervalMs, chartType, panelIdsArray) {
+export function aggregateDataByTimeInterval(readings, timeIntervalMs, chartType, panelIdsArray, timezone) {
   if (readings.length === 0) return [];
   
   const result = [];
@@ -46,7 +46,7 @@ export function aggregateDataByTimeInterval(readings, timeIntervalMs, chartType,
     if (readingTime >= nextBucketTime) {
       // Finalize the current bucket by calculating averages
       if (currentBucket.values.length > 0) {
-        finalizeDataBucket(currentBucket, chartType);
+        finalizeDataBucket(currentBucket, chartType, timezone);
         result.push(currentBucket);
       }
       
@@ -81,7 +81,7 @@ export function aggregateDataByTimeInterval(readings, timeIntervalMs, chartType,
   
   // Finalize the last bucket
   if (currentBucket.values.length > 0) {
-    finalizeDataBucket(currentBucket, chartType);
+    finalizeDataBucket(currentBucket, chartType, timezone);
     result.push(currentBucket);
   }
   
@@ -161,8 +161,22 @@ export function processReadingForChart(reading, bucket, chartType, panelIdsArray
 }
 
 // Helper function to finalize a data bucket by calculating averages
-export function finalizeDataBucket(bucket, chartType) {
+export function finalizeDataBucket(bucket, chartType, timezone) {
   if (bucket.values.length === 0) return;
+  
+  // If timezone is provided, convert the timestamp to that timezone
+  if (timezone) {
+    try {
+      // Create a new Date object for the timestamp that's timezone-aware
+      // Note: We keep the original timestamp which is in UTC, but format it according to 
+      // the client's timezone when it gets serialized to JSON
+      bucket.formattedTimestamp = bucket.timestamp.toLocaleString('en-US', { 
+        timeZone: timezone 
+      });
+    } catch (error) {
+      console.error(`Error converting timestamp to timezone ${timezone}:`, error);
+    }
+  }
   
   // Group values by panelId
   const panelGroups = {};

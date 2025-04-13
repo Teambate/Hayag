@@ -127,6 +127,7 @@ export const getDashboardChartData = async (req, res) => {
       timeInterval: result.timeInterval,
       startDate: result.startDate,
       endDate: result.endDate,
+      timezone: result.timezone,
       data: formatNumericValues(result.data)
     });
     
