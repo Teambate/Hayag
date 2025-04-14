@@ -27,7 +27,7 @@ const EfficiencyEnvironment: React.FC<EfficiencyEnvironmentProps> = ({ chartData
       return {
         month: formatTimestamp(timestamp, allTimestamps),
         temperature: item.temperature?.value || 0,
-        efficiency: item.energy?.value ? (item.energy.value * 100) : 0, // Convert to efficiency percentage
+        efficiency: item.efficiency?.value || 0, // Now directly using efficiency from backend
         humidity: item.humidity?.value || 0
       };
     });

@@ -794,7 +794,7 @@ async function getEfficiencyEnvironmentData(readings, timeIntervalMs, timezone) 
   let currentBucket = {
     timestamp: new Date(startTime),
     values: {
-      energy: [],
+      efficiency: [],  // Changed from energy to efficiency
       humidity: [],
       temperature: []
     }
@@ -806,13 +806,15 @@ async function getEfficiencyEnvironmentData(readings, timeIntervalMs, timezone) 
   // Track previous readings for energy calculation
   let previousReadings = {};
   
+  const RATED_POWER = 100; // Define rated power as 100W
+  
   for (const reading of readings) {
     const readingTime = new Date(reading.endTime).getTime();
     
     // If this reading belongs to the next time bucket, finalize the current bucket and create a new one
     if (readingTime >= nextBucketTime) {
       // Finalize the current bucket
-      if (currentBucket.values.energy.length > 0 || 
+      if (currentBucket.values.efficiency.length > 0 || 
           currentBucket.values.humidity.length > 0 || 
           currentBucket.values.temperature.length > 0) {
         
@@ -828,7 +830,7 @@ async function getEfficiencyEnvironmentData(readings, timeIntervalMs, timezone) 
       currentBucket = {
         timestamp: bucketStartTime,
         values: {
-          energy: [],
+          efficiency: [],  // Changed from energy to efficiency
           humidity: [],
           temperature: []
         }
@@ -837,28 +839,22 @@ async function getEfficiencyEnvironmentData(readings, timeIntervalMs, timezone) 
       nextBucketTime = bucketStartTime.getTime() + timeIntervalMs;
     }
     
-    // Process energy data (from ina226)
+    // Process efficiency data (from ina226)
     if (reading.readings.ina226 && reading.readings.ina226.length > 0) {
       for (const sensor of reading.readings.ina226) {
-        const currentPower = sensor.voltage.average * sensor.current.average / 1000; // W
-        const prevReading = previousReadings[sensor.panelId];
+        // Calculate performance ratio: (voltage * current) / rated power
+        const actualPower = sensor.voltage.average * sensor.current.average / 1000; // W
+        const performanceRatio = (actualPower / RATED_POWER) * 100; // Convert to percentage
         
-        if (prevReading) {
-          // Calculate energy accumulation (kWh) between readings
-          const hoursDiff = (new Date(reading.endTime) - new Date(prevReading.timestamp)) / (1000 * 60 * 60);
-          const avgPower = (currentPower + prevReading.power) / 2; // W
-          const energyKWh = avgPower * hoursDiff / 1000; // kWh
-          
-          currentBucket.values.energy.push({
-            panelId: sensor.panelId,
-            energy: energyKWh > 0 ? energyKWh : 0
-          });
-        }
+        currentBucket.values.efficiency.push({
+          panelId: sensor.panelId,
+          value: performanceRatio > 0 ? performanceRatio : 0
+        });
         
-        // Update previous reading
+        // Update previous reading for potential future calculations
         previousReadings[sensor.panelId] = {
           timestamp: reading.endTime,
-          power: currentPower
+          power: actualPower
         };
       }
     }
@@ -886,7 +882,7 @@ async function getEfficiencyEnvironmentData(readings, timeIntervalMs, timezone) 
   }
   
   // Finalize the last bucket
-  if (currentBucket.values.energy.length > 0 || 
+  if (currentBucket.values.efficiency.length > 0 || 
       currentBucket.values.humidity.length > 0 || 
       currentBucket.values.temperature.length > 0) {
     
@@ -899,16 +895,16 @@ async function getEfficiencyEnvironmentData(readings, timeIntervalMs, timezone) 
 
 // Helper function to finalize efficiency environment bucket
 function finalizeEfficiencyEnvironmentBucket(bucket) {
-  // Calculate energy average
-  if (bucket.values.energy.length > 0) {
-    const totalEnergy = bucket.values.energy.reduce((sum, item) => sum + item.energy, 0);
-    const avgEnergy = totalEnergy / bucket.values.energy.length;
-    bucket.energy = {
-      value: avgEnergy,
-      unit: 'kWh'
+  // Calculate efficiency average
+  if (bucket.values.efficiency.length > 0) {
+    const totalEfficiency = bucket.values.efficiency.reduce((sum, item) => sum + item.value, 0);
+    const avgEfficiency = totalEfficiency / bucket.values.efficiency.length;
+    bucket.efficiency = {
+      value: avgEfficiency,
+      unit: '%'
     };
   } else {
-    bucket.energy = { value: 0, unit: 'kWh' };
+    bucket.efficiency = { value: 0, unit: '%' };
   }
   
   // Calculate humidity average
