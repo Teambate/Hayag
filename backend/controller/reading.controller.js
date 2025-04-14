@@ -18,13 +18,30 @@ export const getFilteredReadings = async (req, res) => {
     // Get client timezone from headers or query parameters
     const timezone = req.headers['timezone'] || req.query.timezone;
     
-    // Add timezone to query params
-    const queryParams = { ...req.query, timezone };
+    // Parse pagination parameters with defaults
+    const page = parseInt(req.query.page, 10) || 1;
+    const pageSize = parseInt(req.query.pageSize, 10) || 10;
+    
+    // Add timezone and pagination to query params
+    const queryParams = { 
+      ...req.query, 
+      timezone,
+      page,
+      pageSize
+    };
     
     const result = await getFilteredReadingsService(queryParams);
     res.status(200).json({ 
       success: true, 
       count: result.count,
+      pagination: {
+        totalDocuments: result.totalDocuments,
+        totalPages: result.totalPages,
+        currentPage: result.currentPage,
+        pageSize: result.pageSize,
+        hasNextPage: result.currentPage < result.totalPages,
+        hasPrevPage: result.currentPage > 1
+      },
       data: formatNumericValues(result.data)
     });
   } catch (error) {

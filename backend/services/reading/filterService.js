@@ -1,7 +1,7 @@
 import SensorReading from "../../model/reading.model.js";
 
 export const getFilteredReadingsService = async (params) => {
-  const { startDateTime, endDateTime, panelIds, sensorTypes, deviceId } = params;
+  const { startDateTime, endDateTime, panelIds, sensorTypes, deviceId, page = 1, pageSize = 10 } = params;
   
   // Convert parameters to arrays if they're strings
   const panelIdsArray = panelIds ? 
@@ -15,6 +15,10 @@ export const getFilteredReadingsService = async (params) => {
   const deviceIdArray = deviceId ?
     (Array.isArray(deviceId) ? deviceId : deviceId.split(',')) :
     null;
+  
+  // Parse pagination parameters
+  const pageNum = parseInt(page, 10);
+  const pageSizeNum = parseInt(pageSize, 10);
   
   // Start building the aggregation pipeline
   const pipeline = [];
@@ -149,11 +153,39 @@ export const getFilteredReadingsService = async (params) => {
     }
   }
   
-  // Execute the aggregation pipeline
-  const sensorReadings = await SensorReading.aggregate(pipeline);
+  // Create a copy of the pipeline for counting total documents
+  const countPipeline = [...pipeline];
+  
+  // For the count pipeline, add a count stage
+  countPipeline.push({ $count: "total" });
+  
+  // For the data pipeline, add sort, skip, and limit stages for pagination
+  pipeline.push({ $sort: { endTime: -1 } }); // Sort by endTime descending (newest first)
+  
+  if (pageNum > 0 && pageSizeNum > 0) {
+    const skip = (pageNum - 1) * pageSizeNum;
+    pipeline.push({ $skip: skip });
+    pipeline.push({ $limit: pageSizeNum });
+  }
+  
+  // Execute both pipelines
+  const [sensorReadings, countResult] = await Promise.all([
+    SensorReading.aggregate(pipeline),
+    SensorReading.aggregate(countPipeline)
+  ]);
+  
+  // Get total count from count result
+  const totalDocuments = countResult.length > 0 ? countResult[0].total : 0;
+  
+  // Calculate total pages
+  const totalPages = pageSizeNum > 0 ? Math.ceil(totalDocuments / pageSizeNum) : 1;
   
   return {
     count: sensorReadings.length,
+    totalDocuments,
+    totalPages,
+    currentPage: pageNum,
+    pageSize: pageSizeNum,
     data: sensorReadings
   };
 }; 

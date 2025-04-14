@@ -7,6 +7,7 @@ import filterIcon from "../assets/filter.svg"
 import { useDevice } from "../context/DeviceContext"
 import { format } from "date-fns"
 import { DateRange } from "react-day-picker"
+import { Pagination } from "../components/ui/pagination"
 
 // Add custom animation styles
 const animationStyles = `
@@ -76,6 +77,16 @@ export default function Sensors() {
   const [error, setError] = useState<string | null>(null)
   const [sensorData, setSensorData] = useState<any[]>([])
   
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    pageSize: 10,
+    totalDocuments: 0,
+    hasNextPage: false,
+    hasPrevPage: false
+  })
+  
   // Get deviceId and selectedPanel from context
   const { deviceId, selectedPanel } = useDevice()
   
@@ -144,6 +155,10 @@ export default function Sensors() {
       // Add timezone information
       params.append('timezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
       
+      // Add pagination parameters
+      params.append('page', pagination.currentPage.toString());
+      params.append('pageSize', pagination.pageSize.toString());
+      
       // Map UI sensor types to backend sensor types
       const backendSensorTypes = selectedSensors
         .map(sensor => sensorTypeMapping[sensor])
@@ -165,6 +180,11 @@ export default function Sensors() {
       
       if (!result.success) {
         throw new Error(result.message || 'Failed to fetch sensor data');
+      }
+      
+      // Update pagination state
+      if (result.pagination) {
+        setPagination(result.pagination);
       }
       
       // Format the data based on the number of selected sensors
@@ -331,10 +351,15 @@ export default function Sensors() {
     }
   };
   
-  // Fetch data when selections change
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setPagination(prev => ({ ...prev, currentPage: page }));
+  };
+  
+  // Fetch data when selections change or page changes
   useEffect(() => {
     fetchSensorData();
-  }, [selectedSensors, deviceId, selectedPanel, dateRange]);
+  }, [selectedSensors, deviceId, selectedPanel, dateRange, pagination.currentPage]);
 
   // Function to get the appropriate table data
   const getTableData = () => {
@@ -377,6 +402,18 @@ export default function Sensors() {
     
     setDateRange({ from: startDate, to: endDate });
   }
+
+  // Page size options
+  const pageSizeOptions = [10, 20, 50, 100];
+  
+  // Handle page size change
+  const handlePageSizeChange = (newSize: number) => {
+    setPagination(prev => ({
+      ...prev,
+      pageSize: newSize,
+      currentPage: 1 // Reset to page 1 when changing page size
+    }));
+  };
 
   return (
     <div className="flex flex-col">
@@ -518,7 +555,33 @@ export default function Sensors() {
           </div>
         ) : selectedSensors.length === 1 ? (
           sensorData.length > 0 ? (
-            <SensorTable data={getTableData() as any[]} />
+            <>
+              <SensorTable data={getTableData() as any[]} />
+              {pagination.totalPages > 1 && (
+                <div className="mt-6">
+                  <Pagination
+                    currentPage={pagination.currentPage}
+                    totalPages={pagination.totalPages}
+                    onPageChange={handlePageChange}
+                  />
+                  <div className="flex justify-center items-center mt-3 text-sm text-gray-600">
+                    <span>Rows per page:</span>
+                    <select
+                      className="ml-2 border rounded p-1"
+                      value={pagination.pageSize}
+                      onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                    >
+                      {pageSizeOptions.map(size => (
+                        <option key={size} value={size}>{size}</option>
+                      ))}
+                    </select>
+                    <span className="ml-4">
+                      Showing {((pagination.currentPage - 1) * pagination.pageSize) + 1} - {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalDocuments)} of {pagination.totalDocuments}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-center py-8">
               <p>No data available for the selected sensor and time range.</p>
@@ -526,10 +589,36 @@ export default function Sensors() {
           )
         ) : (
           sensorData.length > 0 ? (
-            <MultiSensorTable 
-              data={getTableData() as any[]} 
-              selectedSensors={selectedSensors}
-            />
+            <>
+              <MultiSensorTable 
+                data={getTableData() as any[]} 
+                selectedSensors={selectedSensors}
+              />
+              {pagination.totalPages > 1 && (
+                <div className="mt-6">
+                  <Pagination
+                    currentPage={pagination.currentPage}
+                    totalPages={pagination.totalPages}
+                    onPageChange={handlePageChange}
+                  />
+                  <div className="flex justify-center items-center mt-3 text-sm text-gray-600">
+                    <span>Rows per page:</span>
+                    <select
+                      className="ml-2 border rounded p-1"
+                      value={pagination.pageSize}
+                      onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                    >
+                      {pageSizeOptions.map(size => (
+                        <option key={size} value={size}>{size}</option>
+                      ))}
+                    </select>
+                    <span className="ml-4">
+                      Showing {((pagination.currentPage - 1) * pagination.pageSize) + 1} - {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalDocuments)} of {pagination.totalDocuments}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-center py-8">
               <p>No data available for the selected sensors and time range.</p>
