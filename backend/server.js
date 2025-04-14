@@ -6,8 +6,12 @@ import { Server } from "socket.io";
 import { connectDB } from "./config/db.js";
 import readingRoutes from "./routes/reading.route.js";
 import authRoutes from "./routes/auth.route.js";
+import insightRoutes from "./routes/insight.route.js";
 import cors from "cors";
 import path from "path";
+import cron from "node-cron";
+import { checkAndGenerateMissingInsightsService } from "./services/insight/insightService.js";
+import User from "./model/user.model.js";
 
 dotenv.config();
 
@@ -37,6 +41,7 @@ app.set('io', io);
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/readings", readingRoutes);
+app.use("/api/insights", insightRoutes);
 
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok" });
@@ -90,6 +95,34 @@ if(process.env.NODE_ENV === 'production') {
     res.sendFile(path.resolve(__dirname, 'frontend', 'dist', 'index.html'));
   });
 }
+
+// Schedule daily insight generation job - runs at midnight every day
+cron.schedule('0 0 * * *', async () => {
+  console.log('Running daily insight generation job');
+  try {
+    // Get all users with devices
+    const users = await User.find({ 'devices.0': { $exists: true } });
+    
+    for (const user of users) {
+      // Use the user's timezone or UTC if not set
+      const timezone = user.timezone || 'Asia/Manila';
+      
+      // Process each device for this user
+      for (const device of user.devices) {
+        try {
+          const result = await checkAndGenerateMissingInsightsService(device.deviceId, 1);
+          console.log(`Generated insights for device ${device.deviceId}: ${result.daysGenerated} days processed`);
+        } catch (error) {
+          console.error(`Error generating insights for device ${device.deviceId}:`, error);
+        }
+      }
+    }
+    
+    console.log('Completed daily insight generation job');
+  } catch (error) {
+    console.error('Error in daily insight generation job:', error);
+  }
+});
 
 // Add this as a catch-all route handler at the bottom, but before app.listen
 app.use((req, res) => {

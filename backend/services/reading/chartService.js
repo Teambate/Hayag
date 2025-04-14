@@ -285,7 +285,7 @@ export const getDashboardChartDataService = async (params) => {
     ));
   }
   
-  console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()} with timezone: ${timezone || 'UTC'}`);
+  console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()} with timezone: ${timezone || 'Asia/Manila'}`);
   
   // Build the aggregation pipeline
   const pipeline = [];
@@ -393,7 +393,7 @@ export const getDashboardChartDataService = async (params) => {
     endDate: formattedEndDate,
     originalStartDate: startDate.toISOString(),  // Include the original ISO dates for debugging
     originalEndDate: endDate.toISOString(),
-    timezone: timezone || 'UTC',
+    timezone: timezone || 'Asia/Manila',
     data: result
   };
 };
@@ -563,10 +563,10 @@ async function getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray
       $project: {
         deviceId: 1,
         endTime: 1,
-        hour: { $hour: { date: "$endTime", timezone: timezone || "UTC" } },
-        day: { $dayOfMonth: { date: "$endTime", timezone: timezone || "UTC" } },
-        month: { $month: { date: "$endTime", timezone: timezone || "UTC" } },
-        year: { $year: { date: "$endTime", timezone: timezone || "UTC" } },
+        hour: { $hour: { date: "$endTime", timezone: timezone || "Asia/Manila" } },
+        day: { $dayOfMonth: { date: "$endTime", timezone: timezone || "Asia/Manila" } },
+        month: { $month: { date: "$endTime", timezone: timezone || "Asia/Manila" } },
+        year: { $year: { date: "$endTime", timezone: timezone || "Asia/Manila" } },
         "readings.ina226": 1
       }
     }

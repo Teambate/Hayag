@@ -34,6 +34,10 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    timezone: {
+      type: String,
+      default: "Asia/Manila"
+    },
     devices: [{
       deviceId: {
         type: String,

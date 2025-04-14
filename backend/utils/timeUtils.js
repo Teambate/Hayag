@@ -85,20 +85,12 @@ export function toUTC(dateInput, clientTimezone) {
  * @returns {Date} Start of day in UTC
  */
 export function getStartOfDay(date, clientTimezone) {
-  if (!clientTimezone) {
-    // If no timezone specified, use UTC
-    const utcDate = new Date(date);
-    return new Date(Date.UTC(
-      utcDate.getUTCFullYear(),
-      utcDate.getUTCMonth(),
-      utcDate.getUTCDate(),
-      0, 0, 0, 0
-    ));
-  }
+  // Use Asia/Manila as default if no timezone specified
+  const timezone = clientTimezone || "Asia/Manila";
 
   try {
     // First convert the date to the client's local time representation
-    const clientDate = new Date(date.toLocaleString('en-US', { timeZone: clientTimezone }));
+    const clientDate = new Date(date.toLocaleString('en-US', { timeZone: timezone }));
     
     // Set to midnight in client's timezone
     clientDate.setHours(0, 0, 0, 0);
@@ -106,7 +98,7 @@ export function getStartOfDay(date, clientTimezone) {
     // Now we need to convert this local midnight back to the equivalent UTC time
     // Calculate timezone offsets
     const localOffset = new Date().getTimezoneOffset();
-    const targetOffset = new Date(new Date().toLocaleString('en-US', { timeZone: clientTimezone })).getTimezoneOffset();
+    const targetOffset = new Date(new Date().toLocaleString('en-US', { timeZone: timezone })).getTimezoneOffset();
     const offsetDiff = targetOffset - localOffset;
     
     // Apply offset to get correct UTC time that represents midnight in client's timezone
@@ -130,20 +122,12 @@ export function getStartOfDay(date, clientTimezone) {
  * @returns {Date} End of day in UTC
  */
 export function getEndOfDay(date, clientTimezone) {
-  if (!clientTimezone) {
-    // If no timezone specified, use UTC
-    const utcDate = new Date(date);
-    return new Date(Date.UTC(
-      utcDate.getUTCFullYear(),
-      utcDate.getUTCMonth(),
-      utcDate.getUTCDate(),
-      23, 59, 59, 999
-    ));
-  }
+  // Use Asia/Manila as default if no timezone specified
+  const timezone = clientTimezone || "Asia/Manila";
 
   try {
     // First convert the date to the client's local time representation
-    const clientDate = new Date(date.toLocaleString('en-US', { timeZone: clientTimezone }));
+    const clientDate = new Date(date.toLocaleString('en-US', { timeZone: timezone }));
     
     // Set to end of day in client's timezone
     clientDate.setHours(23, 59, 59, 999);
@@ -151,7 +135,7 @@ export function getEndOfDay(date, clientTimezone) {
     // Now we need to convert this local end of day back to the equivalent UTC time
     // Calculate timezone offsets
     const localOffset = new Date().getTimezoneOffset();
-    const targetOffset = new Date(new Date().toLocaleString('en-US', { timeZone: clientTimezone })).getTimezoneOffset();
+    const targetOffset = new Date(new Date().toLocaleString('en-US', { timeZone: timezone })).getTimezoneOffset();
     const offsetDiff = targetOffset - localOffset;
     
     // Apply offset to get correct UTC time that represents end of day in client's timezone

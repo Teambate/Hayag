@@ -34,9 +34,20 @@ export function formatDecimal(value, decimalPlaces = 2, significantDigits = 6) {
  * @param {Object|Array} data - The data structure to format
  * @param {number} [decimalPlaces=2] - Maximum decimal places to show for regular numbers
  * @param {number} [significantDigits=6] - Maximum significant digits to show for very small numbers
+ * @param {number} [maxDepth=10] - Maximum recursion depth
+ * @param {number} [currentDepth=0] - Current recursion depth
+ * @param {WeakSet} [seenObjects=new WeakSet()] - Set of objects already processed (to avoid circular references)
  * @returns {Object|Array} - A new object with all numeric values formatted
  */
-export function formatNumericValues(data, decimalPlaces = 2, significantDigits = 6) {
+export function formatNumericValues(
+  data, 
+  decimalPlaces = 2, 
+  significantDigits = 6, 
+  maxDepth = 10,
+  currentDepth = 0,
+  seenObjects = new WeakSet()
+) {
+  // Base cases
   if (data === null || data === undefined) {
     return data;
   }
@@ -45,19 +56,57 @@ export function formatNumericValues(data, decimalPlaces = 2, significantDigits =
     return formatDecimal(data, decimalPlaces, significantDigits);
   }
   
+  // Limit recursion depth to avoid stack overflow
+  if (currentDepth >= maxDepth) {
+    return data;
+  }
+  
   // Check if the data is a Date object
   if (data instanceof Date) {
     return data; // Return Date objects directly
   }
   
-  if (Array.isArray(data)) {
-    return data.map(item => formatNumericValues(item, decimalPlaces, significantDigits));
-  }
-  
+  // Handle objects and arrays, but check for circular references
   if (typeof data === 'object') {
+    // Skip if this object was already processed (circular reference)
+    if (seenObjects.has(data)) {
+      return data;
+    }
+    
+    // Add this object to processed objects
+    try {
+      seenObjects.add(data);
+    } catch (e) {
+      // If data is not a valid WeakSet key (primitive value), just continue
+      return data;
+    }
+    
+    if (Array.isArray(data)) {
+      return data.map(item => 
+        formatNumericValues(
+          item, 
+          decimalPlaces, 
+          significantDigits, 
+          maxDepth, 
+          currentDepth + 1, 
+          seenObjects
+        )
+      );
+    }
+    
+    // Handle regular objects
     const result = {};
     for (const key in data) {
-      result[key] = formatNumericValues(data[key], decimalPlaces, significantDigits);
+      if (Object.prototype.hasOwnProperty.call(data, key)) {
+        result[key] = formatNumericValues(
+          data[key], 
+          decimalPlaces, 
+          significantDigits, 
+          maxDepth, 
+          currentDepth + 1, 
+          seenObjects
+        );
+      }
     }
     return result;
   }
