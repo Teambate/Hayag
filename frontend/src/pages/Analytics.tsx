@@ -6,7 +6,7 @@ import { DateRange } from "react-day-picker";
 // Import graph components
 import PanelPerformance from "../components/graphs/PanelPerformance";
 import EfficiencyEnvironment from "../components/graphs/EfficiencyEnvironment";
-import AnomalyDetection from "../components/graphs/AnomalyDetection";
+import LuxIrradianceGraph from "../components/graphs/LuxIrradianceGraph";
 import PeakSolarHours from "../components/graphs/PeakSolarHours";
 import BatteryChargeDischarge from "../components/graphs/BatteryChargeDischarge";
 import PanelTemperatureOverheating from "../components/graphs/PanelTemperatureOverheating";
@@ -44,6 +44,7 @@ interface AnalyticsData {
     peakSolarHours: any[];
     efficiencyEnvironment: any[];
     irradiancePower?: any[];
+    luxIrradiance?: any[];
   };
 }
 
@@ -463,16 +464,18 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
               </div>
             </div>
             
-            {/* Right: Fault & Anomaly Detection */}
+            {/* Right: Lux vs Irradiance */}
             <div>
               <div className="px-4 py-6">
-                <h3 className="text-lg font-medium mb-1">Fault & Anomaly Detection</h3>
-                <p className="text-sm text-gray-500 mb-4">Identifying sensor deviations and system anomalies</p>
+                <h3 className="text-lg font-medium mb-1">Light Intensity vs Solar Irradiance</h3>
+                <p className="text-sm text-gray-500 mb-4">Correlation between light levels and solar energy potential</p>
                 <div className="h-64">
                   {isLoading ? (
                     <div className="flex items-center justify-center h-full text-gray-500">Loading chart data...</div>
                   ) : (
-                    <AnomalyDetection timePeriod={selectedTimePeriod} />
+                    <LuxIrradianceGraph 
+                      chartData={analyticsData?.data.luxIrradiance || []}
+                    />
                   )}
                 </div>
               </div>
