@@ -441,7 +441,7 @@ export const getAnalyticsDataService = async (params) => {
   }
   
   // Define all sensor types we need for all charts
-  const sensorTypes = ['ina226', 'battery', 'panel_temp', 'solar', 'dht22'];
+  const sensorTypes = ['ina226', 'battery', 'panel_temp', 'solar', 'dht22', 'light'];
   
   // Build the aggregation pipeline
   const pipeline = [];
@@ -530,6 +530,9 @@ export const getAnalyticsDataService = async (params) => {
   
   // Process data for irradiance vs power output correlation
   result.irradiancePower = await getIrradiancePowerCorrelation(readings, timeIntervalMs, timezone);
+  
+  // Process data for lux vs irradiance correlation
+  result.luxIrradiance = await getLuxIrradianceCorrelation(readings, timeIntervalMs, timezone);
   
   // Calculate summary values
   const summaryValues = calculateSummaryValues(readings, result, timezone);
@@ -1064,6 +1067,156 @@ function finalizeIrradiancePowerBucket(bucket) {
     panelId,
     power: data.power || 0,
     powerUnit: 'W',
+    irradiance: data.irradiance || 0,
+    irradianceUnit: data.irradianceUnit || 'W/m2'
+  }));
+  
+  // Remove the values array
+  delete bucket.values;
+}
+
+// Helper function to correlate lux with irradiance
+async function getLuxIrradianceCorrelation(readings, timeIntervalMs, timezone) {
+  const result = [];
+  const startTime = readings.length > 0 ? new Date(readings[0].endTime).getTime() : null;
+  
+  if (!startTime) return [];
+  
+  let currentBucket = {
+    timestamp: new Date(startTime),
+    values: {
+      lux: [],
+      irradiance: []
+    }
+  };
+  
+  // Initialize the first bucket
+  let nextBucketTime = startTime + timeIntervalMs;
+  
+  for (const reading of readings) {
+    const readingTime = new Date(reading.endTime).getTime();
+    
+    // If this reading belongs to the next time bucket, finalize the current bucket and create a new one
+    if (readingTime >= nextBucketTime) {
+      // Finalize the current bucket
+      if (currentBucket.values.lux.length > 0 || currentBucket.values.irradiance.length > 0) {
+        finalizeLuxIrradianceBucket(currentBucket);
+        result.push(currentBucket);
+      }
+      
+      // Create a new bucket aligned to the time interval
+      const bucketStartTime = new Date(
+        Math.floor(readingTime / timeIntervalMs) * timeIntervalMs
+      );
+      
+      currentBucket = {
+        timestamp: bucketStartTime,
+        values: {
+          lux: [],
+          irradiance: []
+        }
+      };
+      
+      nextBucketTime = bucketStartTime.getTime() + timeIntervalMs;
+    }
+    
+    // Process lux data (from light)
+    if (reading.readings.light && reading.readings.light.length > 0) {
+      for (const sensor of reading.readings.light) {
+        currentBucket.values.lux.push({
+          panelId: sensor.panelId,
+          value: sensor.average,
+          unit: sensor.unit
+        });
+      }
+    }
+    
+    // Process irradiance data (from solar)
+    if (reading.readings.solar && reading.readings.solar.length > 0) {
+      for (const sensor of reading.readings.solar) {
+        currentBucket.values.irradiance.push({
+          panelId: sensor.panelId,
+          value: sensor.average,
+          unit: sensor.unit
+        });
+      }
+    }
+  }
+  
+  // Finalize the last bucket
+  if (currentBucket.values.lux.length > 0 || currentBucket.values.irradiance.length > 0) {
+    finalizeLuxIrradianceBucket(currentBucket);
+    result.push(currentBucket);
+  }
+  
+  return result;
+}
+
+// Helper function to finalize lux vs irradiance bucket
+function finalizeLuxIrradianceBucket(bucket) {
+  // Calculate lux average
+  if (bucket.values.lux.length > 0) {
+    const totalLux = bucket.values.lux.reduce((sum, item) => sum + item.value, 0);
+    const avgLux = totalLux / bucket.values.lux.length;
+    
+    bucket.lux = {
+      value: avgLux,
+      unit: bucket.values.lux[0].unit
+    };
+    
+    // Store panel-specific lux data
+    bucket.panels = {};
+    for (const item of bucket.values.lux) {
+      bucket.panels[item.panelId] = {
+        lux: item.value,
+        luxUnit: item.unit
+      };
+    }
+  } else {
+    bucket.lux = { value: 0, unit: 'lux' };
+    bucket.panels = {};
+  }
+  
+  // Calculate irradiance average
+  if (bucket.values.irradiance.length > 0) {
+    const totalIrradiance = bucket.values.irradiance.reduce((sum, item) => sum + item.value, 0);
+    const avgIrradiance = totalIrradiance / bucket.values.irradiance.length;
+    
+    bucket.irradiance = {
+      value: avgIrradiance,
+      unit: bucket.values.irradiance[0].unit
+    };
+    
+    // Store panel-specific irradiance data
+    for (const item of bucket.values.irradiance) {
+      if (!bucket.panels[item.panelId]) {
+        bucket.panels[item.panelId] = {
+          lux: 0,
+          luxUnit: 'lux'
+        };
+      }
+      bucket.panels[item.panelId].irradiance = item.value;
+      bucket.panels[item.panelId].irradianceUnit = item.unit;
+    }
+  } else {
+    bucket.irradiance = { value: 0, unit: 'W/m2' };
+    
+    // Initialize irradiance for all panels if not already done
+    if (Object.keys(bucket.panels).length > 0) {
+      for (const panelId in bucket.panels) {
+        if (!bucket.panels[panelId].hasOwnProperty('irradiance')) {
+          bucket.panels[panelId].irradiance = 0;
+          bucket.panels[panelId].irradianceUnit = 'W/m2';
+        }
+      }
+    }
+  }
+  
+  // Convert panels object to array
+  bucket.panels = Object.entries(bucket.panels).map(([panelId, data]) => ({
+    panelId,
+    lux: data.lux || 0,
+    luxUnit: data.luxUnit || 'lux',
     irradiance: data.irradiance || 0,
     irradianceUnit: data.irradianceUnit || 'W/m2'
   }));
