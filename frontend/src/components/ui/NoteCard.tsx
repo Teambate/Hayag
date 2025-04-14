@@ -1,69 +1,103 @@
-import { AlertTriangle, CircleCheck, CircleOff, Battery, FileText } from "lucide-react";
-import { NoteType, NoteItem } from "../../context/NotesContext";
+import { FileText, Battery, AlertTriangle, BarChart2 } from "lucide-react";
+import { Report } from "../../context/NotesContext";
 
 interface NoteCardProps {
-  note: NoteItem;
-  onMarkAsRead?: (id: number) => void;
-  onDelete?: (id: number) => void;
-  onViewDetails?: (note: NoteItem) => void;
-  onEdit?: (note: NoteItem) => void;
+  report: Report;
+  onViewDetails?: (report: Report) => void;
 }
 
-const NoteCard = ({ note, onMarkAsRead, onViewDetails }: NoteCardProps) => {
-  // Helper to get icon based on note type
-  const getInsightIcon = (type: NoteType) => {
-    switch (type) {
-      case 'normal':
-        return <CircleCheck className="h-5 w-5 text-green-500" />;
-      case 'warning':
-        return <AlertTriangle className="h-5 w-5 text-amber-500" />;
-      case 'critical':
-        return <Battery className="h-5 w-5 text-red-500" />;
-      case 'offline':
-        return <CircleOff className="h-5 w-5 text-gray-500" />;
-      case 'note':
-        return <FileText className="h-5 w-5 text-blue-500" />;
-      default:
-        return <CircleCheck className="h-5 w-5 text-green-500" />;
+const NoteCard = ({ report, onViewDetails }: NoteCardProps) => {
+  // Format the date for display
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric' 
+      });
+    } catch (error) {
+      return dateString;
     }
   };
 
-  // Get shadow and border styling based on read status
-  const getCardStyle = (_type: NoteType, read: boolean) => {
-    if (!read) {
-      return "border-amber-200 shadow-md";
+  // Extract warning count from sensor health subtitle
+  const getSensorHealthInfo = (subTitle: string) => {
+    try {
+      const parts = subTitle.split(',');
+      if (parts.length >= 2) {
+        return parts[1].trim();
+      }
+      return subTitle;
+    } catch (error) {
+      return subTitle;
     }
-    return "border-gray-200 shadow-sm";
+  };
+
+  // Extract energy value from performance subtitle
+  const getEnergyValue = (subTitle: string) => {
+    try {
+      return subTitle.replace('Energy:', '').trim();
+    } catch (error) {
+      return subTitle;
+    }
   };
 
   return (
     <div 
-      className={`p-4 rounded-md border ${getCardStyle(note.type, note.read)} bg-white hover:bg-amber-50/30 transition-all flex items-start gap-3 cursor-pointer`}
+      className="p-4 rounded-md border border-gray-200 shadow-sm bg-white hover:bg-amber-50/30 transition-all cursor-pointer"
       onClick={() => {
-        if (!note.read && onMarkAsRead) {
-          onMarkAsRead(note.id);
-        }
         if (onViewDetails) {
-          onViewDetails(note);
+          onViewDetails(report);
         }
       }}
     >
-      <div className="mt-0.5">
-        {getInsightIcon(note.type)}
-      </div>
-      <div className="flex-1">
-        <div className="flex items-start justify-between">
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex items-center gap-2">
+          <FileText className="h-5 w-5 text-blue-500" />
           <h4 className="font-medium text-gray-900">
-            {note.title}
-            {!note.read && (
-              <span className="ml-2 px-1.5 py-0.5 text-xs bg-amber-100 text-amber-800 rounded-full">New</span>
-            )}
+            {formatDate(report.date)}
           </h4>
-          <span className="text-xs text-gray-500">{note.date} · {note.time}</span>
         </div>
-        <p className="text-sm text-gray-600 mt-1">{note.detail}</p>
+        <span className="text-xs text-gray-500">{report.time}</span>
       </div>
-      <div className="flex-shrink-0">
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
+        {/* Performance Report */}
+        <div className="flex gap-2 items-start">
+          <BarChart2 className="h-4 w-4 text-green-500 mt-0.5" />
+          <div>
+            <p className="text-xs font-medium text-gray-700">{report.performance_report.title}</p>
+            <p className="text-xs text-gray-600">{getEnergyValue(report.performance_report.sub_title)}</p>
+          </div>
+        </div>
+
+        {/* Sensor Health */}
+        <div className="flex gap-2 items-start">
+          <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5" />
+          <div>
+            <p className="text-xs font-medium text-gray-700">{report.sensorhealth_report.title}</p>
+            <p className="text-xs text-gray-600">{getSensorHealthInfo(report.sensorhealth_report.sub_title)}</p>
+          </div>
+        </div>
+
+        {/* Panel Health */}
+        <div className="flex gap-2 items-start">
+          <Battery className="h-4 w-4 text-red-500 mt-0.5" />
+          <div>
+            <p className="text-xs font-medium text-gray-700">{report.panelhealth_report.title}</p>
+            <p className="text-xs text-gray-600">{report.panelhealth_report.sub_title}</p>
+          </div>
+        </div>
+
+        {/* Insights */}
+        <div className="flex gap-2 items-start">
+          <FileText className="h-4 w-4 text-blue-500 mt-0.5" />
+          <div>
+            <p className="text-xs font-medium text-gray-700">{report.insights.title}</p>
+            <p className="text-xs text-gray-600">{report.insights.sub_title}</p>
+          </div>
+        </div>
       </div>
     </div>
   );

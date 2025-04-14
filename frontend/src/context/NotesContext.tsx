@@ -1,117 +1,140 @@
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../utils/api'; // Import the configured axios instance
+import { useDevice } from './DeviceContext';
+import { useAuth } from './AuthContext';
 
-// Import types from Notes page
-export type NoteType = "normal" | "warning" | "critical" | "offline" | "note";
-
-export interface NoteItem {
-  id: number;
-  type: NoteType;
-  title: string;
-  detail: string;
+export interface Report {
+  id: string;
   date: string;
   time: string;
-  read: boolean;
-  system: boolean; // Indicates if the note was created by the system
+  performance_report: {
+    title: string;
+    sub_title: string;
+    content: string;
+  };
+  sensorhealth_report: {
+    title: string;
+    sub_title: string;
+    content: string;
+  };
+  panelhealth_report: {
+    title: string;
+    sub_title: string;
+    content: string;
+  };
+  insights: {
+    title: string;
+    sub_title: string;
+    content: string;
+  };
 }
 
 interface NotesContextType {
-  notes: NoteItem[];
-  setNotes: React.Dispatch<React.SetStateAction<NoteItem[]>>;
-  unreadCount: number;
+  reports: Report[];
+  setReports: React.Dispatch<React.SetStateAction<Report[]>>;
   navigateToNotes: () => void;
-  markAllAsRead: () => void;
-  markAsRead: (id: number) => void;
+  fetchReports: (forceRefresh?: boolean) => Promise<void>;
+  loading: boolean;
+  error: string | null;
 }
 
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
 
 export const NotesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
-  
-  // Initial mock data for notes
-  const [notes, setNotes] = useState<NoteItem[]>([
-    {
-      id: 1,
-      type: "critical",
-      title: "Panel 1 Overheating",
-      detail: "Temperature threshold exceeded for Panel 1. Cooling system activated.",
-      date: "Today",
-      time: "11:23 AM",
-      read: false,
-      system: true
-    },
-    {
-      id: 2,
-      type: "warning",
-      title: "Battery Charge Low",
-      detail: "Battery charge level dropped below 30%. Consider reducing load or increasing charge rate.",
-      date: "Today",
-      time: "10:05 AM",
-      read: false,
-      system: true
-    },
-    {
-      id: 3,
-      type: "note",
-      title: "System Maintenance",
-      detail: "Scheduled maintenance will be performed tomorrow at 2:00 PM. System may experience brief downtime.",
-      date: "Yesterday",
-      time: "4:30 PM",
-      read: true,
-      system: true
-    },
-    {
-      id: 4,
-      type: "normal",
-      title: "Optimal Production Achieved",
-      detail: "Energy production has reached optimal levels. All systems operating at peak efficiency.",
-      date: "Yesterday",
-      time: "2:15 PM",
-      read: true,
-      system: true
-    },
-    {
-      id: 5,
-      type: "offline",
-      title: "Connectivity Issue",
-      detail: "Brief connection loss detected with sensor array. Connection restored automatically.",
-      date: "Oct 12",
-      time: "9:45 AM",
-      read: true,
-      system: true
-    },
-  ]);
+  const { deviceId } = useDevice(); // Get deviceId from DeviceContext
+  const { user } = useAuth();
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(true);
 
-  // Calculate unread count
-  const unreadCount = notes.filter(note => !note.read).length;
+  // Function to fetch reports from the API - memoized with useCallback
+  const fetchReports = useCallback(async (forceRefresh: boolean = false) => {
+    // Skip if no deviceId is available
+    if (!deviceId) {
+      console.log('No device ID available, skipping fetch');
+      return;
+    }
+    
+    // Allow force refresh to override the loading state
+    if (loading && !forceRefresh) {
+      console.log('Already loading reports, skipping fetch. To force refresh, pass true to fetchReports()');
+      return;
+    }
+    
+    // Always reset loading state if force refreshing
+    if (forceRefresh) {
+      setLoading(false);
+    }
+    
+    console.log(`Fetching reports from API for device ${deviceId}... (forceRefresh: ${forceRefresh})`);
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Use axios instance with deviceId parameter
+      console.log(`Making API request to /insights/reports?deviceId=${deviceId}`);
+      const response = await api.get(`/insights/reports?deviceId=${deviceId}`);
+      console.log('API response status:', response.status);
+      
+      // Only update state if component is still mounted
+      if (isMounted) {
+        if (response.data && response.data.success) {
+          console.log('API response data received successfully');
+          setReports(response.data.reports || []);
+          console.log('Reports loaded successfully:', response.data.reports ? response.data.reports.length : 0);
+        } else {
+          console.error('API response indicates failure:', response.data);
+          throw new Error(response.data?.message || 'Failed to fetch reports');
+        }
+      }
+    } catch (error: any) {
+      console.error('Error fetching reports:', error);
+      
+      // Only update state if component is still mounted
+      if (isMounted) {
+        setError((error as any)?.message || 'Failed to load reports');
+      }
+    } finally {
+      // Only update state if component is still mounted
+      if (isMounted) {
+        console.log('Finished API call, setting loading to false');
+        setLoading(false);
+      }
+    }
+  }, [deviceId, isMounted, loading]);
+
+  // Fetch reports when deviceId changes or component mounts
+  useEffect(() => {
+    if (deviceId) {
+      console.log('DeviceId changed or NotesProvider mounted, fetching reports for device:', deviceId);
+      fetchReports(true); // Force refresh when deviceId changes
+    }
+    
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      console.log('NotesProvider unmounting');
+      setIsMounted(false);
+    };
+  }, [deviceId, fetchReports]);
 
   // Function to navigate to the notes page
-  const navigateToNotes = () => {
+  const navigateToNotes = useCallback(() => {
     navigate('/notes');
-  };
-
-  // Function to mark all notes as read
-  const markAllAsRead = () => {
-    setNotes(notes.map(note => ({ ...note, read: true })));
-  };
-
-  // Function to mark a specific note as read
-  const markAsRead = (id: number) => {
-    setNotes(notes.map(note => 
-      note.id === id ? { ...note, read: true } : note
-    ));
-  };
+  }, [navigate]);
 
   return (
     <NotesContext.Provider
       value={{
-        notes,
-        setNotes,
-        unreadCount,
+        reports,
+        setReports,
         navigateToNotes,
-        markAllAsRead,
-        markAsRead
+        fetchReports,
+        loading,
+        error,
       }}
     >
       {children}

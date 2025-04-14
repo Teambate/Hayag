@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
-import { CircleOff, AlertTriangle, Battery, CircleCheck } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { FileText, RefreshCw } from "lucide-react";
 import Banner from "../components/layout/Banner";
 import NoteCard from "../components/ui/NoteCard";
 import NoteDetailModal from "../components/ui/NoteDetailModal";
-import { useNotes, NoteType, NoteItem } from "../context/NotesContext";
+import { useNotes, Report } from "../context/NotesContext";
+import { useDevice } from "../context/DeviceContext";
+import { useAuth } from "../context/AuthContext";
 
 // Props for accessing the setActiveTab function
 interface NotesProps {
@@ -11,12 +13,22 @@ interface NotesProps {
 }
 
 export default function Notes({ setActiveTab }: NotesProps) {
-  const [activeFilter, setActiveFilter] = useState<NoteType | "All">("All");
-  const [selectedNote, setSelectedNote] = useState<NoteItem | null>(null);
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [isNoteDetailModalOpen, setIsNoteDetailModalOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Get reports data and functions from context
+  const { reports, fetchReports, loading, error } = useNotes();
+  
+  // Get device data from DeviceContext and user data from AuthContext
+  const { deviceId } = useDevice();
+  const { user } = useAuth();
 
-  // Get notes data and functions from context
-  const { notes, setNotes, unreadCount, markAsRead, markAllAsRead } = useNotes();
+  // Fetch data on component mount
+  useEffect(() => {
+    console.log('Notes component mounted - fetching reports for device:', deviceId);
+    fetchReports(true); // Explicitly fetch reports when the component mounts
+  }, [deviceId, fetchReports]);
 
   // Update navbar active tab when component mounts
   useEffect(() => {
@@ -25,145 +37,141 @@ export default function Notes({ setActiveTab }: NotesProps) {
     }
   }, [setActiveTab]);
 
-  // Create filter definitions with icons and colors
-  const filterOptions = [
-    { 
-      value: "All", 
-      label: "All Notes", 
-      count: notes.length,
-      activeColor: "bg-amber-100 text-amber-800" 
-    },
-    { 
-      value: "critical", 
-      label: "Critical", 
-      icon: <Battery className="h-4 w-4 text-red-500" />,
-      count: notes.filter(note => note.type === "critical").length,
-      activeColor: "bg-red-100 text-red-800"
-    },
-    { 
-      value: "warning", 
-      label: "Warning", 
-      icon: <AlertTriangle className="h-4 w-4 text-amber-500" />,
-      count: notes.filter(note => note.type === "warning").length,
-      activeColor: "bg-amber-100 text-amber-800"
-    },
-    { 
-      value: "normal", 
-      label: "Normal", 
-      icon: <CircleCheck className="h-4 w-4 text-green-500" />,
-      count: notes.filter(note => note.type === "normal").length,
-      activeColor: "bg-green-100 text-green-800"
-    },
-    { 
-      value: "offline", 
-      label: "Offline", 
-      icon: <CircleOff className="h-4 w-4 text-gray-500" />,
-      count: notes.filter(note => note.type === "offline").length,
-      activeColor: "bg-gray-200 text-gray-800"
-    }
-  ];
-
-  const filteredNotes = activeFilter === "All" 
-    ? notes 
-    : notes.filter(note => note.type === activeFilter);
-
-  // Handle deleting a note
-  const handleDeleteNote = (id: number) => {
-    setNotes(notes.filter(note => note.id !== id));
-    // If the deleted note is currently being viewed, close the modal
-    if (selectedNote && selectedNote.id === id) {
-      setIsNoteDetailModalOpen(false);
-      setSelectedNote(null);
-    }
-  };
-
-  // Handle viewing a note's details
-  const handleViewNoteDetails = (note: NoteItem) => {
-    setSelectedNote(note);
+  // Handle viewing a report's details
+  const handleViewReportDetails = useCallback((report: Report) => {
+    setSelectedReport(report);
     setIsNoteDetailModalOpen(true);
-  };
+  }, []);
 
-  // Handle editing a note
-  const handleEditNote = (note: NoteItem) => {
-    setSelectedNote(note);
-    setIsNoteDetailModalOpen(true);
-  };
+  // Handle manual refresh
+  const handleRefresh = useCallback(async () => {
+    console.log('Manual refresh triggered for device:', deviceId);
+    setIsRefreshing(true);
+    try {
+      await fetchReports(true); // Pass true to force refresh
+    } finally {
+      // Set a timeout to ensure UI updates properly
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 500);
+    }
+  }, [fetchReports, deviceId]);
+
+  // Reset refreshing state when loading changes
+  useEffect(() => {
+    if (!loading && isRefreshing) {
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 300);
+    }
+  }, [loading, isRefreshing]);
+
+  // Get current device name for display
+  const getCurrentDeviceName = useCallback(() => {
+    if (!user || !user.devices) return deviceId;
+    
+    const device = user.devices.find(d => d.deviceId === deviceId);
+    return device ? device.name : deviceId;
+  }, [user, deviceId]);
+
+  // Render loading state
+  if (loading && reports.length === 0) {
+    return (
+      <>
+        <Banner activeTab="Notes" />
+        <div className="max-w-5xl mx-auto py-6 px-4">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-semibold text-[#1e3a29]">Insights</h1>
+          </div>
+          <div className="text-center py-10 bg-white rounded-lg border border-gray-200">
+            <div className="text-gray-400 mb-3">
+              <RefreshCw size={48} className="mx-auto animate-spin" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-700">
+              Loading reports for {getCurrentDeviceName()}...
+            </h3>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Render error state
+  if (error && reports.length === 0) {
+    return (
+      <>
+        <Banner activeTab="Notes" />
+        <div className="max-w-5xl mx-auto py-6 px-4">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-semibold text-[#1e3a29]">Insights</h1>
+            <button 
+              className="text-sm bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-3 py-2 rounded-md shadow-sm"
+              onClick={handleRefresh}
+              disabled={loading}
+            >
+              Try Again
+            </button>
+          </div>
+          <div className="text-center py-10 bg-white rounded-lg border border-red-200">
+            <div className="text-red-400 mb-3">
+              <FileText size={48} className="mx-auto" />
+            </div>
+            <h3 className="text-lg font-medium text-red-700">
+              Error loading reports
+            </h3>
+            <p className="text-red-500 mt-1">
+              {error}
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
       <Banner activeTab="Notes" />
       <div className="max-w-5xl mx-auto py-6 px-4">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center"> {/*DO NOT PUT BELL ICON HERE*/}
+          <div className="flex items-center">
             <h1 className="text-2xl font-semibold text-[#1e3a29]">Insights</h1>
-            {unreadCount > 0 && (
-              <span className="ml-2 px-2 py-0.5 text-xs bg-amber-100 text-amber-800 rounded-full">
-                {unreadCount} unread
-              </span>
-            )}
+            <span className="ml-2 px-2 py-0.5 text-xs bg-gray-100 text-gray-700 rounded-full">
+              {getCurrentDeviceName()}
+            </span>
           </div>
 
           <div className="flex items-center gap-3">
             <button 
-              className="text-sm bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-3 py-2 rounded-md shadow-sm"
-              onClick={markAllAsRead}
-              disabled={unreadCount === 0}
+              className="text-sm bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-3 py-2 rounded-md shadow-sm flex items-center"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
             >
-              Mark All Read
+              {isRefreshing && <RefreshCw size={14} className="mr-2 animate-spin" />}
+              {isRefreshing ? 'Refreshing...' : 'Refresh Reports'}
             </button>
           </div>
         </div>
 
-        {/* Filter section with visual indicators */}
-        <div className="mb-4">
-          <div className="inline-flex p-0.5 rounded-lg bg-gray-100 flex-wrap">
-            {filterOptions.map((filter) => (
-              <button
-                key={filter.value}
-                onClick={() => setActiveFilter(filter.value as NoteType | "All")}
-                className={`rounded-md py-1.5 px-3 flex items-center text-sm font-medium transition-colors ${
-                  activeFilter === filter.value 
-                    ? filter.activeColor || "bg-amber-100 text-amber-800" 
-                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-                }`}
-              >
-                {filter.icon && <span className="mr-1.5">{filter.icon}</span>}
-                {filter.label}
-                <span className={`ml-1.5 px-1.5 py-0.5 text-xs ${
-                  activeFilter === filter.value 
-                    ? "bg-white bg-opacity-50" 
-                    : "bg-white bg-opacity-60"
-                } rounded-full`}>
-                  {filter.count}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-
         <div className="space-y-4">
-          {filteredNotes.map(note => (
+          {reports.map(report => (
             <NoteCard 
-              key={note.id} 
-              note={note}
-              onMarkAsRead={markAsRead}
-              onDelete={handleDeleteNote}
-              onViewDetails={handleViewNoteDetails}
-              onEdit={handleEditNote}
+              key={report.id} 
+              report={report}
+              onViewDetails={handleViewReportDetails}
             />
           ))}
         </div>
 
-        {filteredNotes.length === 0 && (
+        {reports.length === 0 && !loading && !error && (
           <div className="text-center py-10 bg-white rounded-lg border border-gray-200">
             <div className="text-gray-400 mb-3">
-              <CircleOff size={48} className="mx-auto" />
+              <FileText size={48} className="mx-auto" />
             </div>
             <h3 className="text-lg font-medium text-gray-700">
-              No {activeFilter !== "All" ? activeFilter.toLowerCase() : ""} notes found
+              No reports found
             </h3>
             <p className="text-gray-500 mt-1">
-              Try changing your filter or add a new note
+              No system reports are available for {getCurrentDeviceName()}
             </p>
           </div>
         )}
@@ -173,9 +181,7 @@ export default function Notes({ setActiveTab }: NotesProps) {
       <NoteDetailModal
         isOpen={isNoteDetailModalOpen}
         onOpenChange={setIsNoteDetailModalOpen}
-        note={selectedNote}
-        onEdit={handleEditNote}
-        onDelete={handleDeleteNote}
+        report={selectedReport}
       />
     </>
   );
