@@ -1074,10 +1074,29 @@ function finalizeIrradiancePowerBucket(bucket) {
 
 // Helper function to calculate summary values for analytics page
 function calculateSummaryValues(readings, chartData, timezone) {
-  // 1. Mock Efficiency (to be replaced with real calculation later)
+  // 1. Calculate real efficiency from efficiency environment data
+  let efficiencyValue = 0;
+  let efficiencyTrend = 0;
+  
+  if (chartData.efficiencyEnvironment && chartData.efficiencyEnvironment.length > 0) {
+    // Calculate average efficiency across all time intervals
+    const totalEfficiency = chartData.efficiencyEnvironment.reduce(
+      (sum, item) => sum + (item.efficiency ? item.efficiency.value : 0), 
+      0
+    );
+    efficiencyValue = totalEfficiency / chartData.efficiencyEnvironment.length;
+    
+    // Calculate trend by comparing first and last efficiency values if available
+    if (chartData.efficiencyEnvironment.length >= 2) {
+      const firstValue = chartData.efficiencyEnvironment[0].efficiency?.value || 0;
+      const lastValue = chartData.efficiencyEnvironment[chartData.efficiencyEnvironment.length - 1].efficiency?.value || 0;
+      efficiencyTrend = lastValue - firstValue;
+    }
+  }
+  
   const efficiency = {
-    value: 85, // Mock value - implement real calculation later
-    trend: 2,
+    value: efficiencyValue,
+    trend: efficiencyTrend,
     unit: '%'
   };
   
