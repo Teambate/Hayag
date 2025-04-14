@@ -227,18 +227,47 @@ export const getDashboardChartDataService = async (params) => {
   // Now determine the start and end of the day in the client's timezone
   // We want the full day that contains the latest reading in the client's timezone
   if (timezone) {
-    // Create a new Date object with only the year, month, and day from the client date
-    const referenceDate = new Date(Date.UTC(
-      clientDate.getFullYear(),
-      clientDate.getMonth(),
-      clientDate.getDate()
-    ));
-    
-    // Get the start and end of this day in the client's timezone, converted to UTC
-    startDate = getStartOfDay(referenceDate, timezone);
-    endDate = getEndOfDay(referenceDate, timezone);
-    
-    console.log(`Reference date in ${timezone}: ${referenceDate.toISOString()}`);
+    try {
+      // Calculate the timezone offset in minutes
+      // For Asia/Manila (UTC+8), this would be -480 minutes
+      const targetDate = new Date();
+      const utcDate = new Date(targetDate.toUTCString());
+      const tzDate = new Date(targetDate.toLocaleString('en-US', { timeZone: timezone }));
+      const tzOffset = (tzDate - utcDate) / 60000; // offset in minutes
+      
+      console.log(`Calculated timezone offset for ${timezone}: ${tzOffset} minutes`);
+      
+      // Extract year, month, day from the client date
+      const year = clientDate.getFullYear();
+      const month = clientDate.getMonth();
+      const day = clientDate.getDate();
+      
+      // Create dates for midnight and 23:59:59 in client timezone
+      const clientMidnight = new Date(year, month, day, 0, 0, 0);
+      const clientEndOfDay = new Date(year, month, day, 23, 59, 59, 999);
+      
+      // Convert to UTC by subtracting the timezone offset
+      startDate = new Date(clientMidnight.getTime() - tzOffset * 60000);
+      endDate = new Date(clientEndOfDay.getTime() - tzOffset * 60000);
+      
+      console.log(`Calculated date range in UTC: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    } catch (error) {
+      console.error(`Error in timezone calculation: ${error.message}`);
+      // Fallback to UTC day if there's an error
+      startDate = new Date(Date.UTC(
+        latestDateUTC.getUTCFullYear(),
+        latestDateUTC.getUTCMonth(),
+        latestDateUTC.getUTCDate(),
+        0, 0, 0, 0
+      ));
+      
+      endDate = new Date(Date.UTC(
+        latestDateUTC.getUTCFullYear(),
+        latestDateUTC.getUTCMonth(),
+        latestDateUTC.getUTCDate(),
+        23, 59, 59, 999
+      ));
+    }
   } else {
     // Use UTC midnight
     startDate = new Date(Date.UTC(
