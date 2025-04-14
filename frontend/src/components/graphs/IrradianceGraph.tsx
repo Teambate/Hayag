@@ -128,7 +128,7 @@ const IrradianceGraph: React.FC<IrradianceGraphProps> = ({
                 />
                 <Tooltip 
                   formatter={(value: number, name: string) => {
-                    if (name === 'averageIrradiance') {
+                    if (name === 'Solar Irradiance') {
                       return [`${value.toFixed(2)} W/m²`, 'Solar Irradiance'];
                     }
                     return [`${value.toFixed(2)} W`, 'Power Output'];
