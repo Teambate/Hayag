@@ -1101,59 +1101,59 @@ function calculateSummaryValues(readings, chartData, timezone) {
   let bestTime = "N/A";
   
   if (chartData.peakSolarHours && chartData.peakSolarHours.length > 0) {
-    // Find the hours with the highest energy production
-    const sortedHours = [...chartData.peakSolarHours].sort((a, b) => 
-      (b.average?.value || 0) - (a.average?.value || 0)
+    // Find the hours with the highest energy production by checking actual values
+    // Create a copy for sorting to avoid changing the original data
+    const sortedHours = [...chartData.peakSolarHours]
+      .filter(h => h.average && typeof h.average.value === 'number')
+      .sort((a, b) => b.average.value - a.average.value);
+    
+    // Debug the sorted hours
+    console.log('Top 3 peak solar hour values:',
+      sortedHours.slice(0, 3).map(h => ({ hour: h.hour, value: h.average.value }))
     );
     
-    if (sortedHours.length > 0 && sortedHours[0].average?.value > 0) {
-      // Get the best hour - format with proper timezone consideration
+    if (sortedHours.length > 0 && sortedHours[0].average.value > 0) {
+      // Get the best hour from the sorted data
       const bestHour = sortedHours[0].hour;
-      
-      // Format the time strings with proper localization if timezone is provided
-      if (timezone) {
-        const formatHourWithTimezone = (hour) => {
-          const date = new Date();
-          date.setHours(hour, 0, 0, 0);
-          return date.toLocaleTimeString([], { 
-            hour: '2-digit', 
-            minute: '2-digit', 
-            hour12: false,
-            timeZone: timezone 
-          }).replace(/:00$/, ':00');
-        };
-        
-        bestTime = formatHourWithTimezone(bestHour);
-      } else {
-        // Fallback to simple format if no timezone
-        bestTime = `${bestHour}:00`;
-      }
+      bestTime = `${bestHour}:00`;
       
       // Find contiguous range of good production hours (above 50% of peak)
       const threshold = sortedHours[0].average.value * 0.5;
       const productiveHours = chartData.peakSolarHours
-        .filter(h => (h.average?.value || 0) >= threshold)
+        .filter(h => h.average && h.average.value >= threshold)
         .map(h => h.hour)
         .sort((a, b) => a - b);
       
+      console.log('Peak threshold:', threshold);
+      console.log('Productive hours:', productiveHours);
+      
       if (productiveHours.length > 0) {
-        // Format the time with proper localization if timezone is provided
-        if (timezone) {
-          const formatHourWithTimezone = (hour) => {
-            const date = new Date();
-            date.setHours(hour, 0, 0, 0);
-            return date.toLocaleTimeString([], { 
-              hour: '2-digit', 
-              minute: '2-digit', 
-              hour12: false,
-              timeZone: timezone 
-            }).replace(/:00$/, ':00');
-          };
-          
-          peakHourStart = formatHourWithTimezone(productiveHours[0]);
-          peakHourEnd = formatHourWithTimezone(productiveHours[productiveHours.length - 1]);
+        // Find contiguous ranges
+        const ranges = [];
+        let currentRange = [productiveHours[0]];
+        
+        for (let i = 1; i < productiveHours.length; i++) {
+          if (productiveHours[i] === productiveHours[i-1] + 1) {
+            // Continue the current range
+            currentRange.push(productiveHours[i]);
+          } else {
+            // Start a new range
+            ranges.push([...currentRange]);
+            currentRange = [productiveHours[i]];
+          }
+        }
+        // Add the last range
+        ranges.push(currentRange);
+        
+        // Find the longest contiguous range
+        const longestRange = ranges.reduce((longest, current) => 
+          current.length > longest.length ? current : longest, []);
+        
+        if (longestRange.length > 0) {
+          peakHourStart = `${longestRange[0]}:00`;
+          peakHourEnd = `${longestRange[longestRange.length - 1]}:00`;
         } else {
-          // Fallback to simple format if no timezone
+          // Fallback to first and last productive hour
           peakHourStart = `${productiveHours[0]}:00`;
           peakHourEnd = `${productiveHours[productiveHours.length - 1]}:00`;
         }
