@@ -29,8 +29,8 @@ export const getCurrentSensorValuesService = async (params) => {
     sensor_health: {}
   };
   
-  // Get health data for the entire day, passing timezone
-  const healthData = await getSensorHealthForDay(deviceId, timezone);
+  // Get health data for the entire day, passing timezone and latest reading timestamp
+  const healthData = await getSensorHealthForDay(deviceId, timezone, latestReading.endTime);
   result.health = healthData.health;
   result.sensor_health = healthData.sensor_health;
   
@@ -254,7 +254,7 @@ export const createReadingService = async (sensorReadings, io) => {
     }
     
     // Add health data calculation
-    const healthData = await getSensorHealthForDay(newSensorReading.deviceId, currentValues.timezone);
+    const healthData = await getSensorHealthForDay(newSensorReading.deviceId, currentValues.timezone, currentValues.timestamp);
     currentValues.health = healthData.health;
     currentValues.sensor_health = healthData.sensor_health;
     
@@ -606,13 +606,16 @@ function processReadingForCharts(reading) {
 }
 
 // Updated function to get only health data for a day
-export const getSensorHealthForDay = async (deviceId, timezone) => {
+export const getSensorHealthForDay = async (deviceId, timezone, timestamp = null) => {
   if (!deviceId) {
     throw new Error("deviceId is required");
   }
   
+  // Use provided timestamp or current time
+  const referenceTime = timestamp ? new Date(timestamp) : new Date();
+  
   // Get start of day in client's timezone
-  const startOfDay = getStartOfDay(new Date(), timezone);
+  const startOfDay = getStartOfDay(referenceTime, timezone);
   
   // Find all readings for the day
   const dailyReadings = await SensorReading.find(
