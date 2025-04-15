@@ -85,7 +85,7 @@ const SensorTooltip: React.FC<{
           {status} Sensors ({sensors.length})
         </span>
       </div>
-      <div className="max-h-36 overflow-y-auto">
+      <div>
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-gray-200">
