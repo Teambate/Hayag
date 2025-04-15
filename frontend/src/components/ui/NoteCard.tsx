@@ -20,6 +20,22 @@ const NoteCard = ({ report, onViewDetails }: NoteCardProps) => {
       return dateString;
     }
   };
+  const formatDate2 = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      
+      // Get individual date components
+      const weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
+      const month = date.toLocaleDateString('en-US', { month: 'long' });
+      const day = date.toLocaleDateString('en-US', { day: 'numeric' });
+      const year = date.toLocaleDateString('en-US', { year: 'numeric' });
+      
+      // Combine without comma after weekday
+      return `${weekday} ${month} ${day}, ${year}`;
+    } catch (error) {
+      return dateString;
+    }
+  };
 
   // Extract warning count from sensor health subtitle
   const getSensorHealthInfo = (subTitle: string) => {
@@ -59,7 +75,7 @@ const NoteCard = ({ report, onViewDetails }: NoteCardProps) => {
             {formatDate(report.date)}
           </h4>
         </div>
-        <span className="text-xs text-gray-500">{report.time}</span>
+        <span className="text-xs text-gray-500">{formatDate2(report.date)}</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
