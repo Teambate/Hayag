@@ -1256,11 +1256,22 @@ function calculateSummaryValues(readings, chartData, timezone) {
   // 2. Calculate Daily Yield (average power accumulation)
   let dailyYield = 0;
   if (chartData.panelPerformance && chartData.panelPerformance.length > 0) {
+    // Calculate total accumulated energy first
     const totalEnergy = chartData.panelPerformance.reduce(
       (sum, item) => sum + (item.average ? item.average.value : 0), 
       0
     );
-    dailyYield = totalEnergy / chartData.panelPerformance.length;
+    
+    // Since timestamps are already in UTC and bucketed correctly by timezone in aggregateDataByTimeInterval,
+    // we can directly calculate calendar days between first and last data point
+    const startDate = new Date(chartData.panelPerformance[0].timestamp);
+    const endDate = new Date(chartData.panelPerformance[chartData.panelPerformance.length - 1].timestamp);
+    
+    // Calculate day difference based on UTC dates (dates from client are already timezone-adjusted)
+    const daysDiff = Math.max(1, Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)));
+    
+    // Calculate average per day
+    dailyYield = totalEnergy / daysDiff;
   }
   
   // 3. Determine Peak Solar Hours
