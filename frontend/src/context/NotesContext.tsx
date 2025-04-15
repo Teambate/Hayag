@@ -32,9 +32,7 @@ export interface Report {
 
 interface NotesContextType {
   reports: Report[];
-  setReports: React.Dispatch<React.SetStateAction<Report[]>>;
-  navigateToNotes: () => void;
-  fetchReports: (forceRefresh?: boolean) => Promise<void>;
+  fetchReports: () => void;
   loading: boolean;
   error: string | null;
 }
@@ -43,98 +41,67 @@ const NotesContext = createContext<NotesContextType | undefined>(undefined);
 
 export const NotesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
-  const { deviceId } = useDevice(); // Get deviceId from DeviceContext
-  const { user } = useAuth();
+  const { deviceId } = useDevice();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [isMounted, setIsMounted] = useState(true);
 
-  // Function to fetch reports from the API - memoized with useCallback
-  const fetchReports = useCallback(async (forceRefresh: boolean = false) => {
-    // Skip if no deviceId is available
+  // Simple function to fetch reports
+  const fetchReports = useCallback(() => {
+    // Skip if no deviceId
     if (!deviceId) {
-      console.log('No device ID available, skipping fetch');
+      console.log('No device ID, skipping fetch');
       return;
     }
-    
-    // Allow force refresh to override the loading state
-    if (loading && !forceRefresh) {
-      console.log('Already loading reports, skipping fetch. To force refresh, pass true to fetchReports()');
-      return;
-    }
-    
-    // Always reset loading state if force refreshing
-    if (forceRefresh) {
-      setLoading(false);
-    }
-    
-    console.log(`Fetching reports from API for device ${deviceId}... (forceRefresh: ${forceRefresh})`);
-    
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Use axios instance with deviceId parameter
-      console.log(`Making API request to /insights/reports?deviceId=${deviceId}`);
-      const response = await api.get(`/insights/reports?deviceId=${deviceId}`);
-      console.log('API response status:', response.status);
-      
-      // Only update state if component is still mounted
-      if (isMounted) {
-        if (response.data && response.data.success) {
-          console.log('API response data received successfully');
-          setReports(response.data.reports || []);
-          console.log('Reports loaded successfully:', response.data.reports ? response.data.reports.length : 0);
-        } else {
-          console.error('API response indicates failure:', response.data);
-          throw new Error(response.data?.message || 'Failed to fetch reports');
-        }
-      }
-    } catch (error: any) {
-      console.error('Error fetching reports:', error);
-      
-      // Only update state if component is still mounted
-      if (isMounted) {
-        setError((error as any)?.message || 'Failed to load reports');
-      }
-    } finally {
-      // Only update state if component is still mounted
-      if (isMounted) {
-        console.log('Finished API call, setting loading to false');
-        setLoading(false);
-      }
-    }
-  }, [deviceId, isMounted, loading]);
 
-  // Fetch reports when deviceId changes or component mounts
+    // Set loading state
+    setLoading(true);
+    console.log('Starting to fetch reports...');
+
+    // Make API call
+    api.get(`/insights/reports?deviceId=${deviceId}`)
+      .then(response => {
+        console.log('API response received:', response.status);
+        if (response.data && response.data.success) {
+          // Extract reports array and log it
+          const reportsData = response.data.reports || [];
+          console.log('Reports data from API:', reportsData);
+          console.log('Reports count:', reportsData.length);
+          
+          // Update state with reports
+          setReports(reportsData);
+          console.log('State updated with reports');
+        } else {
+          console.error('API error:', response.data);
+          setError('Failed to fetch reports');
+        }
+      })
+      .catch(err => {
+        console.error('Fetch error:', err);
+        setError('Error fetching reports');
+      })
+      .finally(() => {
+        // Always set loading to false when done
+        setLoading(false);
+        console.log('Loading set to false');
+      });
+  }, [deviceId]);
+
+  // Fetch reports on mount and when deviceId changes
   useEffect(() => {
     if (deviceId) {
-      console.log('DeviceId changed or NotesProvider mounted, fetching reports for device:', deviceId);
-      fetchReports(true); // Force refresh when deviceId changes
+      console.log('Fetching reports on mount for device:', deviceId);
+      fetchReports();
     }
-    
-    // Cleanup function to prevent state updates after unmount
-    return () => {
-      console.log('NotesProvider unmounting');
-      setIsMounted(false);
-    };
   }, [deviceId, fetchReports]);
-
-  // Function to navigate to the notes page
-  const navigateToNotes = useCallback(() => {
-    navigate('/notes');
-  }, [navigate]);
 
   return (
     <NotesContext.Provider
       value={{
         reports,
-        setReports,
-        navigateToNotes,
         fetchReports,
         loading,
-        error,
+        error
       }}
     >
       {children}

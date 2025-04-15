@@ -15,7 +15,6 @@ interface NotesProps {
 export default function Notes({ setActiveTab }: NotesProps) {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [isNoteDetailModalOpen, setIsNoteDetailModalOpen] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Get reports data and functions from context
   const { reports, fetchReports, loading, error } = useNotes();
@@ -27,7 +26,7 @@ export default function Notes({ setActiveTab }: NotesProps) {
   // Fetch data on component mount
   useEffect(() => {
     console.log('Notes component mounted - fetching reports for device:', deviceId);
-    fetchReports(true); // Explicitly fetch reports when the component mounts
+    fetchReports(); // Fetch reports on mount
   }, [deviceId, fetchReports]);
 
   // Update navbar active tab when component mounts
@@ -44,27 +43,10 @@ export default function Notes({ setActiveTab }: NotesProps) {
   }, []);
 
   // Handle manual refresh
-  const handleRefresh = useCallback(async () => {
+  const handleRefresh = useCallback(() => {
     console.log('Manual refresh triggered for device:', deviceId);
-    setIsRefreshing(true);
-    try {
-      await fetchReports(true); // Pass true to force refresh
-    } finally {
-      // Set a timeout to ensure UI updates properly
-      setTimeout(() => {
-        setIsRefreshing(false);
-      }, 500);
-    }
+    fetchReports(); // Refetch reports
   }, [fetchReports, deviceId]);
-
-  // Reset refreshing state when loading changes
-  useEffect(() => {
-    if (!loading && isRefreshing) {
-      setTimeout(() => {
-        setIsRefreshing(false);
-      }, 300);
-    }
-  }, [loading, isRefreshing]);
 
   // Get current device name for display
   const getCurrentDeviceName = useCallback(() => {
@@ -73,6 +55,20 @@ export default function Notes({ setActiveTab }: NotesProps) {
     const device = user.devices.find(d => d.deviceId === deviceId);
     return device ? device.name : deviceId;
   }, [user, deviceId]);
+
+  // Log current state
+  console.log("Render state:", { 
+    loading, 
+    reportsLength: reports.length, 
+    error,
+    hasReports: Boolean(reports && reports.length),
+    reports: reports
+  });
+
+  /* DEVELOPMENT ONLY HACK: Print the contents of reports to console */
+  useEffect(() => {
+    console.log("RAW REPORTS DATA:", JSON.stringify(reports, null, 2));
+  }, [reports]);
 
   // Render loading state
   if (loading && reports.length === 0) {
@@ -128,6 +124,7 @@ export default function Notes({ setActiveTab }: NotesProps) {
     );
   }
 
+  // Main content with reports
   return (
     <>
       <Banner activeTab="Notes" />
@@ -144,37 +141,37 @@ export default function Notes({ setActiveTab }: NotesProps) {
             <button 
               className="text-sm bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-3 py-2 rounded-md shadow-sm flex items-center"
               onClick={handleRefresh}
-              disabled={isRefreshing}
+              disabled={loading}
             >
-              {isRefreshing && <RefreshCw size={14} className="mr-2 animate-spin" />}
-              {isRefreshing ? 'Refreshing...' : 'Refresh Reports'}
+              {loading && <RefreshCw size={14} className="mr-2 animate-spin" />}
+              {loading ? 'Refreshing...' : 'Refresh Reports'}
             </button>
           </div>
         </div>
 
         <div className="space-y-4">
-          {reports.map(report => (
-            <NoteCard 
-              key={report.id} 
-              report={report}
-              onViewDetails={handleViewReportDetails}
-            />
-          ))}
-        </div>
-
-        {reports.length === 0 && !loading && !error && (
-          <div className="text-center py-10 bg-white rounded-lg border border-gray-200">
-            <div className="text-gray-400 mb-3">
-              <FileText size={48} className="mx-auto" />
+          {reports && reports.length > 0 ? (
+            reports.map(report => (
+              <NoteCard 
+                key={report.id} 
+                report={report}
+                onViewDetails={handleViewReportDetails}
+              />
+            ))
+          ) : (
+            <div className="text-center py-10 bg-white rounded-lg border border-gray-200">
+              <div className="text-gray-400 mb-3">
+                <FileText size={48} className="mx-auto" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-700">
+                No reports found
+              </h3>
+              <p className="text-gray-500 mt-1">
+                No system reports are available for {getCurrentDeviceName()}
+              </p>
             </div>
-            <h3 className="text-lg font-medium text-gray-700">
-              No reports found
-            </h3>
-            <p className="text-gray-500 mt-1">
-              No system reports are available for {getCurrentDeviceName()}
-            </p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Note Detail Modal */}
