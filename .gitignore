@@ -59,6 +59,8 @@ yarn-error.log*
 /frontend/.next/
 /frontend/out/
 /frontend/.cache/
+/frontend/vite.config.d.ts
+/frontend/tsconfig.node.tsbuildinfo
 
 # Logs
 logs
