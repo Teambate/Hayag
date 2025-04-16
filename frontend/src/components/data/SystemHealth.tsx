@@ -7,6 +7,7 @@ type SystemHealthProps = {
   sensor_health?: {
     [key: string]: number;
   };
+  timestamp?: string | number | Date;
 };
 
 // Radial progress component
@@ -112,9 +113,9 @@ const SensorTooltip: React.FC<{
   );
 };
 
-const SystemHealth: React.FC<SystemHealthProps> = ({ health = 0, sensor_health = {} }) => {
-  // Track the current time for relative time display
-  const [lastCheckedTime] = useState(new Date());
+const SystemHealth: React.FC<SystemHealthProps> = ({ health = 0, sensor_health = {}, timestamp }) => {
+  // Use provided timestamp or fallback to current time
+  const [lastCheckedTime] = useState(timestamp ? new Date(timestamp) : new Date());
   const [relativeTime, setRelativeTime] = useState("");
   
   // Track which card is being hovered
@@ -235,7 +236,7 @@ const SystemHealth: React.FC<SystemHealthProps> = ({ health = 0, sensor_health =
             </div>
           </div>
           <div className="text-right">
-            <div className="text-xs text-gray-500">Last checked</div>
+            <div className="text-xs text-gray-500">Last update</div>
             <div className="text-xs sm:text-sm font-medium">{relativeTime}</div>
           </div>
         </div>
