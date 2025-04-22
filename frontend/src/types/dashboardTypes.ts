@@ -29,11 +29,12 @@ export interface SensorDataType {
   power_accumulation?: {
     panels: Array<{
       panelId: string;
-      energy: number;
+      actual_energy: number;
+      predicted_energy: number;
       unit: string;
     }>;
-    total: number;
-    average: number;
+    actual_energy: number;
+    predicted_energy: number;
     period: string;
     unit: string;
   };

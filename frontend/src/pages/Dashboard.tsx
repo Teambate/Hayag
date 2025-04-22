@@ -12,11 +12,73 @@ import { useCallback, useState, useMemo } from "react";
 import { DashboardChartData, ChartDataPoint } from "../hooks/useDashboardCharts";
 import { TimePeriod } from "../components/graphs/EnergyProduction";
 
+// Custom tooltip component for panel performance comparison
+interface PerformanceTooltipProps {
+  isVisible: boolean;
+  actual: number;
+  predicted: number;
+  percentage: number;
+  panelId: string;
+  unit: string;
+}
+
+const PerformanceTooltip: React.FC<PerformanceTooltipProps> = ({ 
+  isVisible, 
+  actual, 
+  predicted, 
+  percentage, 
+  panelId, 
+  unit 
+}) => {
+  if (!isVisible) return null;
+  
+  const performanceStatus = percentage > 0 ? "Outperforming" : percentage < 0 ? "Underperforming" : "Meeting";
+  const performanceColor = percentage > 0 ? "#22c55e" : percentage < 0 ? "#ef4444" : "#6b7280";
+  
+  return (
+    <div 
+      className="absolute z-10 left-1/2 top-full transform -translate-x-1/2 translate-y-1 w-64 p-3 rounded-lg shadow-md bg-white border transition-opacity duration-200"
+      style={{ opacity: isVisible ? 1 : 0 }}
+    >
+      <div className="flex items-center mb-2">
+        <span className="text-sm font-medium" style={{ color: performanceColor }}>
+          Panel {panelId} Performance
+        </span>
+      </div>
+      <div className="space-y-2 text-xs">
+        <div className="flex justify-between">
+          <span className="text-gray-600">Actual Energy:</span>
+          <span className="font-medium">{actual.toFixed(3)} {unit}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-600">Predicted Energy:</span>
+          <span className="font-medium">{predicted.toFixed(3)} {unit}</span>
+        </div>
+        <div className="flex justify-between pt-1 border-t border-gray-100">
+          <span className="text-gray-600">Performance:</span>
+          <span className="font-medium" style={{ color: performanceColor }}>
+            {percentage > 0 ? '+' : ''}{percentage.toFixed(1)}%
+          </span>
+        </div>
+      </div>
+      <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-600">
+        {performanceStatus} predicted energy generation for today.
+      </div>
+      {/* Arrow pointer */}
+      <div 
+        className="absolute bottom-full left-1/2 transform -translate-x-1/2 border-8 border-transparent border-b-white"
+        style={{ filter: "drop-shadow(0 -1px 1px rgba(0,0,0,0.1))" }}
+      ></div>
+    </div>
+  );
+};
+
 export default function Dashboard() {
   const { user } = useAuth();
   const { selectedPanel } = useDevice();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('24h');
   const [timeInterval, setTimeInterval] = useState<string>('10min');
+  const [hoveredPanelId, setHoveredPanelId] = useState<string | null>(null);
   
   // Handle time period change from Banner
   const handleTimePeriodChange = (period: TimePeriod) => {
@@ -213,14 +275,56 @@ export default function Dashboard() {
                     ? 'warning'
                     : 'inactive';
                     
+                // Calculate performance comparison between actual and predicted
+                const actualEnergy = panel.actual_energy || 0;
+                const predictedEnergy = panel.predicted_energy || 0;
+                
+                let performancePercentage = 0;
+                let performanceText = "";
+                let performanceClass = "";
+                
+                if (predictedEnergy > 0) {
+                  performancePercentage = ((actualEnergy - predictedEnergy) / predictedEnergy) * 100;
+                  
+                  if (performancePercentage > 0) {
+                    performanceText = `+${performancePercentage.toFixed(1)}% vs predicted`;
+                    performanceClass = "text-green-600";
+                  } else if (performancePercentage < 0) {
+                    performanceText = `${performancePercentage.toFixed(1)}% vs predicted`;
+                    performanceClass = "text-red-600";
+                  } else {
+                    performanceText = "On target";
+                    performanceClass = "text-gray-600";
+                  }
+                }
+                    
                 return (
                   <div key={panel.panelId} className="flex flex-col justify-center py-3 pl-4 pr-2">
                     <div className="flex items-start">
                       <div className={`w-2 h-2 rounded-full mt-1.5 mr-1.5 flex-shrink-0 ${getStatusColor(status)}`}></div>
-                      <div>
-                        <h3 className="text-xs font-medium">Panel {panelId}</h3>
+                      <div className="w-full">
+                        <div className="flex justify-between items-center">
+                          <h3 className="text-xs font-medium">Panel {panelId}</h3>
+                          {performanceText && (
+                            <span 
+                              className={`text-xs font-medium ${performanceClass} cursor-pointer relative`}
+                              onMouseEnter={() => setHoveredPanelId(panel.panelId)}
+                              onMouseLeave={() => setHoveredPanelId(null)}
+                            >
+                              {performanceText}
+                              <PerformanceTooltip 
+                                isVisible={hoveredPanelId === panel.panelId}
+                                actual={actualEnergy}
+                                predicted={predictedEnergy}
+                                percentage={performancePercentage}
+                                panelId={panelId}
+                                unit={panel.unit}
+                              />
+                            </span>
+                          )}
+                        </div>
                         <div className="mt-2">
-                          <div className="text-4xl font-bold leading-none tracking-tight">{panel.energy.toFixed(2)} <span className="text-xs text-gray-500 font-normal ml-0.5">{panel.unit}</span></div>
+                          <div className="text-4xl font-bold leading-none tracking-tight">{actualEnergy.toFixed(2)} <span className="text-xs text-gray-500 font-normal ml-0.5">{panel.unit}</span></div>
                           <div className="flex mt-1 text-xs text-gray-600">
                             <div className="mr-3">Voltage <span className="font-medium">{panelVoltage.toFixed(2)} V</span></div>
                             <div>Current <span className="font-medium">{panelCurrent.toFixed(2)} A</span></div>
