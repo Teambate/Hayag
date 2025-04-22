@@ -326,8 +326,8 @@ export default function Dashboard() {
                         <div className="mt-2">
                           <div className="text-4xl font-bold leading-none tracking-tight">{actualEnergy.toFixed(2)} <span className="text-xs text-gray-500 font-normal ml-0.5">{panel.unit}</span></div>
                           <div className="flex mt-1 text-xs text-gray-600">
-                            <div className="mr-3">Voltage <span className="font-medium">{panelVoltage.toFixed(2)} V</span></div>
-                            <div>Current <span className="font-medium">{panelCurrent.toFixed(2)} A</span></div>
+                            <div className="mr-3"><span className="font-medium">{panelVoltage.toFixed(2)} V</span></div>
+                            <div><span className="font-medium">{panelCurrent.toFixed(2)} A</span></div>
                           </div>
                         </div>
                       </div>

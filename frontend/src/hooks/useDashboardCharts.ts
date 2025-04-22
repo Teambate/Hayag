@@ -5,6 +5,7 @@ import { fetchDashboardChartData } from '../services/apiService';
 export interface PanelData {
   panelId: string;
   energy?: number;
+  predicted?: number;
   value?: number;
   unit: string;
 }
