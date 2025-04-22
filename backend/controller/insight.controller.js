@@ -139,7 +139,6 @@ export const getInsightReports = async (req, res) => {
   try {
     // Get params
     const deviceId = req.query.deviceId;
-    const limit = parseInt(req.query.limit, 10) || 7; // Default to 7 days of reports
     
     if (!deviceId) {
       return res.status(400).json({ 
@@ -148,11 +147,10 @@ export const getInsightReports = async (req, res) => {
       });
     }
     
-    // Get insights for this device, limited to the specified number of days
+    // Get all insights for this device
     const result = await getInsightsService({ 
-      deviceId, 
-      page: 1,
-      pageSize: limit
+      deviceId,
+      pageSize: 1000 // Set a large page size to get all insights
     });
     
     if (!result.data || result.data.length === 0) {
