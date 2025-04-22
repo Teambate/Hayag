@@ -1216,51 +1216,81 @@ function finalizeLuxIrradianceBucket(bucket) {
 
 // Helper function to calculate summary values for analytics page
 function calculateSummaryValues(readings, chartData, timezone) {
-  // 1. Calculate real efficiency from efficiency environment data
+  // 1. Calculate efficiency using morning values only (6am to 4pm)
   let efficiencyValue = 0;
-  let efficiencyTrend = 0;
   
-  if (chartData.efficiencyEnvironment && chartData.efficiencyEnvironment.length > 0) {
-    // Calculate average efficiency across all time intervals
-    const totalEfficiency = chartData.efficiencyEnvironment.reduce(
-      (sum, item) => sum + (item.efficiency ? item.efficiency.value : 0), 
-      0
-    );
-    efficiencyValue = totalEfficiency / chartData.efficiencyEnvironment.length;
+  // Filter readings to get only those between 6am and 4pm
+  if (readings && readings.length > 0) {
+    const morningReadings = readings.filter(reading => {
+      const hour = new Date(reading.endTime).getHours();
+      return hour >= 6 && hour <= 16; // 6am to 4pm
+    });
     
-    // Calculate trend by comparing first and last efficiency values if available
-    if (chartData.efficiencyEnvironment.length >= 2) {
-      const firstValue = chartData.efficiencyEnvironment[0].efficiency?.value || 0;
-      const lastValue = chartData.efficiencyEnvironment[chartData.efficiencyEnvironment.length - 1].efficiency?.value || 0;
-      efficiencyTrend = lastValue - firstValue;
+    // Calculate efficiency using actual_avg_power
+    if (morningReadings.length > 0) {
+      let totalActualPower = 0;
+      let totalPredictedPower = 0;
+      let readingCount = 0;
+      
+      morningReadings.forEach(reading => {
+        if (reading.readings.actual_avg_power && reading.readings.actual_avg_power.length > 0 &&
+            reading.readings.predicted_avg_power && reading.readings.predicted_avg_power.length > 0) {
+          
+          // Sum up all panel values
+          reading.readings.actual_avg_power.forEach(panel => {
+            totalActualPower += panel.average || 0;
+          });
+          
+          reading.readings.predicted_avg_power.forEach(panel => {
+            totalPredictedPower += panel.average || 0;
+          });
+          
+          readingCount++;
+        }
+      });
+      
+      // Calculate efficiency if we have valid readings
+      if (readingCount > 0 && totalPredictedPower > 0) {
+        efficiencyValue = (totalActualPower / totalPredictedPower) * 100;
+      }
     }
   }
   
   const efficiency = {
     value: efficiencyValue,
-    trend: efficiencyTrend,
     unit: '%'
   };
   
-  // 2. Calculate Daily Yield (average power accumulation)
-  let dailyYield = 0;
+  // 2. Calculate Total Yield using daily energy totals from panelPerformance
+  let totalYield = 0;
+  let totalPredictedYield = 0;
+  let yieldTrend = 0;
+  let yieldRemark = "within predictions";
+  
   if (chartData.panelPerformance && chartData.panelPerformance.length > 0) {
-    // Calculate total accumulated energy using the total.energy property
-    const totalEnergy = chartData.panelPerformance.reduce(
-      (sum, item) => sum + (item.average ? item.average.value : 0), 
-      0
-    );
+    // Sum up all the daily energy values and predicted values
+    chartData.panelPerformance.forEach(day => {
+      // Add actual energy
+      totalYield += (day.total && day.total.energy) ? day.total.energy : 0;
+      
+      // Add predicted energy
+      totalPredictedYield += (day.total && day.total.predicted) ? day.total.predicted : 0;
+    });
     
-    // Since timestamps are already in UTC and bucketed correctly by timezone in aggregateDataByTimeInterval,
-    // we can directly calculate calendar days between first and last data point
-    const startDate = new Date(chartData.panelPerformance[0].timestamp);
-    const endDate = new Date(chartData.panelPerformance[chartData.panelPerformance.length - 1].timestamp);
+    // Calculate trend (difference between actual and predicted)
+    yieldTrend = totalYield - totalPredictedYield;
     
-    // Calculate day difference based on UTC dates (dates from client are already timezone-adjusted)
-    const daysDiff = Math.max(1, Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)));
+    // Determine remark based on comparison with 5% threshold
+    const percentDifference = totalPredictedYield > 0 ? 
+      (yieldTrend / totalPredictedYield) * 100 : 0;
     
-    // Calculate average per day
-    dailyYield = totalEnergy / daysDiff;
+    if (Math.abs(percentDifference) <= 5) {
+      yieldRemark = "within predictions";
+    } else if (percentDifference > 5) {
+      yieldRemark = "higher than predicted";
+    } else {
+      yieldRemark = "lower than predicted";
+    }
   }
   
   // 3. Determine Peak Solar Hours
@@ -1331,8 +1361,11 @@ function calculateSummaryValues(readings, chartData, timezone) {
   
   return {
     efficiency,
-    dailyYield: {
-      value: dailyYield,
+    totalYield: {
+      value: totalYield,
+      predicted: totalPredictedYield,
+      trend: yieldTrend,
+      remark: yieldRemark,
       unit: 'kWh'
     },
     peakSolarHours: {
