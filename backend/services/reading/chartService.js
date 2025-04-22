@@ -434,11 +434,12 @@ export const getAnalyticsDataService = async (params) => {
     timeInterval = 'daily';
   } else if (daysDiff <= 31) {
     timeInterval = 'daily';
-  } else if (daysDiff <= 90) {
-    timeInterval = 'weekly';
-  } else {
-    timeInterval = 'monthly';
-  }
+  } 
+  // else if (daysDiff <= 90) {
+  //   timeInterval = 'weekly';
+  // } else {
+  //   timeInterval = 'monthly';
+  // }
   
   // Define all sensor types we need for all charts
   const sensorTypes = ['ina226', 'battery', 'panel_temp', 'solar', 'dht22', 'light', 'actual_total_energy', 'predicted_total_energy', 'actual_avg_power', 'predicted_avg_power'];
@@ -957,9 +958,30 @@ async function getIrradiancePowerCorrelation(readings, timeIntervalMs, timezone)
       }
       
       // Create a new bucket aligned to the time interval
-      const bucketStartTime = new Date(
-        Math.floor(readingTime / timeIntervalMs) * timeIntervalMs
-      );
+      let bucketStartTime;
+      
+      // Special handling for 'daily' interval to ensure consistent timestamp pattern
+      if (timeIntervalMs === 24 * 60 * 60 * 1000) { // daily interval (24h)
+        // Create a new date object based on the reading time
+        const readingDate = new Date(readingTime);
+        
+        // Create a new date at the same time as the first bucket, but on the current reading's date
+        // This ensures all daily buckets have the same time component
+        const firstBucketDate = new Date(result[0]?.timestamp || startTime);
+        bucketStartTime = new Date(
+          readingDate.getFullYear(),
+          readingDate.getMonth(),
+          readingDate.getDate(),
+          firstBucketDate.getHours(),
+          firstBucketDate.getMinutes(),
+          firstBucketDate.getSeconds()
+        );
+      } else {
+        // For other intervals, use the standard floor calculation
+        bucketStartTime = new Date(
+          Math.floor(readingTime / timeIntervalMs) * timeIntervalMs
+        );
+      }
       
       currentBucket = {
         timestamp: bucketStartTime,
@@ -1094,9 +1116,30 @@ async function getLuxIrradianceCorrelation(readings, timeIntervalMs, timezone) {
       }
       
       // Create a new bucket aligned to the time interval
-      const bucketStartTime = new Date(
-        Math.floor(readingTime / timeIntervalMs) * timeIntervalMs
-      );
+      let bucketStartTime;
+      
+      // Special handling for 'daily' interval to ensure consistent timestamp pattern
+      if (timeIntervalMs === 24 * 60 * 60 * 1000) { // daily interval (24h)
+        // Create a new date object based on the reading time
+        const readingDate = new Date(readingTime);
+        
+        // Create a new date at the same time as the first bucket, but on the current reading's date
+        // This ensures all daily buckets have the same time component
+        const firstBucketDate = new Date(result[0]?.timestamp || startTime);
+        bucketStartTime = new Date(
+          readingDate.getFullYear(),
+          readingDate.getMonth(),
+          readingDate.getDate(),
+          firstBucketDate.getHours(),
+          firstBucketDate.getMinutes(),
+          firstBucketDate.getSeconds()
+        );
+      } else {
+        // For other intervals, use the standard floor calculation
+        bucketStartTime = new Date(
+          Math.floor(readingTime / timeIntervalMs) * timeIntervalMs
+        );
+      }
       
       currentBucket = {
         timestamp: bucketStartTime,
