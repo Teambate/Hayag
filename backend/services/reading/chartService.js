@@ -441,7 +441,7 @@ export const getAnalyticsDataService = async (params) => {
   }
   
   // Define all sensor types we need for all charts
-  const sensorTypes = ['ina226', 'battery', 'panel_temp', 'solar', 'dht22', 'light'];
+  const sensorTypes = ['ina226', 'battery', 'panel_temp', 'solar', 'dht22', 'light', 'actual_total_energy', 'predicted_total_energy', 'actual_avg_power', 'predicted_avg_power'];
   
   // Build the aggregation pipeline
   const pipeline = [];
@@ -496,6 +496,12 @@ export const getAnalyticsDataService = async (params) => {
     const orConditions = sensorTypes.map(type => ({
       [`readings.${type}.0`]: { $exists: true }
     }));
+    
+    // Add conditions for the new energy fields
+    orConditions.push({ "readings.actual_total_energy.0": { $exists: true } });
+    orConditions.push({ "readings.predicted_total_energy.0": { $exists: true } });
+    orConditions.push({ "readings.actual_avg_power.0": { $exists: true } });
+    orConditions.push({ "readings.predicted_avg_power.0": { $exists: true } });
     
     pipeline.push({
       $match: {
@@ -567,7 +573,9 @@ async function getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray
         day: { $dayOfMonth: { date: "$endTime", timezone: timezone || "Asia/Manila" } },
         month: { $month: { date: "$endTime", timezone: timezone || "Asia/Manila" } },
         year: { $year: { date: "$endTime", timezone: timezone || "Asia/Manila" } },
-        "readings.ina226": 1
+        "readings.actual_total_energy": 1,
+        "readings.predicted_total_energy": 1,
+        "readings.actual_avg_power": 1
       }
     }
   ];
@@ -582,9 +590,23 @@ async function getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray
         day: 1,
         month: 1,
         year: 1,
-        "readings.ina226": {
+        "readings.actual_total_energy": {
           $filter: {
-            input: "$readings.ina226",
+            input: "$readings.actual_total_energy",
+            as: "sensor",
+            cond: { $in: ["$$sensor.panelId", panelIdsArray] }
+          }
+        },
+        "readings.predicted_total_energy": {
+          $filter: {
+            input: "$readings.predicted_total_energy",
+            as: "sensor",
+            cond: { $in: ["$$sensor.panelId", panelIdsArray] }
+          }
+        },
+        "readings.actual_avg_power": {
+          $filter: {
+            input: "$readings.actual_avg_power",
             as: "sensor",
             cond: { $in: ["$$sensor.panelId", panelIdsArray] }
           }
@@ -605,20 +627,10 @@ async function getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray
   // Create a nested map: date -> hour -> panel data
   const dailyHourlyData = {};
   
-  // Process readings to calculate energy per hour for each day
-  let previousReadings = {};
-  let previousDay = null;
-  
+  // Process readings for each hour
   for (const reading of readings) {
     const hour = reading.hour;
-    const readingTime = new Date(reading.endTime);
     const dateKey = `${reading.year}-${reading.month}-${reading.day}`;
-    
-    // Reset previous readings when moving to a new day to avoid day boundary issues
-    if (previousDay !== null && previousDay !== dateKey) {
-      previousReadings = {};
-    }
-    previousDay = dateKey;
     
     // Initialize data structure for this day and hour if needed
     if (!dailyHourlyData[dateKey]) {
@@ -644,46 +656,23 @@ async function getPeakSolarHoursData(deviceId, startDate, endDate, panelIdsArray
       };
     }
     
-    if (reading.readings.ina226 && reading.readings.ina226.length > 0) {
-      for (const sensor of reading.readings.ina226) {
+    // Process actual_total_energy readings
+    if (reading.readings.actual_total_energy && reading.readings.actual_total_energy.length > 0) {
+      for (const sensor of reading.readings.actual_total_energy) {
         const panelId = sensor.panelId;
-        const currentPower = sensor.voltage.average * sensor.current.average / 1000; // W
+        const energy = sensor.value; // kWh
         
-        // Get previous reading for this panel to calculate energy
-        const prevReading = previousReadings[panelId];
-        
-        if (prevReading) {
-          // Only calculate energy if readings are from the same day
-          // to avoid attributing overnight gaps to morning hours
-          const prevTime = new Date(prevReading.timestamp);
-          const isSameDay = prevTime.getDate() === readingTime.getDate() && 
-                            prevTime.getMonth() === readingTime.getMonth() && 
-                            prevTime.getFullYear() === readingTime.getFullYear();
-          
-          if (isSameDay) {
-            // Calculate energy accumulation (kWh) between readings
-            const hoursDiff = (readingTime - prevTime) / (1000 * 60 * 60);
-            const avgPower = (currentPower + prevReading.power) / 2; // W
-            const energyKWh = avgPower * hoursDiff / 1000; // kWh
-            
-            // Add to hourly aggregation
-            if (!dailyHourlyData[dateKey][hour].panels[panelId]) {
-              dailyHourlyData[dateKey][hour].panels[panelId] = 0;
-            }
-            
-            if (energyKWh > 0) { // Only add positive energy production
-              dailyHourlyData[dateKey][hour].panels[panelId] += energyKWh;
-              dailyHourlyData[dateKey][hour].totalEnergy += energyKWh;
-              dailyHourlyData[dateKey][hour].samples++;
-            }
-          }
+        // Add to hourly aggregation
+        if (!dailyHourlyData[dateKey][hour].panels[panelId]) {
+          dailyHourlyData[dateKey][hour].panels[panelId] = 0;
         }
         
-        // Update previous reading
-        previousReadings[panelId] = {
-          timestamp: reading.endTime,
-          power: currentPower
-        };
+        if (energy > 0) { // Only add positive energy production
+          // For peak solar hours, we use the actual energy value directly
+          dailyHourlyData[dateKey][hour].panels[panelId] += energy;
+          dailyHourlyData[dateKey][hour].totalEnergy += energy;
+          dailyHourlyData[dateKey][hour].samples++;
+        }
       }
     }
   }
@@ -1256,7 +1245,7 @@ function calculateSummaryValues(readings, chartData, timezone) {
   // 2. Calculate Daily Yield (average power accumulation)
   let dailyYield = 0;
   if (chartData.panelPerformance && chartData.panelPerformance.length > 0) {
-    // Calculate total accumulated energy first
+    // Calculate total accumulated energy using the total.energy property
     const totalEnergy = chartData.panelPerformance.reduce(
       (sum, item) => sum + (item.average ? item.average.value : 0), 
       0
