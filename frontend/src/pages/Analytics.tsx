@@ -647,7 +647,7 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 )}
                 
                 {!insightLoading && !insightError && (
-                  <div className="h-80 overflow-y-auto pr-1 space-y-3">
+                  <div className="max-h-[460px] overflow-y-auto pr-1 space-y-3">
                     {displayInsights.map((item, index) => (
                       <div
                         key={index} 
