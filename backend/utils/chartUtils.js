@@ -69,8 +69,8 @@ export function aggregateDataByTimeInterval(readings, timeIntervalMs, chartType,
       } else {
         // For other intervals, use the standard floor calculation
         bucketStartTime = new Date(
-          Math.floor(readingTime / timeIntervalMs) * timeIntervalMs
-        );
+        Math.floor(readingTime / timeIntervalMs) * timeIntervalMs
+      );
       }
       
       currentBucket = {
