@@ -371,7 +371,7 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
   }[] = [];
 
   // Add formatted insights to the array
-  insightReports.slice(0, 5).forEach(report => {
+  insightReports.forEach(report => {
     const formattedReport = formatReportData(report);
     const displayDate = formatDate(report.date);
     const displayTime = formatTime(report.date);
@@ -397,18 +397,16 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
     
     // Add system insights
     formattedReport.systemInsights.forEach(insight => {
-      if (processedInsights.length < 5) {
-        processedInsights.push({
-          insight,
-          displayDate,
-          displayTime,
-          type: insight.type
-        });
-      }
+      processedInsights.push({
+        insight,
+        displayDate,
+        displayTime,
+        type: insight.type
+      });
     });
     
-    // Add remaining health insights if we have space
-    if (processedInsights.length < 5 && formattedReport.panelHealthInsight.type !== 'critical') {
+    // Add remaining health insights
+    if (formattedReport.panelHealthInsight.type !== 'critical') {
       processedInsights.push({
         insight: formattedReport.panelHealthInsight,
         displayDate,
@@ -417,7 +415,7 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
       });
     }
     
-    if (processedInsights.length < 5 && formattedReport.sensorHealthInsight.type !== 'critical') {
+    if (formattedReport.sensorHealthInsight.type !== 'critical') {
       processedInsights.push({
         insight: formattedReport.sensorHealthInsight,
         displayDate,
@@ -426,19 +424,20 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
       });
     }
     
-    // Add daily performance insight if we have space
-    if (processedInsights.length < 5) {
-      processedInsights.push({
-        insight: formattedReport.infoInsight,
-        displayDate,
-        displayTime,
-        type: formattedReport.infoInsight.type
-      });
-    }
+    // Add daily performance insight
+    processedInsights.push({
+      insight: formattedReport.infoInsight,
+      displayDate,
+      displayTime,
+      type: formattedReport.infoInsight.type
+    });
   });
 
-  // Limit to 5 insights
-  const displayInsights = processedInsights.slice(0, 5);
+  // Sort insights by date (newest first)
+  const displayInsights = processedInsights.sort((a, b) => {
+    // Sort by date (newest first)
+    return new Date(b.displayDate).getTime() - new Date(a.displayDate).getTime();
+  });
 
   return (
     <>
@@ -646,9 +645,9 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                 )}
                 
                 {!insightLoading && !insightError && (
-                  <div className="space-y-3">
+                  <div className="h-80 overflow-y-auto pr-1 space-y-3">
                     {displayInsights.map((item, index) => (
-                      <div 
+                      <div
                         key={index} 
                         className={`p-4 rounded-lg border ${getInsightBgColor(item.type)} flex items-start gap-3 cursor-pointer`}
                         onClick={() => handleViewInsightDetails(item.insight, item.displayDate, item.displayTime)}
