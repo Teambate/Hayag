@@ -72,9 +72,9 @@ export async function generateDailyInsightsService(deviceId, date, timezone = "A
   }).lean();  // Use lean() to get plain JavaScript objects
   
   // Generate insights
-  const dailyPerformance = generatePerformanceInsights(readings, prevDayReadings);
+  const dailyPerformance = generatePerformanceInsights(readings, prevDayReadings, timezone);
   const sensorHealth = generateSensorHealthInsights(readings);
-  const panelHealth = generatePanelHealthInsights(readings);
+  const panelHealth = generatePanelHealthInsights(readings, timezone);
   const insights = generateTextualInsights(dailyPerformance, sensorHealth, panelHealth);
   
   // Create insight document
@@ -240,12 +240,16 @@ export async function checkAndGenerateMissingInsightsService(deviceId, daysToChe
  * Generate performance insights from sensor readings
  * @param {Array} readings - Array of sensor readings
  * @param {Array} prevDayReadings - Array of previous day's readings
+ * @param {string} timezone - Timezone to use for calculations
  * @returns {Object} Performance insights
  */
-function generatePerformanceInsights(readings, prevDayReadings) {
+function generatePerformanceInsights(readings, prevDayReadings, timezone = "Asia/Manila") {
   // Calculate total energy generated
   const totalEnergy = calculateTotalEnergy(readings);
   const prevDayEnergy = calculateTotalEnergy(prevDayReadings);
+  
+  // Calculate expected energy
+  const expectedEnergy = calculateExpectedEnergy(readings);
   
   // Calculate percentage change compared to previous day
   let comparisonValue = 0;
@@ -254,14 +258,18 @@ function generatePerformanceInsights(readings, prevDayReadings) {
   }
   
   // Find peak generation time and value
-  const peakGeneration = findPeakGeneration(readings);
+  const peakGeneration = findPeakGeneration(readings, timezone);
   
   // Calculate efficiency rate (real power output / theoretical maximum)
-  const efficiencyRate = calculateEfficiencyRate(readings);
+  const efficiencyRate = calculateEfficiencyRate(readings, timezone);
   
   return {
     energyGenerated: {
       value: formatDecimal(totalEnergy),
+      unit: "kWh"
+    },
+    expectedEnergy: {
+      value: formatDecimal(expectedEnergy),
       unit: "kWh"
     },
     comparisonWithYesterday: {
@@ -388,9 +396,10 @@ function generateSensorHealthInsights(readings) {
 /**
  * Generate panel health insights from readings
  * @param {Array} readings - Array of sensor readings
+ * @param {string} timezone - Timezone to use for calculations
  * @returns {Object} Panel health insights
  */
-function generatePanelHealthInsights(readings) {
+function generatePanelHealthInsights(readings, timezone = "Asia/Manila") {
   // Get unique panel IDs
   const panelIds = new Set();
   for (const reading of readings) {
@@ -430,14 +439,17 @@ function generatePanelHealthInsights(readings) {
       temperatures.reduce((sum, val) => sum + val, 0) / temperatures.length : null;
     
     // Calculate panel efficiency
-    const efficiency = calculatePanelEfficiency(readings, panelId);
+    const efficiency = calculatePanelEfficiency(readings, panelId, timezone);
     
     // Determine panel status based on efficiency and temperature
+    // Updated thresholds:
+    // warning = if average efficiency is < 15% or temp is > 65°C
+    // critical = if efficiency is < 10% or temp is > 75°C
     let status = "good";
-    if (efficiency < 10 || (tempMax && tempMax > 80)) {
+    if (efficiency < 10 || (tempMax && tempMax > 75)) {
       status = "critical";
       criticalPanels++;
-    } else if (efficiency < 20 || (tempMax && tempMax > 70)) {
+    } else if (efficiency < 15 || (tempMax && tempMax > 65)) {
       status = "warning";
       warningPanels++;
     } else {
@@ -490,6 +502,31 @@ function generateTextualInsights(performance, sensorHealth, panelHealth) {
     });
   }
   
+  // Expected vs actual energy comparison
+  if (performance.expectedEnergy && performance.expectedEnergy.value > 0) {
+    const diff = performance.energyGenerated.value - performance.expectedEnergy.value;
+    const percentDiff = performance.expectedEnergy.value > 0 ? 
+      (diff / performance.expectedEnergy.value) * 100 : 0;
+    
+    let importance = "info";
+    let message = "";
+    
+    if (Math.abs(percentDiff) <= 5) {
+      message = `Energy production is within expected range (${performance.expectedEnergy.value} ${performance.expectedEnergy.unit}).`;
+    } else if (percentDiff > 5) {
+      message = `Energy production is ${formatDecimal(percentDiff)}% higher than expected (${performance.expectedEnergy.value} ${performance.expectedEnergy.unit}).`;
+    } else {
+      importance = percentDiff < -15 ? "warning" : "info";
+      message = `Energy production is ${formatDecimal(Math.abs(percentDiff))}% lower than expected (${performance.expectedEnergy.value} ${performance.expectedEnergy.unit}).`;
+    }
+    
+    insights.push({
+      category: "performance",
+      importance,
+      message
+    });
+  }
+  
   if (performance.comparisonWithYesterday.value !== 0) {
     const trend = performance.comparisonWithYesterday.value > 0 ? "increase" : "decrease";
     const importance = performance.comparisonWithYesterday.value < -20 ? "warning" : "info";
@@ -527,12 +564,12 @@ function generateTextualInsights(performance, sensorHealth, panelHealth) {
   }
   
   // Panel health insights
-  const hotPanels = panelHealth.details.filter(panel => panel.temperature.max > 70);
+  const hotPanels = panelHealth.details.filter(panel => panel.temperature.max > 65);
   if (hotPanels.length > 0) {
     insights.push({
       category: "maintenance",
       importance: "warning",
-      message: `${hotPanels.length} panels reached high temperatures (>70°C). Check for potential cooling or ventilation issues.`
+      message: `${hotPanels.length} panels reached high temperatures (>65°C). Check for potential cooling or ventilation issues.`
     });
   }
   
@@ -635,41 +672,64 @@ function getTimeIntervalHours(readings) {
 /**
  * Find the peak generation time and value
  * @param {Array} readings - Array of sensor readings
+ * @param {string} timezone - Client timezone
  * @returns {Object} Peak generation time and value
  */
-function findPeakGeneration(readings) {
+function findPeakGeneration(readings, timezone = "Asia/Manila") {
   let peakValue = 0;
   let peakTime = "N/A";
+  let peakReadingTime = null;
   
   if (!readings || readings.length === 0) {
     return { time: peakTime, value: peakValue };
   }
   
   for (const reading of readings) {
-    if (!reading.readings || !reading.readings.ina226 || reading.readings.ina226.length === 0) {
-      continue;
-    }
-    
     let totalPower = 0;
-    for (const sensor of reading.readings.ina226) {
-      if (!sensor || !sensor.voltage || !sensor.current) continue;
-      
-      const voltage = sensor.voltage?.average || 0;
-      const current = sensor.current?.average || 0;
-      const power = voltage * current / 1000; // Power in watts
-      totalPower += power;
+    
+    // First try to get power from actual_avg_power
+    if (reading.readings && reading.readings.actual_avg_power && reading.readings.actual_avg_power.length > 0) {
+      for (const panel of reading.readings.actual_avg_power) {
+        if (panel && panel.average !== undefined) {
+          totalPower += panel.average;
+        }
+      }
+    } 
+    // Fall back to ina226 if actual_avg_power is not available
+    else if (reading.readings && reading.readings.ina226 && reading.readings.ina226.length > 0) {
+      for (const sensor of reading.readings.ina226) {
+        if (!sensor || !sensor.voltage || !sensor.current) continue;
+        
+        const voltage = sensor.voltage?.average || 0;
+        const current = sensor.current?.average || 0;
+        const power = voltage * current / 1000; // Power in watts
+        totalPower += power;
+      }
     }
     
     if (totalPower > peakValue) {
       peakValue = totalPower;
-      // Format time as HH:MM
-      try {
-        const date = new Date(reading.endTime);
-        peakTime = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-      } catch (error) {
-        console.error("Error formatting peak time:", error);
-        peakTime = "N/A";
-      }
+      peakReadingTime = reading.endTime;
+    }
+  }
+  
+  // Format time as HH:MM in client's timezone
+  if (peakReadingTime) {
+    try {
+      // Convert to client's timezone
+      const options = { 
+        timeZone: timezone,
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false
+      };
+      
+      peakTime = new Date(peakReadingTime).toLocaleString('en-US', options);
+    } catch (error) {
+      console.error("Error formatting peak time:", error);
+      // Fallback to UTC time if timezone conversion fails
+      const date = new Date(peakReadingTime);
+      peakTime = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
     }
   }
   
@@ -679,21 +739,79 @@ function findPeakGeneration(readings) {
 /**
  * Calculate efficiency rate of the system
  * @param {Array} readings - Array of sensor readings
+ * @param {string} timezone - Client timezone
  * @returns {number} Efficiency rate in percentage
  */
-function calculateEfficiencyRate(readings) {
+function calculateEfficiencyRate(readings, timezone = "Asia/Manila") {
+  if (!readings || readings.length === 0) {
+    return 0;
+  }
+  
+  // Define rated power constant
+  const RATED_POWER = 100; // 100W rating
+  
+  // Filter readings to get only those between 6am and 4pm in client timezone
+  const dayTimeReadings = readings.filter(reading => {
+    // Use timezone when determining the hour
+    let hour;
+    if (timezone) {
+      try {
+        // Convert to client's timezone before getting the hour
+        const dateInTimezone = new Date(reading.endTime).toLocaleString('en-US', { 
+          timeZone: timezone,
+          hour12: false 
+        });
+        hour = new Date(dateInTimezone).getHours();
+      } catch (error) {
+        console.error("Error processing timezone:", error);
+        // Fallback to UTC time
+        hour = new Date(reading.endTime).getHours();
+      }
+    } else {
+      // Fallback to server timezone if no client timezone provided
+      hour = new Date(reading.endTime).getHours();
+    }
+    return hour >= 6 && hour <= 16; // 6am to 4pm
+  });
+  
+  // If no daytime readings, return 0
+  if (dayTimeReadings.length === 0) {
+    return 0;
+  }
+  
+  // Calculate efficiency using morning values only
+  let totalActualPower = 0;
+  let panelCount = 0;
+  
+  for (const reading of dayTimeReadings) {
+    if (reading.readings && reading.readings.actual_avg_power && reading.readings.actual_avg_power.length > 0) {
+      // Sum up all panel values
+      for (const panel of reading.readings.actual_avg_power) {
+        if (panel && panel.average !== undefined) {
+          totalActualPower += panel.average;
+          panelCount++;
+        }
+      }
+    }
+  }
+  
+  // Calculate performance ratio if we have valid readings
+  if (panelCount > 0) {
+    // Use average power per panel
+    const avgPowerPerPanel = totalActualPower / panelCount;
+    // Calculate performance ratio: (actual power / rated power) * 100
+    return (avgPowerPerPanel / RATED_POWER) * 100;
+  }
+  
+  // Fallback to old method if no actual_avg_power data is available
   // This is a simplified calculation that needs refinement based on actual panel specs
   let totalPower = 0;
   let totalIrradiance = 0;
   let panelArea = 0; // Assumed panel area in m²
   
-  if (!readings || readings.length === 0) {
-    return 0;
-  }
-  
   // Count panels to estimate total area
   const uniquePanelIds = new Set();
-  for (const reading of readings) {
+  for (const reading of dayTimeReadings) {
     if (reading.readings && reading.readings.ina226) {
       for (const sensor of reading.readings.ina226) {
         if (sensor && sensor.panelId) {
@@ -706,7 +824,7 @@ function calculateEfficiencyRate(readings) {
   // Assume 1.5m² per panel for now (adjust based on actual panel dimensions)
   panelArea = uniquePanelIds.size * 1.5;
   
-  for (const reading of readings) {
+  for (const reading of dayTimeReadings) {
     // Calculate total power output
     if (reading.readings && reading.readings.ina226) {
       for (const sensor of reading.readings.ina226) {
@@ -737,8 +855,8 @@ function calculateEfficiencyRate(readings) {
   }
   
   // Calculate average values
-  const avgPower = readings.length > 0 ? totalPower / readings.length : 0;
-  const avgIrradiance = readings.length > 0 ? totalIrradiance / readings.length : 0;
+  const avgPower = dayTimeReadings.length > 0 ? totalPower / dayTimeReadings.length : 0;
+  const avgIrradiance = dayTimeReadings.length > 0 ? totalIrradiance / dayTimeReadings.length : 0;
   
   // Skip calculation if no irradiance data
   if (avgIrradiance === 0 || panelArea === 0) {
@@ -758,18 +876,73 @@ function calculateEfficiencyRate(readings) {
  * Calculate panel efficiency
  * @param {Array} readings - Array of sensor readings
  * @param {string} panelId - Panel ID
+ * @param {string} timezone - Client timezone
  * @returns {number} Panel efficiency in percentage
  */
-function calculatePanelEfficiency(readings, panelId) {
-  let totalPower = 0;
-  let totalIrradiance = 0;
-  const panelArea = 1.5; // Assumed panel area in m²
-  
+function calculatePanelEfficiency(readings, panelId, timezone = "Asia/Manila") {
   if (!readings || readings.length === 0 || !panelId) {
     return 0;
   }
   
-  for (const reading of readings) {
+  // Define rated power constant
+  const RATED_POWER = 100; // 100W rating
+  
+  // Filter readings to get only those between 6am and 4pm in client timezone
+  const dayTimeReadings = readings.filter(reading => {
+    // Use timezone when determining the hour
+    let hour;
+    if (timezone) {
+      try {
+        // Convert to client's timezone before getting the hour
+        const dateInTimezone = new Date(reading.endTime).toLocaleString('en-US', { 
+          timeZone: timezone,
+          hour12: false 
+        });
+        hour = new Date(dateInTimezone).getHours();
+      } catch (error) {
+        console.error("Error processing timezone:", error);
+        // Fallback to UTC time
+        hour = new Date(reading.endTime).getHours();
+      }
+    } else {
+      // Fallback to server timezone if no client timezone provided
+      hour = new Date(reading.endTime).getHours();
+    }
+    return hour >= 6 && hour <= 16; // 6am to 4pm
+  });
+  
+  // If no daytime readings, return 0
+  if (dayTimeReadings.length === 0) {
+    return 0;
+  }
+  
+  // First try to get efficiency from actual_avg_power
+  let totalActualPower = 0;
+  let count = 0;
+  
+  for (const reading of dayTimeReadings) {
+    if (reading.readings && reading.readings.actual_avg_power && reading.readings.actual_avg_power.length > 0) {
+      const panel = reading.readings.actual_avg_power.find(p => p && p.panelId === panelId);
+      if (panel && panel.average !== undefined) {
+        totalActualPower += panel.average;
+        count++;
+      }
+    }
+  }
+  
+  // Calculate efficiency using performance ratio if we have valid readings
+  if (count > 0) {
+    const avgPower = totalActualPower / count;
+    // Calculate performance ratio: (actual power / rated power) * 100
+    return (avgPower / RATED_POWER) * 100;
+  }
+  
+  // Fallback to old method if actual_avg_power is not available
+  let totalPower = 0;
+  let totalIrradiance = 0;
+  const panelArea = 1.5; // Assumed panel area in m²
+  
+  for (const reading of dayTimeReadings) {
     // Calculate panel power output
     if (reading.readings && reading.readings.ina226) {
       const sensor = reading.readings.ina226.find(s => s && s.panelId === panelId);
@@ -790,8 +963,8 @@ function calculatePanelEfficiency(readings, panelId) {
   }
   
   // Calculate average values
-  const avgPower = readings.length > 0 ? totalPower / readings.length : 0;
-  const avgIrradiance = readings.length > 0 ? totalIrradiance / readings.length : 0;
+  const avgPower = dayTimeReadings.length > 0 ? totalPower / dayTimeReadings.length : 0;
+  const avgIrradiance = dayTimeReadings.length > 0 ? totalIrradiance / dayTimeReadings.length : 0;
   
   // Skip calculation if no irradiance data
   if (avgIrradiance === 0) {
@@ -822,4 +995,30 @@ function calculateDataCompleteness(readings) {
   const completeness = (readings.length / expectedReadings) * 100;
   
   return Math.min(completeness, 100); // Cap at 100%
+}
+
+/**
+ * Calculate expected energy from predicted values
+ * @param {Array} readings - Array of sensor readings
+ * @returns {number} Expected energy in kWh
+ */
+function calculateExpectedEnergy(readings) {
+  let expectedEnergy = 0;
+  
+  if (!readings || readings.length === 0) {
+    return expectedEnergy;
+  }
+  
+  // Get the energy from predicted_total_energy values
+  for (const reading of readings) {
+    if (reading.readings && reading.readings.predicted_total_energy && reading.readings.predicted_total_energy.length > 0) {
+      for (const panel of reading.readings.predicted_total_energy) {
+        if (panel && panel.value !== undefined) {
+          expectedEnergy += panel.value;
+        }
+      }
+    }
+  }
+  
+  return expectedEnergy;
 } 

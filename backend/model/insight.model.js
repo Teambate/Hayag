@@ -20,6 +20,10 @@ const insightSchema = new mongoose.Schema(
         value: { type: Number, default: 0 },
         unit: { type: String, default: "kWh" }
       },
+      expectedEnergy: {
+        value: { type: Number, default: 0 },
+        unit: { type: String, default: "kWh" }
+      },
       comparisonWithYesterday: {
         value: { type: Number, default: 0 }, // percentage change
         unit: { type: String, default: "%" }
