@@ -1,5 +1,4 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import api from '../utils/api'; // Import the configured axios instance
 import { useDevice } from './DeviceContext';
 import { useAuth } from './AuthContext';
@@ -40,17 +39,17 @@ interface NotesContextType {
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
 
 export const NotesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const navigate = useNavigate();
   const { deviceId } = useDevice();
+  const { isAuthenticated } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Simple function to fetch reports
   const fetchReports = useCallback(() => {
-    // Skip if no deviceId
-    if (!deviceId) {
-      console.log('No device ID, skipping fetch');
+    // Skip if no deviceId or not authenticated
+    if (!deviceId || !isAuthenticated) {
+      console.log('No device ID or not authenticated, skipping fetch');
       return;
     }
 
@@ -85,15 +84,15 @@ export const NotesProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setLoading(false);
         console.log('Loading set to false');
       });
-  }, [deviceId]);
+  }, [deviceId, isAuthenticated]);
 
-  // Fetch reports on mount and when deviceId changes
+  // Fetch reports on mount and when deviceId or isAuthenticated changes
   useEffect(() => {
-    if (deviceId) {
+    if (deviceId && isAuthenticated) {
       console.log('Fetching reports on mount for device:', deviceId);
       fetchReports();
     }
-  }, [deviceId, fetchReports]);
+  }, [deviceId, fetchReports, isAuthenticated]);
 
   return (
     <NotesContext.Provider

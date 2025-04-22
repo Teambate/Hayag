@@ -49,13 +49,15 @@ export default function Notes({ setActiveTab }: NotesProps) {
   
   // Get device data from DeviceContext and user data from AuthContext
   const { deviceId } = useDevice();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   // Fetch data on component mount
   useEffect(() => {
-    console.log('Notes component mounted - fetching reports for device:', deviceId);
-    fetchReports(); // Fetch reports on mount
-  }, [deviceId, fetchReports]);
+    if (isAuthenticated) {
+      console.log('Notes component mounted - fetching reports for device:', deviceId);
+      fetchReports(); // Fetch reports on mount
+    }
+  }, [deviceId, fetchReports, isAuthenticated]);
 
   // Update navbar active tab when component mounts
   useEffect(() => {

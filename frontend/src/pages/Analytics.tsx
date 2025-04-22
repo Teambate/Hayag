@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { TrendingUp, ArrowUp, SunIcon, GaugeIcon, CircleOff, Battery, AlertTriangle, FileText, CircleCheck, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { DateRange } from "react-day-picker";
+import { useDevice } from "../context/DeviceContext";
+import { useAuth } from "../context/AuthContext";
+import api from "../utils/api";
 
 // Import graph components
 import PanelPerformance from "../components/graphs/PanelPerformance";
@@ -13,10 +16,8 @@ import PanelTemperatureOverheating from "../components/graphs/PanelTemperatureOv
 import IrradianceGraph from "../components/graphs/IrradianceGraph";
 import Banner from "../components/layout/Banner";
 import { TimePeriod } from "../components/graphs/EnergyProduction";
-import { useDevice } from "../context/DeviceContext";
 import { InsightItem, formatReportData } from "../utils/insightUtils";
 import InsightDetailModal from "../components/ui/InsightDetailModal";
-import api from "../utils/api";
 
 // Analytics data interface
 interface AnalyticsData {
@@ -101,6 +102,7 @@ interface AnalyticsProps {
 
 export default function Analytics({ setActiveTab }: AnalyticsProps) {
   const { deviceId } = useDevice();
+  const { isAuthenticated } = useAuth();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -189,7 +191,7 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
   // Fetch insight reports when time range changes
   useEffect(() => {
     const fetchInsightReports = async () => {
-      if (!deviceId || !selectedDateRange) return;
+      if (!deviceId || !selectedDateRange || !isAuthenticated) return;
 
       setInsightLoading(true);
       setInsightError(null);
@@ -223,7 +225,7 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
     };
 
     fetchInsightReports();
-  }, [deviceId, selectedDateRange]);
+  }, [deviceId, selectedDateRange, isAuthenticated]);
 
   // Handle panel selection change
   const handlePanelChange = (panel: string) => {
