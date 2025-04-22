@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '../components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import api from '../utils/api';
 
 // Adding custom animation keyframes
 const solarPulseCss = `
@@ -12,23 +13,29 @@ const solarPulseCss = `
 }
 `;
 
-const Login = () => {
+const SignUp = () => {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const backgroundRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { login, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
-  // Redirect if already authenticated
+  // Comment out the redirection for now so users can access the signup page
+  // We'll rely on the server-side check instead
+  /*
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
       console.log('User authenticated, redirecting to dashboard');
       navigate('/dashboard');
     }
   }, [isAuthenticated, isLoading, navigate]);
+  */
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -90,15 +97,35 @@ const Login = () => {
     setIsLoading(true);
     setError('');
     
+    // Password validation
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      setIsLoading(false);
+      return;
+    }
+    
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      setIsLoading(false);
+      return;
+    }
+    
     try {
-      const result = await login(email, password);
+      const response = await api.post('/auth/register', {
+        name,
+        email,
+        password
+      });
       
-      if (!result.success) {
-        setError(result.message || 'Login failed');
+      if (response.data.success) {
+        // Registration successful, redirect to login
+        navigate('/');
+      } else {
+        setError(response.data.message || 'Registration failed');
       }
-    } catch (error) {
-      console.error('Login error:', error);
-      setError('An unexpected error occurred. Please try again.');
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      setError(error.response?.data?.message || 'An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -117,7 +144,7 @@ const Login = () => {
         {/* Subtle texture overlay */}
         <div className="absolute inset-0 opacity-10" 
           style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.12'%3E%3Cpath opacity='.5' d='M96 95h4v1h-4v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9zm-1 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm9-10v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.12'%3E%3Cpath opacity='.5' d='M96 95h4v1h-4v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9zm-1 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm9-10v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
           }}
         />
         
@@ -137,22 +164,40 @@ const Login = () => {
         </div>
       </div>
 
-      {/* Login form container */}
+      {/* Signup form container */}
       <div className="relative z-10 m-auto flex w-full max-w-md flex-col items-center rounded-xl backdrop-blur-xl">
         <div className="w-full rounded-xl bg-white/10 p-8 shadow-xl backdrop-blur-md">
           <div className="mb-8 flex flex-col items-center">
             <img src="/src/assets/HayagLogo.png" alt="Hayag Logo" className="relative h-24 w-24 object-contain drop-shadow-lg mb-4" />
-            <h1 className="text-xl font-semibold text-white mb-1">Welcome Back</h1>
-            <p className="text-white/80 text-sm">Log in to your account</p>
+            <h1 className="text-xl font-semibold text-white mb-1">Create Account</h1>
+            <p className="text-white/80 text-sm">Join the Hayag community</p>
           </div>
           
-          {/* Login form */}
+          {/* Signup form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
               <div className="rounded-md bg-red-500/20 p-3 text-sm text-white">
                 {error}
               </div>
             )}
+            
+            {/* Name field */}
+            <div className="space-y-2">
+              <label htmlFor="name" className="block text-sm font-medium text-white">
+                Name
+              </label>
+              <input
+                id="name"
+                type="text" 
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="w-full rounded-md border-0 bg-white/10 p-3 text-white placeholder-white/50 shadow-sm ring-1 ring-inset ring-white/20 transition-all duration-200 ease-in-out focus:bg-white/10 focus:ring-2 focus:ring-inset focus:ring-white"
+                placeholder="Your full name"
+              />
+            </div>
+            
+            {/* Email field */}
             <div className="space-y-2">
               <label htmlFor="email" className="block text-sm font-medium text-white">
                 Email
@@ -168,15 +213,11 @@ const Login = () => {
               />
             </div>
             
+            {/* Password field */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label htmlFor="password" className="block text-sm font-medium text-white">
-                  Password
-                </label>
-                <a href="#" className="text-xs text-[#FFBC3B] hover:text-[#FFBC3B]/80 transition-colors duration-200">
-                  Forgot password?
-                </a>
-              </div>
+              <label htmlFor="password" className="block text-sm font-medium text-white">
+                Password
+              </label>
               <div className="relative">
                 <input
                   id="password"
@@ -205,6 +246,42 @@ const Login = () => {
                   )}
                 </button>
               </div>
+              <p className="text-xs text-white/60">Password must be at least 6 characters</p>
+            </div>
+            
+            {/* Confirm Password field */}
+            <div className="space-y-2">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-white">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  className="w-full rounded-md border-0 bg-white/10 p-3 text-white placeholder-white/50 shadow-sm ring-1 ring-inset ring-white/20 transition-all duration-200 ease-in-out focus:bg-white/10 focus:ring-2 focus:ring-inset focus:ring-white pr-10"
+                  placeholder="••••••••"
+                />
+                <button 
+                  type="button"
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-white/70 hover:text-white transition-colors duration-200"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                >
+                  {showConfirmPassword ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 transition-transform duration-200 ease-in-out" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 transition-transform duration-200 ease-in-out" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
             
             <Button
@@ -212,17 +289,17 @@ const Login = () => {
               className="relative w-full bg-[#FFBC3B] py-2.5 text-white font-medium transition-all duration-200 hover:bg-[#FFBC3B]/90 mt-2"
               disabled={isLoading}
             >
-              <span className="relative z-10">{isLoading ? 'Logging in...' : 'Log In'}</span>
+              <span className="relative z-10">{isLoading ? 'Creating Account...' : 'Create Account'}</span>
               {/* Button hover effect */}
               <span className="absolute inset-0 -z-0 rounded bg-gradient-to-r from-yellow-400 to-[#FFBC3B] opacity-0 blur-sm transition-opacity duration-300 ease-in-out group-hover:opacity-70"></span>
             </Button>
           </form>
           
-          {/* Sign up link */}
+          {/* Login link */}
           <p className="mt-6 text-center text-sm text-white/80">
-            Don't have an account?{' '}
-            <a href="/signup" className="font-medium text-[#FFBC3B] transition-colors duration-200 hover:text-[#FFBC3B]/80">
-              Sign up
+            Already have an account?{' '}
+            <a href="/" className="font-medium text-[#FFBC3B] transition-colors duration-200 hover:text-[#FFBC3B]/80">
+              Log in
             </a>
           </p>
         </div>
@@ -231,4 +308,4 @@ const Login = () => {
   );
 };
 
-export default Login; 
+export default SignUp; 

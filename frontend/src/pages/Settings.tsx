@@ -313,7 +313,7 @@ interface SettingsProps {
 }
 
 export default function Settings({ setActiveTab }: SettingsProps) {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
   const { deviceId: contextDeviceId, setDeviceId: setContextDeviceId } = useDevice();
   
   // Profile settings state
@@ -621,6 +621,28 @@ export default function Settings({ setActiveTab }: SettingsProps) {
                     ]}
                   />
                 </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Account Actions */}
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-gray-100 flex items-center">
+              <User className="h-5 w-5 mr-2 text-[#65B08F]" />
+              <h2 className="text-lg font-medium text-gray-800">Account Actions</h2>
+            </div>
+            
+            <div className="p-5">
+              <div className="flex flex-col space-y-2">
+                <p className="text-sm text-gray-500 mb-2">
+                  Sign out of your account on this device
+                </p>
+                <Button 
+                  onClick={() => logout()}
+                  className="w-full md:w-auto bg-red-500 hover:bg-red-600 text-white transition-colors"
+                >
+                  Log Out
+                </Button>
               </div>
             </div>
           </div>

@@ -1,9 +1,7 @@
-import { Bell } from "lucide-react"
 import { Button } from "../ui/button"
 import HayagLogo from "../../assets/HayagLogo.png"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext"
-import { useNotes } from "../../context/NotesContext"
 import { ProfileMenu } from "./ProfileMenu"
 
 interface NavbarProps {
@@ -14,7 +12,6 @@ interface NavbarProps {
 export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
   const navigate = useNavigate()
   useAuth()
-  const { unreadCount, navigateToNotes } = useNotes()
 
   // Get current date
   const currentDate = new Date()
@@ -27,11 +24,6 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
   const handleTabChange = (item: string) => {
     setActiveTab(item)
     navigate(`/${item.toLowerCase()}`)
-  }
-
-  const handleNotificationClick = () => {
-    navigateToNotes()
-    setActiveTab("Insights")
   }
 
   return (
@@ -61,28 +53,13 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
         </div>
       </div>
 
-      {/* Right Side - Date, Notifications, Profile */}
+      {/* Right Side - Date and Profile */}
       <div className="flex items-center space-x-2 sm:space-x-4">
         <div className="hidden md:block">
           <span className="text-xl sm:text-2xl font-bold text-amber-400">{day}</span>
           <span className="ml-2 text-sm sm:text-base xl:text-lg text-gray-600">
             {month} {year}
           </span>
-        </div>
-        <div className="relative">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="text-gray-600 relative"
-            onClick={handleNotificationClick}
-          >
-            <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-amber-400 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </Button>
         </div>
         <ProfileMenu />
       </div>
