@@ -170,7 +170,7 @@ export const getDashboardChartDataService = async (params) => {
   
   // Determine which sensor types to query based on chart types
   const sensorTypesMap = {
-    'energy': ['ina226'],
+    'energy': ['actual_total_energy', 'predicted_total_energy'],
     'battery': ['battery'],
     'panel_temp': ['panel_temp'],
     'irradiance': ['solar']

@@ -36,9 +36,6 @@ export function aggregateDataByTimeInterval(readings, timeIntervalMs, chartType,
   // Initialize the first bucket
   let nextBucketTime = startTime + timeIntervalMs;
   
-  // For energy accumulation, we need to track the previous reading
-  let previousReadings = {};
-  
   for (const reading of readings) {
     const readingTime = new Date(reading.endTime).getTime();
     
@@ -64,19 +61,7 @@ export function aggregateDataByTimeInterval(readings, timeIntervalMs, chartType,
     }
     
     // Process the reading based on chart type
-    processReadingForChart(reading, currentBucket, chartType, panelIdsArray, previousReadings);
-    
-    // For energy chart, update previousReadings after processing
-    if (chartType === 'energy' && reading.readings.ina226 && reading.readings.ina226.length > 0) {
-      for (const sensor of reading.readings.ina226) {
-        previousReadings[sensor.panelId] = {
-          timestamp: reading.endTime,
-          voltage: sensor.voltage.average,
-          current: sensor.current.average,
-          power: sensor.voltage.average * sensor.current.average / 1000 // W
-        };
-      }
-    }
+    processReadingForChart(reading, currentBucket, chartType, panelIdsArray);
   }
   
   // Finalize the last bucket
@@ -89,35 +74,42 @@ export function aggregateDataByTimeInterval(readings, timeIntervalMs, chartType,
 }
 
 // Helper function to process a reading for a specific chart type
-export function processReadingForChart(reading, bucket, chartType, panelIdsArray, previousReadings = {}) {
+export function processReadingForChart(reading, bucket, chartType, panelIdsArray) {
   switch (chartType) {
     case 'energy':
-      if (reading.readings.ina226 && reading.readings.ina226.length > 0) {
-        for (const sensor of reading.readings.ina226) {
-          const currentPower = sensor.voltage.average * sensor.current.average / 1000; // W
-          const prevReading = previousReadings[sensor.panelId];
-          
-          if (prevReading) {
-            // Calculate energy accumulation (kWh) between readings
-            const hoursDiff = (new Date(reading.endTime) - new Date(prevReading.timestamp)) / (1000 * 60 * 60);
-            const avgPower = (currentPower + prevReading.power) / 2; // W
-            const energyKWh = avgPower * hoursDiff / 1000; // kWh
-            
-            bucket.values.push({
-              panelId: sensor.panelId,
-              timestamp: reading.endTime,
-              power: currentPower,
-              energy: energyKWh > 0 ? energyKWh : 0 // Avoid negative values
-            });
-          } else {
-            // For first reading, we can't calculate accumulation
-            bucket.values.push({
-              panelId: sensor.panelId,
-              timestamp: reading.endTime,
-              power: currentPower,
-              energy: 0
-            });
+      // Use actual_total_energy and predicted_total_energy directly
+      if (reading.readings.actual_total_energy && reading.readings.actual_total_energy.length > 0) {
+        for (const sensor of reading.readings.actual_total_energy) {
+          // Find matching predicted energy entry for same panelId if available
+          let predictedValue = 0;
+          if (reading.readings.predicted_total_energy && reading.readings.predicted_total_energy.length > 0) {
+            const matchingPrediction = reading.readings.predicted_total_energy.find(
+              pred => pred.panelId === sensor.panelId
+            );
+            if (matchingPrediction) {
+              predictedValue = matchingPrediction.value;
+            }
           }
+          
+          bucket.values.push({
+            panelId: sensor.panelId,
+            timestamp: reading.endTime,
+            energy: sensor.value,
+            predicted: predictedValue,
+            unit: sensor.unit || 'kWh'
+          });
+        }
+      }
+      // If actual_total_energy is missing but predicted_total_energy exists
+      else if (reading.readings.predicted_total_energy && reading.readings.predicted_total_energy.length > 0) {
+        for (const sensor of reading.readings.predicted_total_energy) {
+          bucket.values.push({
+            panelId: sensor.panelId,
+            timestamp: reading.endTime,
+            energy: 0,
+            predicted: sensor.value,
+            unit: sensor.unit || 'kWh'
+          });
         }
       }
       break;
@@ -214,12 +206,14 @@ export function finalizeDataBucket(bucket, chartType, timezone) {
   for (const [panelId, values] of Object.entries(panelGroups)) {
     switch (chartType) {
       case 'energy':
-        // For energy, we sum the accumulated energy (kWh) in this time bucket
+        // For energy, we sum the total energy and predicted energy in this time bucket
         const totalEnergy = values.reduce((sum, v) => sum + (v.energy || 0), 0);
+        const totalPredicted = values.reduce((sum, v) => sum + (v.predicted || 0), 0);
         panelAverages.push({
           panelId,
           energy: totalEnergy,
-          unit: 'kWh'
+          predicted: totalPredicted,
+          unit: values[0].unit || 'kWh'
         });
         break;
         
@@ -243,10 +237,12 @@ export function finalizeDataBucket(bucket, chartType, timezone) {
   switch (chartType) {
     case 'energy':
       // For energy, we sum the total energy across all panels
-      const totalEnergy = panelAverages.reduce((sum, panel) => sum + panel.energy, 0);
+      const totalActualEnergy = panelAverages.reduce((sum, panel) => sum + panel.energy, 0);
+      const totalPredictedEnergy = panelAverages.reduce((sum, panel) => sum + panel.predicted, 0);
       overallValue = {
-        value: totalEnergy,
-        unit: 'kWh'
+        energy: totalActualEnergy,
+        predicted: totalPredictedEnergy,
+        unit: panelAverages.length > 0 ? panelAverages[0].unit : 'kWh'
       };
       break;
       
@@ -263,99 +259,13 @@ export function finalizeDataBucket(bucket, chartType, timezone) {
   
   // Replace the values array with the processed data
   bucket.panels = panelAverages;
-  bucket.average = overallValue;
+  
+  // Use "total" instead of "average" for energy chart
+  if (chartType === 'energy') {
+    bucket.total = overallValue;
+  } else {
+    bucket.average = overallValue;
+  }
+  
   delete bucket.values;
-}
-
-// Track previous readings for energy accumulation calculations in real-time updates
-const previousReadingsCache = {};
-
-// Helper function to process a reading for chart updates
-export function processReadingForCharts(reading) {
-  const chartData = {
-    energy: [],
-    battery: [],
-    panel_temp: [],
-    irradiance: []
-  };
-  
-  const timestamp = reading.endTime.getTime();
-  
-  // Energy production - calculate both power (W) and energy accumulation (kWh)
-  if (reading.readings.ina226 && reading.readings.ina226.length > 0) {
-    reading.readings.ina226.forEach(sensor => {
-      const voltage = sensor.voltage.average;
-      const current = sensor.current.average;
-      const currentPower = voltage * current / 1000; // Convert to watts
-      
-      // Get previous reading for this panel to calculate energy accumulation
-      const prevReading = previousReadingsCache[sensor.panelId];
-      let energyKWh = 0;
-      
-      if (prevReading) {
-        // Calculate energy accumulation (kWh) between readings using the same method as in processReadingForChart
-        const hoursDiff = (new Date(reading.endTime) - new Date(prevReading.timestamp)) / (1000 * 60 * 60);
-        const avgPower = (currentPower + prevReading.power) / 2; // W
-        energyKWh = avgPower * hoursDiff / 1000; // kWh
-        
-        // Avoid negative values
-        energyKWh = energyKWh > 0 ? energyKWh : 0;
-      }
-      
-      // Update previous reading cache for next calculation
-      previousReadingsCache[sensor.panelId] = {
-        timestamp: reading.endTime,
-        voltage: voltage,
-        current: current,
-        power: currentPower
-      };
-      
-      chartData.energy.push({
-        panelId: sensor.panelId,
-        timestamp: timestamp,
-        power: currentPower,
-        energy: energyKWh,
-        unit: 'W',
-        energyUnit: 'kWh'
-      });
-    });
-  }
-  
-  // Battery charge
-  if (reading.readings.battery && reading.readings.battery.length > 0) {
-    reading.readings.battery.forEach(sensor => {
-      chartData.battery.push({
-        panelId: sensor.panelId,
-        timestamp: timestamp,
-        value: sensor.average,
-        unit: sensor.unit
-      });
-    });
-  }
-  
-  // Panel temperature
-  if (reading.readings.panel_temp && reading.readings.panel_temp.length > 0) {
-    reading.readings.panel_temp.forEach(sensor => {
-      chartData.panel_temp.push({
-        panelId: sensor.panelId,
-        timestamp: timestamp,
-        value: sensor.average,
-        unit: sensor.unit
-      });
-    });
-  }
-  
-  // Irradiance (using solar)
-  if (reading.readings.solar && reading.readings.solar.length > 0) {
-    reading.readings.solar.forEach(sensor => {
-      chartData.irradiance.push({
-        panelId: sensor.panelId,
-        timestamp: timestamp,
-        value: sensor.average,
-        unit: sensor.unit
-      });
-    });
-  }
-  
-  return chartData;
 } 
