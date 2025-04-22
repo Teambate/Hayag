@@ -82,8 +82,10 @@ export const getCurrentSensorValuesService = async (params) => {
       const healthAvg = healthSum / healthValues.length;
       
       // Add to total health calculation
-      totalHealth += healthAvg;
-      healthCount++;
+      if (includeInHealth) {
+        totalHealth += healthAvg;
+        healthCount++;
+      }
       
       // Store sensor health in result
       if (includeInHealth) {
@@ -119,8 +121,10 @@ export const getCurrentSensorValuesService = async (params) => {
       const healthAvg = healthSum / healthValues.length;
       
       // Add to total health calculation
-      totalHealth += healthAvg;
-      healthCount++;
+      if (includeInHealth) {
+        totalHealth += healthAvg;
+        healthCount++;
+      }
       
       // Store sensor health in result
       if (includeInHealth) {
@@ -155,8 +159,10 @@ export const getCurrentSensorValuesService = async (params) => {
       const healthAvg = healthSum / healthValues.length;
       
       // Add to total health calculation
-      totalHealth += healthAvg;
-      healthCount++;
+      if (includeInHealth) {
+        totalHealth += healthAvg;
+        healthCount++;
+      }
       
       // Store sensor health in result
       if (includeInHealth) {
