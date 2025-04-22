@@ -139,6 +139,8 @@ export const getInsightReports = async (req, res) => {
   try {
     // Get params
     const deviceId = req.query.deviceId;
+    const startDate = req.query.startDate;
+    const endDate = req.query.endDate;
     
     if (!deviceId) {
       return res.status(400).json({ 
@@ -146,12 +148,24 @@ export const getInsightReports = async (req, res) => {
         message: "deviceId is required"
       });
     }
-    
-    // Get all insights for this device
-    const result = await getInsightsService({ 
+
+    // Prepare query parameters
+    const queryParams = { 
       deviceId,
       pageSize: 1000 // Set a large page size to get all insights
-    });
+    };
+
+    // Add date range filtering if provided
+    if (startDate) {
+      queryParams.startDate = startDate;
+    }
+    
+    if (endDate) {
+      queryParams.endDate = endDate;
+    }
+    
+    // Get all insights for this device
+    const result = await getInsightsService(queryParams);
     
     if (!result.data || result.data.length === 0) {
       return res.status(200).json({

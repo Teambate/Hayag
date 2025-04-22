@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { TrendingUp, ArrowUp, SunIcon, GaugeIcon, CircleOff, Battery, AlertTriangle, FileText, CircleCheck } from "lucide-react";
+import { TrendingUp, ArrowUp, SunIcon, GaugeIcon, CircleOff, Battery, AlertTriangle, FileText, CircleCheck, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { DateRange } from "react-day-picker";
 
@@ -14,6 +14,9 @@ import IrradianceGraph from "../components/graphs/IrradianceGraph";
 import Banner from "../components/layout/Banner";
 import { TimePeriod } from "../components/graphs/EnergyProduction";
 import { useDevice } from "../context/DeviceContext";
+import { InsightItem, formatReportData } from "../utils/insightUtils";
+import InsightDetailModal from "../components/ui/InsightDetailModal";
+import api from "../utils/api";
 
 // Analytics data interface
 interface AnalyticsData {
@@ -104,6 +107,17 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
   // State for analytics data
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
 
+  // State for insights data
+  const [insightReports, setInsightReports] = useState<any[]>([]);
+  const [insightLoading, setInsightLoading] = useState<boolean>(true);
+  const [insightError, setInsightError] = useState<string | null>(null);
+  
+  // State for insight detail modal
+  const [selectedInsight, setSelectedInsight] = useState<InsightItem | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedTime, setSelectedTime] = useState<string>("");
+
   // State for selections from Banner
   const [selectedPanel, setSelectedPanel] = useState<string>("All Panels");
   const [selectedTimePeriod, setSelectedTimePeriod] = useState<TimePeriod>("24h");
@@ -172,6 +186,45 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
     fetchAnalyticsData();
   }, [deviceId, selectedPanel, selectedDateRange, selectedTimePeriod]);
 
+  // Fetch insight reports when time range changes
+  useEffect(() => {
+    const fetchInsightReports = async () => {
+      if (!deviceId || !selectedDateRange) return;
+
+      setInsightLoading(true);
+      setInsightError(null);
+
+      try {
+        // Prepare query parameters for insights API
+        const params = new URLSearchParams();
+        params.append('deviceId', deviceId);
+        
+        // Add date range parameters if available
+        if (selectedDateRange.from) {
+          params.append('startDate', selectedDateRange.from.toISOString());
+        }
+        if (selectedDateRange.to) {
+          params.append('endDate', selectedDateRange.to.toISOString());
+        }
+
+        const response = await api.get(`/insights/reports?${params.toString()}`);
+        
+        if (response.data && response.data.success) {
+          setInsightReports(response.data.reports || []);
+        } else {
+          throw new Error(response.data?.message || 'Failed to fetch insight reports');
+        }
+      } catch (err) {
+        setInsightError((err as Error).message);
+        console.error('Error fetching insight reports:', err);
+      } finally {
+        setInsightLoading(false);
+      }
+    };
+
+    fetchInsightReports();
+  }, [deviceId, selectedDateRange]);
+
   // Handle panel selection change
   const handlePanelChange = (panel: string) => {
     setSelectedPanel(panel);
@@ -200,56 +253,48 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
     setSelectedDateRange({ from: startDate, to: endDate });
   };
 
-  // Mock data for insights with updated structure to match design
-  const insights = [
-    {
-      type: "normal",
-      title: "Panel 1 is stable",
-      detail: "Efficiency: 80%, with no detected issues.",
-      date: "22 Oct 2024",
-      time: "3:42am"
-    },
-    {
-      type: "critical",
-      title: "Battery low!",
-      detail: "Output is at 15%, plug in now",
-      date: "22 Oct 2024",
-      time: "3:42am"
-    },
-    {
-      type: "offline",
-      title: "UV Sensor offline",
-      detail: "No data since 3:42 AM.",
-      date: "22 Oct 2024",
-      time: "3:42am"
-    },
-    {
-      type: "warning",
-      title: "Panel 2 drop",
-      detail: "Efficiency: 85% → 75%. Monitoring is advised",
-      date: "22 Oct 2024",
-      time: "3:42am"
-    },
-    {
-      type: "note",
-      title: "Maintenance scheduled",
-      detail: "Panel cleaning and inspection set for next Monday.",
-      date: "22 Oct 2024",
-      time: "9:42am"
-    },
-    {
-      type: "normal",
-      title: "Panel 3 performance optimal",
-      detail: "Efficiency holding steady at 92%.",
-      date: "22 Oct 2024",
-      time: "9:42pm"
+  // Handle viewing an insight's details
+  const handleViewInsightDetails = (insight: InsightItem, date: string, time: string) => {
+    setSelectedInsight(insight);
+    setSelectedDate(date);
+    setSelectedTime(time);
+    setIsDetailModalOpen(true);
+  };
+
+  // Format a date string
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric' 
+      });
+    } catch {
+      return dateString;
     }
-  ];
+  };
+
+  // Format a time string
+  const formatTime = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString('en-US', { 
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return "";
+    }
+  };
 
   // Helper to get icon based on insight type
   const getInsightIcon = (type: string) => {
     switch (type) {
       case 'normal':
+      case 'info':
+      case 'note':
         return <CircleCheck className="h-5 w-5 text-green-500" />;
       case 'warning':
         return <AlertTriangle className="h-5 w-5 text-amber-500" />;
@@ -257,10 +302,8 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
         return <Battery className="h-5 w-5 text-red-500" />;
       case 'offline':
         return <CircleOff className="h-5 w-5 text-gray-500" />;
-      case 'note':
-        return <FileText className="h-5 w-5 text-blue-500" />;
       default:
-        return <CircleCheck className="h-5 w-5 text-green-500" />;
+        return <FileText className="h-5 w-5 text-blue-500" />;
     }
   };
 
@@ -268,6 +311,8 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
   const getInsightBgColor = (type: string) => {
     switch (type) {
       case 'normal':
+      case 'info':
+      case 'note':
         return 'bg-green-50 border-green-100';
       case 'warning':
         return 'bg-amber-50 border-amber-100';
@@ -275,10 +320,8 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
         return 'bg-red-50 border-red-100';
       case 'offline':
         return 'bg-gray-50 border-gray-100';
-      case 'note':
-        return 'bg-blue-50 border-blue-100';
       default:
-        return 'bg-gray-50 border-gray-100';
+        return 'bg-blue-50 border-blue-100';
     }
   };
 
@@ -318,6 +361,84 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
       </>
     );
   }
+
+  // Process insight reports to display them
+  const processedInsights: {
+    insight: InsightItem;
+    displayDate: string;
+    displayTime: string;
+    type: string;
+  }[] = [];
+
+  // Add formatted insights to the array
+  insightReports.slice(0, 5).forEach(report => {
+    const formattedReport = formatReportData(report);
+    const displayDate = formatDate(report.date);
+    const displayTime = formatTime(report.date);
+    
+    // Add most important insights first
+    if (formattedReport.panelHealthInsight && formattedReport.panelHealthInsight.type === 'critical') {
+      processedInsights.push({
+        insight: formattedReport.panelHealthInsight,
+        displayDate,
+        displayTime,
+        type: formattedReport.panelHealthInsight.type
+      });
+    }
+    
+    if (formattedReport.sensorHealthInsight && formattedReport.sensorHealthInsight.type === 'critical') {
+      processedInsights.push({
+        insight: formattedReport.sensorHealthInsight,
+        displayDate,
+        displayTime,
+        type: formattedReport.sensorHealthInsight.type
+      });
+    }
+    
+    // Add system insights
+    formattedReport.systemInsights.forEach(insight => {
+      if (processedInsights.length < 5) {
+        processedInsights.push({
+          insight,
+          displayDate,
+          displayTime,
+          type: insight.type
+        });
+      }
+    });
+    
+    // Add remaining health insights if we have space
+    if (processedInsights.length < 5 && formattedReport.panelHealthInsight.type !== 'critical') {
+      processedInsights.push({
+        insight: formattedReport.panelHealthInsight,
+        displayDate,
+        displayTime,
+        type: formattedReport.panelHealthInsight.type
+      });
+    }
+    
+    if (processedInsights.length < 5 && formattedReport.sensorHealthInsight.type !== 'critical') {
+      processedInsights.push({
+        insight: formattedReport.sensorHealthInsight,
+        displayDate,
+        displayTime,
+        type: formattedReport.sensorHealthInsight.type
+      });
+    }
+    
+    // Add daily performance insight if we have space
+    if (processedInsights.length < 5) {
+      processedInsights.push({
+        insight: formattedReport.infoInsight,
+        displayDate,
+        displayTime,
+        type: formattedReport.infoInsight.type
+      });
+    }
+  });
+
+  // Limit to 5 insights
+  const displayInsights = processedInsights.slice(0, 5);
 
   return (
     <>
@@ -506,25 +627,46 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                   </div>
                 </div>
                 
-                <div className="space-y-3">
-                  {insights.slice(0, 5).map((insight, index) => (
-                    <div 
-                      key={index} 
-                      className={`p-4 rounded-lg border ${getInsightBgColor(insight.type)} flex items-start gap-3`}
-                    >
-                      <div className="mt-0.5">
-                        {getInsightIcon(insight.type)}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between">
-                          <h4 className="font-semibold text-gray-900">{insight.title}</h4>
-                          <span className="text-xs text-gray-600">{insight.date} · {insight.time}</span>
+                {insightLoading && (
+                  <div className="flex items-center justify-center p-8">
+                    <RefreshCw size={24} className="text-gray-400 animate-spin" />
+                  </div>
+                )}
+                
+                {insightError && (
+                  <div className="p-4 rounded-lg border border-red-100 bg-red-50 text-red-700 text-sm">
+                    Error loading insights: {insightError}
+                  </div>
+                )}
+                
+                {!insightLoading && !insightError && displayInsights.length === 0 && (
+                  <div className="p-4 rounded-lg border border-gray-200 bg-gray-50 text-gray-700 text-sm">
+                    No insights available for the selected time period.
+                  </div>
+                )}
+                
+                {!insightLoading && !insightError && (
+                  <div className="space-y-3">
+                    {displayInsights.map((item, index) => (
+                      <div 
+                        key={index} 
+                        className={`p-4 rounded-lg border ${getInsightBgColor(item.type)} flex items-start gap-3 cursor-pointer`}
+                        onClick={() => handleViewInsightDetails(item.insight, item.displayDate, item.displayTime)}
+                      >
+                        <div className="mt-0.5">
+                          {getInsightIcon(item.type)}
                         </div>
-                        <p className="text-sm text-gray-700 mt-1">{insight.detail}</p>
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between">
+                            <h4 className="font-semibold text-gray-900">{item.insight.title}</h4>
+                            <span className="text-xs text-gray-600">{item.displayDate} · {item.displayTime}</span>
+                          </div>
+                          <p className="text-sm text-gray-700 mt-1">{item.insight.detail}</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -651,6 +793,19 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
           </div>
         </section>
       </div>
+
+      {/* Insight Detail Modal */}
+      {selectedInsight && (
+        <InsightDetailModal
+          isOpen={isDetailModalOpen}
+          onOpenChange={setIsDetailModalOpen}
+          title={selectedInsight.title}
+          content={selectedInsight.content || selectedInsight.detail}
+          type={selectedInsight.type}
+          date={selectedDate}
+          time={selectedTime}
+        />
+      )}
     </>
   );
 } 
