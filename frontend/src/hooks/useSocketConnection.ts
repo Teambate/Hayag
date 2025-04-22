@@ -64,33 +64,57 @@ export const useSocketConnection = (
               uv: { value: 0, unit: '' },
               light: { value: 0, unit: '' },
               humidity: { value: 0, unit: '' },
-              temperature: { value: 0, unit: '' }
+              temperature: { value: 0, unit: '' },
+              actual_avg_power: { value: 0, unit: '' },
+              predicted_avg_power: { value: 0, unit: '' },
+              actual_total_energy: { value: 0, unit: '' },
+              predicted_total_energy: { value: 0, unit: '' }
             },
             health: sensorData.health || 0,
             sensor_health: sensorData.sensor_health || {}
           };
           
           // Process each sensor type
-          const sensorKeys = ['solar', 'rain', 'uv', 'light', 'humidity', 'temperature'];
+          const sensorKeys = ['solar', 'rain', 'uv', 'light', 'humidity', 'temperature', 
+                             'actual_avg_power', 'predicted_avg_power', 
+                             'actual_total_energy', 'predicted_total_energy'];
           
           sensorKeys.forEach(key => {
             if (Array.isArray(sensorData.sensors[key])) {
-              // Calculate average value for the sensor type
-              const values = sensorData.sensors[key].map((panel: any) => panel.value);
-              const avgValue = values.length > 0 
-                ? values.reduce((sum: number, val: number) => sum + val, 0) / values.length 
-                : 0;
-              
-              // Get unit from the first panel (assuming all panels have the same unit)
-              const unit = sensorData.sensors[key]?.[0]?.unit || '';
-              
-              // Create SensorType structure
-              transformedData.sensors[key] = {
-                value: avgValue,
-                unit: unit,
-                panelCount: sensorData.sensors[key].length,
-                panels: sensorData.sensors[key]
-              };
+              // For energy fields, we want the sum rather than average
+              if (key.includes('total_energy')) {
+                const values = sensorData.sensors[key].map((panel: any) => panel.value);
+                const sumValue = values.length > 0 
+                  ? values.reduce((sum: number, val: number) => sum + val, 0)
+                  : 0;
+                
+                // Get unit from the first panel
+                const unit = sensorData.sensors[key]?.[0]?.unit || '';
+                
+                transformedData.sensors[key] = {
+                  value: sumValue,
+                  unit: unit,
+                  panelCount: sensorData.sensors[key].length,
+                  panels: sensorData.sensors[key]
+                };
+              } else {
+                // Calculate average value for other sensor types
+                const values = sensorData.sensors[key].map((panel: any) => panel.value);
+                const avgValue = values.length > 0 
+                  ? values.reduce((sum: number, val: number) => sum + val, 0) / values.length 
+                  : 0;
+                
+                // Get unit from the first panel (assuming all panels have the same unit)
+                const unit = sensorData.sensors[key]?.[0]?.unit || '';
+                
+                // Create SensorType structure
+                transformedData.sensors[key] = {
+                  value: avgValue,
+                  unit: unit,
+                  panelCount: sensorData.sensors[key].length,
+                  panels: sensorData.sensors[key]
+                };
+              }
             } else {
               // If already in the correct format, use as is
               transformedData.sensors[key] = sensorData.sensors[key] || { value: 0, unit: '' };
@@ -160,8 +184,14 @@ export const useSocketConnection = (
           dataPoint.forEach((panelData: any) => {
             panelGroups[panelData.panelId] = {
               panelId: panelData.panelId,
+              // Use either energy from actual_total_energy or energy from ina226 calculation
               energy: panelData.energy || 0,
-              unit: panelData.energyUnit || 'kWh'
+              // Include predicted energy if available
+              predicted: panelData.predicted || 0,
+              // Use either power from actual_avg_power or power from ina226 calculation
+              power: panelData.power || 0,
+              unit: panelData.unit || 'W',
+              energyUnit: panelData.energyUnit || 'kWh'
             };
           });
           

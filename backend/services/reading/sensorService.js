@@ -1,6 +1,7 @@
 import SensorReading from "../../model/reading.model.js";
 import { processReadingForCurrentValues } from "../../utils/sensorUtils.js";
 import { getStartOfDay } from "../../utils/timeUtils.js";
+import { formatDecimal } from '../../utils/numberUtils.js';
 
 export const getCurrentSensorValuesService = async (params) => {
   const { deviceId, timezone } = params;
@@ -36,16 +37,20 @@ export const getCurrentSensorValuesService = async (params) => {
   
   // Process each sensor type
   const sensorTypes = [
-    { key: 'solar', path: 'solar' },
-    { key: 'rain', path: 'rain' },
-    { key: 'uv', path: 'uv' },
-    { key: 'light', path: 'light' },
-    { key: 'humidity', path: 'dht22', valueField: 'humidity' },
-    { key: 'temperature', path: 'dht22', valueField: 'temperature' },
-    { key: 'current', path: 'ina226', valueField: 'current' },
-    { key: 'voltage', path: 'ina226', valueField: 'voltage' },
-    { key: 'battery', path: 'battery' },
-    { key: 'panel_temp', path: 'panel_temp' }
+    { key: 'solar', path: 'solar', includeInHealth: true },
+    { key: 'rain', path: 'rain', includeInHealth: true },
+    { key: 'uv', path: 'uv', includeInHealth: true },
+    { key: 'light', path: 'light', includeInHealth: true },
+    { key: 'humidity', path: 'dht22', valueField: 'humidity', includeInHealth: true },
+    { key: 'temperature', path: 'dht22', valueField: 'temperature', includeInHealth: true },
+    { key: 'current', path: 'ina226', valueField: 'current', includeInHealth: true },
+    { key: 'voltage', path: 'ina226', valueField: 'voltage', includeInHealth: true },
+    { key: 'battery', path: 'battery', includeInHealth: true },
+    { key: 'panel_temp', path: 'panel_temp', includeInHealth: true },
+    { key: 'actual_avg_power', path: 'actual_avg_power', includeInHealth: false },
+    { key: 'predicted_avg_power', path: 'predicted_avg_power', includeInHealth: false },
+    { key: 'actual_total_energy', path: 'actual_total_energy', isEnergyField: true, includeInHealth: false },
+    { key: 'predicted_total_energy', path: 'predicted_total_energy', isEnergyField: true, includeInHealth: false }
   ];
   
   // Keep track of total health for calculating average
@@ -53,7 +58,7 @@ export const getCurrentSensorValuesService = async (params) => {
   let healthCount = 0;
   
   for (const sensorType of sensorTypes) {
-    const { key, path, valueField } = sensorType;
+    const { key, path, valueField, isEnergyField, includeInHealth } = sensorType;
     
     // Skip if this sensor type doesn't exist in the reading
     if (!latestReading.readings[path] || !latestReading.readings[path].length) {
@@ -81,7 +86,9 @@ export const getCurrentSensorValuesService = async (params) => {
       healthCount++;
       
       // Store sensor health in result
-      result.sensor_health[key] = Math.round(healthAvg);
+      if (includeInHealth) {
+        result.sensor_health[key] = Math.round(healthAvg);
+      }
       
       // Include individual panel values
       const panels = relevantSensors.map(sensor => ({
@@ -100,6 +107,42 @@ export const getCurrentSensorValuesService = async (params) => {
       };
     } 
     // For direct values (solar, rain, uv, light, battery, panel_temp)
+    else if (isEnergyField) {
+      const values = relevantSensors.map(sensor => sensor.value);
+      const sum = values.reduce((acc, val) => acc + val, 0);
+      const average = sum / values.length;
+      const unit = relevantSensors[0].unit;
+      
+      // Calculate average health for this sensor type
+      const healthValues = relevantSensors.map(sensor => sensor.health);
+      const healthSum = healthValues.reduce((acc, val) => acc + val, 0);
+      const healthAvg = healthSum / healthValues.length;
+      
+      // Add to total health calculation
+      totalHealth += healthAvg;
+      healthCount++;
+      
+      // Store sensor health in result
+      if (includeInHealth) {
+        result.sensor_health[key] = Math.round(healthAvg);
+      }
+      
+      // Include individual panel values
+      const panels = relevantSensors.map(sensor => ({
+        panelId: sensor.panelId,
+        value: sensor.value,
+        unit: sensor.unit,
+        health: sensor.health
+      }));
+      
+      result.sensors[key] = {
+        value: average,
+        unit: unit,
+        panelCount: relevantSensors.length,
+        panels: panels,
+        health: Math.round(healthAvg)
+      };
+    }
     else {
       const values = relevantSensors.map(sensor => sensor.average);
       const sum = values.reduce((acc, val) => acc + val, 0);
@@ -116,7 +159,9 @@ export const getCurrentSensorValuesService = async (params) => {
       healthCount++;
       
       // Store sensor health in result
-      result.sensor_health[key] = Math.round(healthAvg);
+      if (includeInHealth) {
+        result.sensor_health[key] = Math.round(healthAvg);
+      }
       
       // Include individual panel values
       const panels = relevantSensors.map(sensor => ({
@@ -519,8 +564,66 @@ function processReadingForCharts(reading) {
   
   const timestamp = reading.endTime.getTime();
   
-  // Energy production - calculate both power (W) and energy accumulation (kWh)
-  if (reading.readings.ina226 && reading.readings.ina226.length > 0) {
+  // Energy production using actual and predicted values from the new fields
+  
+  // Process actual_avg_power if available
+  if (reading.readings.actual_avg_power && reading.readings.actual_avg_power.length > 0) {
+    reading.readings.actual_avg_power.forEach(sensor => {
+      chartData.energy.push({
+        panelId: sensor.panelId,
+        timestamp: timestamp,
+        power: sensor.average,  // Use average from the actual power
+        unit: sensor.unit
+      });
+    });
+  }
+  
+  // Process actual_total_energy if available
+  if (reading.readings.actual_total_energy && reading.readings.actual_total_energy.length > 0) {
+    reading.readings.actual_total_energy.forEach(sensor => {
+      // Find if we already added this panel
+      const existingPanelIndex = chartData.energy.findIndex(item => item.panelId === sensor.panelId);
+      
+      if (existingPanelIndex >= 0) {
+        // Update existing entry
+        chartData.energy[existingPanelIndex].energy = sensor.value;
+        chartData.energy[existingPanelIndex].energyUnit = sensor.unit;
+      } else {
+        // Add new entry
+        chartData.energy.push({
+          panelId: sensor.panelId,
+          timestamp: timestamp,
+          energy: sensor.value,
+          energyUnit: sensor.unit
+        });
+      }
+    });
+  }
+  
+  // Process predicted_total_energy if available
+  if (reading.readings.predicted_total_energy && reading.readings.predicted_total_energy.length > 0) {
+    reading.readings.predicted_total_energy.forEach(sensor => {
+      // Find if we already added this panel
+      const existingPanelIndex = chartData.energy.findIndex(item => item.panelId === sensor.panelId);
+      
+      if (existingPanelIndex >= 0) {
+        // Update existing entry
+        chartData.energy[existingPanelIndex].predicted = sensor.value;
+      } else {
+        // Add new entry (missing actual energy data)
+        chartData.energy.push({
+          panelId: sensor.panelId,
+          timestamp: timestamp,
+          energy: 0, // Default value
+          predicted: sensor.value,
+          energyUnit: sensor.unit
+        });
+      }
+    });
+  }
+  
+  // Fallback to calculating energy from ina226 if new fields are not available
+  if (chartData.energy.length === 0 && reading.readings.ina226 && reading.readings.ina226.length > 0) {
     reading.readings.ina226.forEach(sensor => {
       const voltage = sensor.voltage.average;
       const current = sensor.current.average;
