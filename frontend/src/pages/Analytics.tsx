@@ -23,11 +23,13 @@ interface AnalyticsData {
   summaryValues: {
     efficiency: {
       value: number;
-      trend: number;
       unit: string;
     };
-    dailyYield: {
+    totalYield: {
       value: number;
+      predicted: number;
+      trend: number;
+      remark: string;
       unit: string;
     };
     peakSolarHours: {
@@ -66,6 +68,28 @@ const ExpandIcon = ({ className = "w-4 h-4" }) => (
     <line x1="3" x2="10" y1="21" y2="14" />
   </svg>
 );
+
+// Add this new tooltip component after ExpandIcon component
+const Tooltip = ({ content, children }: { content: React.ReactNode, children: React.ReactNode }) => {
+  const [show, setShow] = useState(false);
+  
+  return (
+    <div className="relative inline-block">
+      <div 
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+      >
+        {children}
+      </div>
+      {show && (
+        <div className="absolute z-10 w-64 p-2 text-sm text-white bg-gray-800 rounded-md shadow-lg -left-24 top-full mt-2">
+          {content}
+          <div className="absolute w-3 h-3 bg-gray-800 transform rotate-45 -top-1 left-24"></div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Props for accessing the setActiveTab function
 interface AnalyticsProps {
@@ -329,7 +353,7 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                         <div className="ml-2 text-xs text-green-500 flex items-center">
                           <ArrowUp size={12} className="mr-0.5" />
                           <span className="hidden md:inline">
-                            +{analyticsData?.summaryValues.efficiency.trend || 0}% Today
+                            Optimized
                           </span>
                         </div>
                       </div>
@@ -362,25 +386,89 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
                   </div>
                 </div>
                 
-                {/* Daily Yield */}
+                {/* Total Yield */}
                 <div className="col-span-4">
                   <div className="flex items-start space-x-3 p-4 py-5">
                     <div className="bg-red-100 p-2 rounded-full flex-shrink-0">
                       <TrendingUp size={18} className="text-red-500" />
                     </div>
                     <div className="flex-1">
-                      <div className="text-gray-500 text-xs mb-1">Daily Yield</div>
+                      <div className="text-gray-500 text-xs mb-1">Total Yield</div>
                       <div className="flex items-baseline">
-                        <span className="text-2xl sm:text-3xl font-bold">
-                          {analyticsData?.summaryValues.dailyYield.value.toFixed(2) || '0.00'}
-                        </span>
+                        <Tooltip 
+                          content={
+                            (() => {
+                              // Safely get values for the tooltip
+                              const actualValue = analyticsData?.summaryValues.totalYield?.value ?? 0;
+                              const predictedValue = analyticsData?.summaryValues.totalYield?.predicted ?? 0;
+                              const trendValue = analyticsData?.summaryValues.totalYield?.trend ?? 0;
+                              const unit = analyticsData?.summaryValues.totalYield?.unit || 'kWh';
+                              
+                              return (
+                                <div>
+                                  <div className="font-medium mb-1">Total Energy Yield</div>
+                                  <div className="flex justify-between mb-1">
+                                    <span>Actual:</span>
+                                    <span>{actualValue.toFixed(2)} {unit}</span>
+                                  </div>
+                                  <div className="flex justify-between mb-1">
+                                    <span>Predicted:</span>
+                                    <span>{predictedValue.toFixed(2)} {unit}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>Trend:</span>
+                                    <span>
+                                      {trendValue > 0 ? '+' : ''}{trendValue.toFixed(2)} {unit} 
+                                      {predictedValue > 0 ? ` (${(trendValue / predictedValue * 100).toFixed(1)}%)` : ''}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })()
+                          }
+                        >
+                          <span className="text-2xl sm:text-3xl font-bold">
+                            {analyticsData?.summaryValues.totalYield?.value.toFixed(2) || '0.00'}
+                          </span>
+                        </Tooltip>
                         <span className="text-sm sm:text-base ml-1 text-gray-500">
-                          {analyticsData?.summaryValues.dailyYield.unit || 'kWh'}
+                          {analyticsData?.summaryValues.totalYield?.unit || 'kWh'}
                         </span>
-                        <div className="ml-2 text-xs text-green-500 flex items-center">
-                          <ArrowUp size={12} className="mr-0.5" />
-                          <span className="hidden md:inline"></span>
-                        </div>
+                        {/* Use a safe trend value derived from optional chaining */}
+                        {(() => {
+                          // Calculate trend safely to fix TypeScript errors
+                          const trendValue = analyticsData?.summaryValues.totalYield?.trend ?? 0;
+                          const predictedValue = analyticsData?.summaryValues.totalYield?.predicted ?? 0;
+                          const percentageDiff = predictedValue > 0 ? (trendValue / predictedValue * 100).toFixed(1) : '0';
+                          const trendColor = trendValue > 0 
+                            ? 'rgb(34, 197, 94)' // green-500
+                            : trendValue < 0 
+                              ? 'rgb(239, 68, 68)' // red-500
+                              : 'rgb(107, 114, 128)'; // gray-500
+                          
+                          // Create enhanced remark with percentage
+                          let enhancedRemark = analyticsData?.summaryValues.totalYield?.remark || '';
+                          if (predictedValue > 0 && trendValue !== 0) {
+                            if (enhancedRemark) {
+                              enhancedRemark = `${Math.abs(Number(percentageDiff))}% ${enhancedRemark}`;
+                            }
+                          }
+                          
+                          return (
+                            <div className="ml-2 text-xs flex items-center" style={{ color: trendColor }}>
+                              {trendValue > 0 ? (
+                                <ArrowUp size={12} className="mr-0.5" />
+                              ) : trendValue < 0 ? (
+                                <svg className="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                                </svg>
+                              ) : null}
+                              <span className="hidden md:inline">
+                                {enhancedRemark}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
