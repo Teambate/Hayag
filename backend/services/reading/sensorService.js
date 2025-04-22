@@ -421,7 +421,8 @@ async function calculatePowerAccumulation(result, deviceId, latestReading) {
       $project: {
         endTime: 1,
         deviceId: 1,
-        "readings.ina226": 1
+        "readings.actual_total_energy": 1,
+        "readings.predicted_total_energy": 1
       }
     }
   ];
@@ -429,82 +430,80 @@ async function calculatePowerAccumulation(result, deviceId, latestReading) {
   // Get readings
   const readings = await SensorReading.aggregate(pipeline);
   
-  // Include latest reading in the right position if not already included
-  let allReadings = [...readings];
-  
-  // Initialize with consistent structure
+  // Initialize power accumulation structure with the format specified
   result.power_accumulation = {
     panels: [],
-    total: 0,
-    average: 0,
+    actual_energy: 0,
+    predicted_energy: 0,
     period: "today",
-    unit: 'kWh'
+    unit: "kWh"
   };
   
-  // Only proceed with calculation if we have at least 2 readings
-  if (allReadings.length >= 2) {
-    // Calculate power accumulation for each panel
-    const panelAccumulations = {};
-    let totalAccumulation = 0;
-    
-    // Process each reading pair to calculate energy between them
-    for (let i = 1; i < allReadings.length; i++) {
-      const prevReading = allReadings[i-1];
-      const currReading = allReadings[i];
-      
-      // Time difference in hours - now using endTime instead of createdAt
-      const hoursDiff = (currReading.endTime - prevReading.endTime) / (1000 * 60 * 60);
-      
-      // Process each panel in the current reading
-      for (const sensor of currReading.readings.ina226 || []) {
-        // Find the same panel in the previous reading
-        const prevSensor = prevReading.readings.ina226?.find(s => s.panelId === sensor.panelId);
-        
-        if (prevSensor) {
-          // Calculate average power between the two readings
-          const currPower = sensor.voltage.average * (sensor.current.average / 1000); // W
-          const prevPower = prevSensor.voltage.average * (prevSensor.current.average / 1000); // W
-          const avgPower = (currPower + prevPower) / 2; // W
-          
-          // Calculate energy (kWh) = power (W) * time (h) / 1000
-          const energyKWh = avgPower * hoursDiff / 1000;
-          
-          // Add to panel accumulation
-          if (!panelAccumulations[sensor.panelId]) {
-            panelAccumulations[sensor.panelId] = 0;
-          }
-          panelAccumulations[sensor.panelId] += energyKWh;
-          totalAccumulation += energyKWh;
+  // If no readings for today, use empty values
+  if (!readings || readings.length === 0) {
+    // Add empty panel entries based on panels found in the latest reading
+    if (latestReading.readings.actual_total_energy) {
+      result.power_accumulation.panels = latestReading.readings.actual_total_energy.map(panel => ({
+        panelId: panel.panelId,
+        actual_energy: 0,
+        predicted_energy: 0,
+        unit: "kWh"
+      }));
+    }
+    return;
+  }
+  
+  // Create a map to track panel energy values
+  const panelEnergyMap = {};
+  let totalActualEnergy = 0;
+  let totalPredictedEnergy = 0;
+  
+  // Process each reading to get the energy values
+  for (const reading of readings) {
+    // Process actual total energy if available
+    if (reading.readings.actual_total_energy && reading.readings.actual_total_energy.length > 0) {
+      for (const panel of reading.readings.actual_total_energy) {
+        if (!panelEnergyMap[panel.panelId]) {
+          panelEnergyMap[panel.panelId] = {
+            actual_energy: 0,
+            predicted_energy: 0
+          };
         }
+        
+        // Add panel's actual energy value
+        panelEnergyMap[panel.panelId].actual_energy += panel.value;
+        totalActualEnergy += panel.value;
       }
     }
     
-    // Format the result
-    const panelAccumulationArray = Object.entries(panelAccumulations).map(([panelId, energy]) => ({
-      panelId,
-      energy,
-      unit: 'kWh'
-    }));
-    
-    // Update the pre-initialized structure
-    result.power_accumulation.panels = panelAccumulationArray;
-    result.power_accumulation.total = totalAccumulation;
-    result.power_accumulation.average = Object.keys(panelAccumulations).length > 0 
-      ? totalAccumulation / Object.keys(panelAccumulations).length 
-      : 0;
-  } else {
-    // Add message field for debugging but keep the structure consistent
-    result.power_accumulation.message = "Insufficient data for power accumulation calculation";
-    
-    // Add empty panel entries for panels found in the latest reading
-    if (latestReading.readings.ina226) {
-      result.power_accumulation.panels = latestReading.readings.ina226.map(sensor => ({
-        panelId: sensor.panelId,
-        energy: 0,
-        unit: 'kWh'
-      }));
+    // Process predicted total energy if available
+    if (reading.readings.predicted_total_energy && reading.readings.predicted_total_energy.length > 0) {
+      for (const panel of reading.readings.predicted_total_energy) {
+        if (!panelEnergyMap[panel.panelId]) {
+          panelEnergyMap[panel.panelId] = {
+            actual_energy: 0,
+            predicted_energy: 0
+          };
+        }
+        
+        // Add panel's predicted energy value
+        panelEnergyMap[panel.panelId].predicted_energy += panel.value;
+        totalPredictedEnergy += panel.value;
+      }
     }
   }
+  
+  // Format the result
+  result.power_accumulation.panels = Object.entries(panelEnergyMap).map(([panelId, energyData]) => ({
+    panelId,
+    actual_energy: energyData.actual_energy,
+    predicted_energy: energyData.predicted_energy,
+    unit: "kWh"
+  }));
+  
+  // Update totals
+  result.power_accumulation.actual_energy = totalActualEnergy;
+  result.power_accumulation.predicted_energy = totalPredictedEnergy;
 }
 
 // Track previous readings for energy accumulation calculations in real-time updates

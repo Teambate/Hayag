@@ -130,6 +130,38 @@ const sensorReadingSchema = new mongoose.Schema(
         default: 0,
         unit: { type: String, default: "mAh" },
       },
+      actual_avg_power:[
+        {
+          panelId: { type: String, required: true },
+          average: { type: Number, required: true },
+          min: { type: Number, required: true },
+          max: { type: Number, required: true },
+          unit: { type: String, default: "W" },
+        }
+      ],
+      predicted_avg_power:[
+        {
+          panelId: { type: String, required: true },
+          average: { type: Number, required: true },
+          min: { type: Number, required: true },
+          max: { type: Number, required: true },
+          unit: { type: String, default: "W" },
+        }
+      ],
+      actual_total_energy:[
+        {
+          panelId: { type: String, required: true },
+          value: { type: Number, required: true },
+          unit: { type: String, default: "kWh" },
+        }
+      ],
+      predicted_total_energy:[
+        {
+          panelId: { type: String, required: true },
+          value: { type: Number, required: true },
+          unit: { type: String, default: "kWh" },
+        }
+      ]
     },
   },
   {
