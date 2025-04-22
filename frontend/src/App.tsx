@@ -11,6 +11,7 @@ import Sensors from "./pages/Sensors"
 import Insights from "./pages/Notes"
 import Settings from "./pages/Settings"
 import Login from "./pages/Login"
+import SignUp from "./pages/SignUp"
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -149,6 +150,7 @@ function AppRoutes() {
       ) : (
         <Routes>
           <Route path="/" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       )}
