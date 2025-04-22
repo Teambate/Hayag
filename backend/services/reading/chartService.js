@@ -1186,8 +1186,22 @@ async function getLuxIrradianceCorrelation(readings, timeIntervalMs, timezone) {
 
 // Helper function to finalize lux vs irradiance bucket
 function finalizeLuxIrradianceBucket(bucket) {
-  // Calculate lux average
+  // Group lux readings by panelId
+  const luxByPanel = {};
+  
   if (bucket.values.lux.length > 0) {
+    // Group lux values by panelId
+    for (const item of bucket.values.lux) {
+      if (!luxByPanel[item.panelId]) {
+        luxByPanel[item.panelId] = {
+          values: [],
+          unit: item.unit
+        };
+      }
+      luxByPanel[item.panelId].values.push(item.value);
+    }
+    
+    // Calculate overall lux average
     const totalLux = bucket.values.lux.reduce((sum, item) => sum + item.value, 0);
     const avgLux = totalLux / bucket.values.lux.length;
     
@@ -1196,21 +1210,29 @@ function finalizeLuxIrradianceBucket(bucket) {
       unit: bucket.values.lux[0].unit
     };
     
-    // Store panel-specific lux data
+    // Initialize panels object
     bucket.panels = {};
-    for (const item of bucket.values.lux) {
-      bucket.panels[item.panelId] = {
-        lux: item.value,
-        luxUnit: item.unit
-      };
-    }
   } else {
     bucket.lux = { value: 0, unit: 'lux' };
     bucket.panels = {};
   }
   
-  // Calculate irradiance average
+  // Group irradiance readings by panelId
+  const irradianceByPanel = {};
+  
   if (bucket.values.irradiance.length > 0) {
+    // Group irradiance values by panelId
+    for (const item of bucket.values.irradiance) {
+      if (!irradianceByPanel[item.panelId]) {
+        irradianceByPanel[item.panelId] = {
+          values: [],
+          unit: item.unit
+        };
+      }
+      irradianceByPanel[item.panelId].values.push(item.value);
+    }
+    
+    // Calculate overall irradiance average
     const totalIrradiance = bucket.values.irradiance.reduce((sum, item) => sum + item.value, 0);
     const avgIrradiance = totalIrradiance / bucket.values.irradiance.length;
     
@@ -1218,29 +1240,40 @@ function finalizeLuxIrradianceBucket(bucket) {
       value: avgIrradiance,
       unit: bucket.values.irradiance[0].unit
     };
-    
-    // Store panel-specific irradiance data
-    for (const item of bucket.values.irradiance) {
-      if (!bucket.panels[item.panelId]) {
-        bucket.panels[item.panelId] = {
-          lux: 0,
-          luxUnit: 'lux'
-        };
-      }
-      bucket.panels[item.panelId].irradiance = item.value;
-      bucket.panels[item.panelId].irradianceUnit = item.unit;
-    }
   } else {
     bucket.irradiance = { value: 0, unit: 'W/m2' };
+  }
+  
+  // Process all unique panelIds from both lux and irradiance
+  const allPanelIds = new Set([
+    ...Object.keys(luxByPanel),
+    ...Object.keys(irradianceByPanel)
+  ]);
+  
+  // Calculate average values for each panel
+  for (const panelId of allPanelIds) {
+    bucket.panels[panelId] = {};
     
-    // Initialize irradiance for all panels if not already done
-    if (Object.keys(bucket.panels).length > 0) {
-      for (const panelId in bucket.panels) {
-        if (!bucket.panels[panelId].hasOwnProperty('irradiance')) {
-          bucket.panels[panelId].irradiance = 0;
-          bucket.panels[panelId].irradianceUnit = 'W/m2';
-        }
-      }
+    // Calculate average lux for this panel
+    if (luxByPanel[panelId]) {
+      const values = luxByPanel[panelId].values;
+      const avgValue = values.reduce((sum, val) => sum + val, 0) / values.length;
+      bucket.panels[panelId].lux = avgValue;
+      bucket.panels[panelId].luxUnit = luxByPanel[panelId].unit;
+    } else {
+      bucket.panels[panelId].lux = 0;
+      bucket.panels[panelId].luxUnit = 'lux';
+    }
+    
+    // Calculate average irradiance for this panel
+    if (irradianceByPanel[panelId]) {
+      const values = irradianceByPanel[panelId].values;
+      const avgValue = values.reduce((sum, val) => sum + val, 0) / values.length;
+      bucket.panels[panelId].irradiance = avgValue;
+      bucket.panels[panelId].irradianceUnit = irradianceByPanel[panelId].unit;
+    } else {
+      bucket.panels[panelId].irradiance = 0;
+      bucket.panels[panelId].irradianceUnit = 'W/m2';
     }
   }
   
