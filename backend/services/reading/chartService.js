@@ -1215,43 +1215,53 @@ function finalizeLuxIrradianceBucket(bucket) {
 }
 
 // Helper function to calculate summary values for analytics page
-function calculateSummaryValues(readings, chartData, timezone) {
+function calculateSummaryValues(readings, chartData, timezone="Asia/Manila") {
   // 1. Calculate efficiency using morning values only (6am to 4pm)
   let efficiencyValue = 0;
+  
+  // Define rated power constant
+  const RATED_POWER = 100; // 100W rating
   
   // Filter readings to get only those between 6am and 4pm
   if (readings && readings.length > 0) {
     const morningReadings = readings.filter(reading => {
-      const hour = new Date(reading.endTime).getHours();
+      // Use timezone when determining the hour
+      let hour;
+      if (timezone) {
+        // Convert to client's timezone before getting the hour
+        const dateInTimezone = new Date(reading.endTime).toLocaleString('en-US', { 
+          timeZone: timezone,
+          hour12: false 
+        });
+        hour = new Date(dateInTimezone).getHours();
+      } else {
+        // Fallback to server timezone if no client timezone provided
+        hour = new Date(reading.endTime).getHours();
+      }
       return hour >= 6 && hour <= 16; // 6am to 4pm
     });
     
-    // Calculate efficiency using actual_avg_power
+    // Calculate efficiency using performance ratio instead of comparing to predicted power
     if (morningReadings.length > 0) {
       let totalActualPower = 0;
-      let totalPredictedPower = 0;
-      let readingCount = 0;
+      let panelCount = 0;
       
       morningReadings.forEach(reading => {
-        if (reading.readings.actual_avg_power && reading.readings.actual_avg_power.length > 0 &&
-            reading.readings.predicted_avg_power && reading.readings.predicted_avg_power.length > 0) {
-          
+        if (reading.readings.actual_avg_power && reading.readings.actual_avg_power.length > 0) {
           // Sum up all panel values
           reading.readings.actual_avg_power.forEach(panel => {
             totalActualPower += panel.average || 0;
+            panelCount++;
           });
-          
-          reading.readings.predicted_avg_power.forEach(panel => {
-            totalPredictedPower += panel.average || 0;
-          });
-          
-          readingCount++;
         }
       });
       
-      // Calculate efficiency if we have valid readings
-      if (readingCount > 0 && totalPredictedPower > 0) {
-        efficiencyValue = (totalActualPower / totalPredictedPower) * 100;
+      // Calculate performance ratio if we have valid readings
+      if (panelCount > 0) {
+        // Use average power per panel
+        const avgPowerPerPanel = totalActualPower / panelCount;
+        // Calculate performance ratio: (actual power / rated power) * 100
+        efficiencyValue = (avgPowerPerPanel / RATED_POWER) * 100;
       }
     }
   }
