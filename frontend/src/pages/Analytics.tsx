@@ -5,6 +5,7 @@ import { DateRange } from "react-day-picker";
 import { useDevice } from "../context/DeviceContext";
 import { useAuth } from "../context/AuthContext";
 import api from "../utils/api";
+import { cachedFetchJson } from "../utils/fetchCache";
 
 // Import graph components
 import PanelPerformance from "../components/graphs/PanelPerformance";
@@ -100,6 +101,9 @@ interface AnalyticsProps {
   setActiveTab?: (tab: string) => void;
 }
 
+// Session-lifetime cache for insight reports, keyed by request URL (goes through axios for the 401 interceptor)
+const insightReportsCache = new Map<string, any[]>();
+
 export default function Analytics({ setActiveTab }: AnalyticsProps) {
   const { deviceId } = useDevice();
   const { isAuthenticated } = useAuth();
@@ -164,14 +168,8 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
         // Add timezone information
         params.append('timezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
 
-        const response = await fetch(`/api/readings/analytics?${params.toString()}`);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch analytics data: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        
+        const data = await cachedFetchJson(`/api/readings/analytics?${params.toString()}`);
+
         if (data.success) {
           setAnalyticsData(data);
         } else {
@@ -209,13 +207,18 @@ export default function Analytics({ setActiveTab }: AnalyticsProps) {
           params.append('endDate', selectedDateRange.to.toISOString());
         }
 
-        const response = await api.get(`/insights/reports?${params.toString()}`);
-        
-        if (response.data && response.data.success) {
-          setInsightReports(response.data.reports || []);
-        } else {
-          throw new Error(response.data?.message || 'Failed to fetch insight reports');
+        const url = `/insights/reports?${params.toString()}`;
+        let reports = insightReportsCache.get(url);
+        if (!reports) {
+          const response = await api.get(url);
+          if (response.data && response.data.success) {
+            reports = (response.data.reports || []) as any[];
+            insightReportsCache.set(url, reports);
+          } else {
+            throw new Error(response.data?.message || 'Failed to fetch insight reports');
+          }
         }
+        setInsightReports(reports);
       } catch (err) {
         setInsightError((err as Error).message);
         console.error('Error fetching insight reports:', err);

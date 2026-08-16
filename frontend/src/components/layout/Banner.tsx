@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef } from "react"
 import { fetchSensorData } from "../../services/apiService"
+import { cachedFetchJson } from "../../utils/fetchCache"
+
+// Session-lifetime cache of each device's latest-reading timestamp (device is offline; it won't change)
+const latestReadingCache = new Map<string, string>()
 import { PanelSelector } from "../ui/panel-selector"
 import { IntervalSelector } from "../ui/interval-selector"
 import { DateRangePicker } from "../ui/date-range-picker"
@@ -111,11 +115,19 @@ export default function Banner({
 
     let cancelled = false;
     const anchorToLatestReading = async () => {
-      // fetchSensorData falls back to timestamp=now on any error
-      const data = await fetchSensorData(currentDeviceId);
-      if (cancelled || userPickedRange.current || !data?.timestamp) return;
+      let timestamp = latestReadingCache.get(currentDeviceId);
+      if (!timestamp) {
+        // fetchSensorData falls back to timestamp=now (with empty deviceId) on any error;
+        // only cache real responses so a transient failure doesn't pin the anchor to today
+        const data = await fetchSensorData(currentDeviceId);
+        timestamp = data?.timestamp;
+        if (data?.deviceId && timestamp) {
+          latestReadingCache.set(currentDeviceId, timestamp);
+        }
+      }
+      if (cancelled || userPickedRange.current || !timestamp) return;
 
-      const anchor = new Date(data.timestamp);
+      const anchor = new Date(timestamp);
       // Latest reading is from today: the synchronous default already covers it
       if (anchor.toDateString() === new Date().toDateString()) return;
 
@@ -158,14 +170,8 @@ export default function Banner({
         const params = new URLSearchParams();
         params.append('timezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
         
-        const response = await fetch(`/api/readings/device/${currentDeviceId}/panels?${params.toString()}`);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch panel IDs: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        
+        const data = await cachedFetchJson(`/api/readings/device/${currentDeviceId}/panels?${params.toString()}`);
+
         if (data.success && Array.isArray(data.data)) {
           console.log("Fetched panel IDs:", data.data);
           setPanelIds(data.data);
