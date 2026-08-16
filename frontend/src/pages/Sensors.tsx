@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { cachedFetchJson } from "../utils/fetchCache"
 import { Button } from "../components/ui/button"
 import SensorTable from "../components/data/SensorTable"
 import MultiSensorTable from "../components/data/MultiSensorTable"
@@ -72,7 +73,7 @@ const unitMapping: Record<string, string> = {
 };
 
 export default function Sensors() {
-  const [selectedSensors, setSelectedSensors] = useState<string[]>([])
+  const [selectedSensors, setSelectedSensors] = useState<string[]>(["Light"])
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [sensorData, setSensorData] = useState<any[]>([])
@@ -169,15 +170,9 @@ export default function Sensors() {
         params.append('sensorTypes', sensorType);
       });
       
-      // Make API call
-      const response = await fetch(`/api/readings/filtered?${params.toString()}`);
-      
-      if (!response.ok) {
-        throw new Error(`Error fetching sensor data: ${response.statusText}`);
-      }
-      
-      const result = await response.json();
-      
+      // Make API call (cached for the session — repeat visits don't refetch)
+      const result = await cachedFetchJson(`/api/readings/filtered?${params.toString()}`);
+
       if (!result.success) {
         throw new Error(result.message || 'Failed to fetch sensor data');
       }
