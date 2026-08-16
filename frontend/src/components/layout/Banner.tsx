@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import { fetchSensorData } from "../../services/apiService"
 import { PanelSelector } from "../ui/panel-selector"
 import { IntervalSelector } from "../ui/interval-selector"
 import { DateRangePicker } from "../ui/date-range-picker"
@@ -68,19 +69,19 @@ export default function Banner({
   // State for interval - UI representation (Hourly, Daily, Monthly)
   const [interval, setInterval] = useState<string>(selectedInterval || "10min");
 
-  // Get the default date range (last 7 days)
-  const getDefaultDateRange = (): DateRange => {
-    // Create end date at the very end of today in local time
-    const endDate = new Date();
+  // Get the default date range: the 7 days ending on the anchor day (today by default)
+  const getDefaultDateRange = (anchor: Date = new Date()): DateRange => {
+    // Create end date at the very end of the anchor day in local time
+    const endDate = new Date(anchor);
     // Set to end of day in local timezone
     endDate.setHours(23, 59, 59, 999);
-    
-    // Create start date 7 days ago at the very beginning of the day in local time
-    const startDate = new Date();
+
+    // Create start date 7 days before the anchor at the very beginning of the day in local time
+    const startDate = new Date(anchor);
     startDate.setDate(startDate.getDate() - 7);
     // Set to beginning of day in local timezone
     startDate.setHours(0, 0, 0, 0);
-    
+
     return {
       from: startDate,
       to: endDate,
@@ -90,12 +91,42 @@ export default function Banner({
   // State for date range - only used for Analytics and Sensors tabs
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
 
+  // True once the user has picked a range in the DateRangePicker; blocks async re-anchoring
+  const userPickedRange = useRef(false);
+
   // Trigger onDateRangeChange on initial render to provide default to parent
   useEffect(() => {
     if (onDateRangeChange && (activeTab === "Analytics" || activeTab === "Sensors")) {
       onDateRangeChange(dateRange);
     }
   }, []);
+
+  // Re-anchor the default range to the latest recorded reading, so historical
+  // data still shows when the device is no longer reporting. Runs whenever the
+  // resolved device changes; skipped once the user picks a range manually.
+  useEffect(() => {
+    if (!onDateRangeChange || (activeTab !== "Analytics" && activeTab !== "Sensors")) return;
+    const currentDeviceId = getDeviceId();
+    if (!currentDeviceId) return;
+
+    let cancelled = false;
+    const anchorToLatestReading = async () => {
+      // fetchSensorData falls back to timestamp=now on any error
+      const data = await fetchSensorData(currentDeviceId);
+      if (cancelled || userPickedRange.current || !data?.timestamp) return;
+
+      const anchor = new Date(data.timestamp);
+      // Latest reading is from today: the synchronous default already covers it
+      if (anchor.toDateString() === new Date().toDateString()) return;
+
+      const range = getDefaultDateRange(anchor);
+      setDateRange(range);
+      onDateRangeChange(range);
+    };
+
+    anchorToLatestReading();
+    return () => { cancelled = true; };
+  }, [activeTab, deviceId, contextDeviceId, user]);
 
   // Get device ID from props, context, user context, or localStorage
   const getDeviceId = () => {
@@ -111,7 +142,7 @@ export default function Banner({
     }
     
     // Fourth priority: from localStorage
-    const storedDeviceId = localStorage.getItem('deviceId');
+    const storedDeviceId = localStorage.getItem('selectedDeviceId');
     return storedDeviceId || "";
   }
 
@@ -213,6 +244,7 @@ export default function Banner({
 
   // Handle date range change - only relevant for Analytics and Sensors tabs
   const handleDateRangeChange = (newRange: DateRange) => {
+    userPickedRange.current = true;
     if (!newRange.from || !newRange.to) {
       setDateRange(newRange);
       if (onDateRangeChange) {
