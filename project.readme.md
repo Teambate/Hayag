@@ -44,3 +44,22 @@ Objectives
 2. Develop a real-time interactive dashboard for visualizing and analyzing sensor data to identify trends, patterns, peak performance, and critical data points.
 3. Analyze trends and correlations between sensor data.
 4. [Future]Develop regression models, conduct correlation studies, and identify the feature importance for each sensor data input considered during the modeling process.
+
+
+Project name: IoT Solar PV Data Logger with Interactive Dashboard
+
+Summary: This is a companion app for a solar PV system. It allows you to log data from the solar PV system and view it on an interactive dashboard. The solar PV system is handled by a raspberry PI which then logs data onto the MongoDB database.
+
+
+
+Core functionalities:
+- Log data from the solar PV system
+- View data on an interactive dashboard
+
+Technologies:
+- React
+- Vite
+- Shadcn ui library
+- Node.js   
+- Express
+- MongoDB
